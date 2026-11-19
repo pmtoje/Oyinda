@@ -329,8 +329,8 @@ const collateralTypes: BaselineItem[] = [
 // ---------------------------------------------------------------------------
 const reviewActions = ['RECOMMEND', 'DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT'];
 const assessment = { type: 'PARALLEL', key: 'ASSESSMENT', name: 'Credit analysis & E&S review', branches: [
-  { key: 'CREDIT_ANALYSIS', name: 'Credit analysis', role: 'CREDIT_ANALYST', taskType: 'ANALYSIS', actions: ['COMPLETE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'CREDIT_ANALYSIS' },
-  { key: 'ES_REVIEW', name: 'E&S review', role: 'ES_ANALYST', taskType: 'ANALYSIS', when: { fact: 'risk.esRequired', op: 'truthy' }, actions: ['COMPLETE', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'ES_REVIEW' },
+  { key: 'CREDIT_ANALYSIS', name: 'Credit analysis', role: 'CREDIT_ANALYST', taskType: 'ANALYSIS', actions: ['COMPLETE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'CREDIT_ANALYSIS', prerequisites: ['BUREAU', 'EXPOSURE', 'FINANCIAL_ANALYSIS', 'STATEMENT_ANALYSIS', 'COLLATERAL', 'RISK_RATING', 'RARORAC', 'CREDIT_MEMO'] },
+  { key: 'ES_REVIEW', name: 'E&S review', role: 'ES_ANALYST', taskType: 'ANALYSIS', when: { fact: 'risk.esRequired', op: 'truthy' }, actions: ['COMPLETE', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'ES_REVIEW', prerequisites: ['ES_ASSESSMENT'] },
 ] };
 const creditTail = [
   assessment,
@@ -342,7 +342,7 @@ const workflows: BaselineItem[] = [
   { kind: 'workflow_definition', key: 'CREDIT_CUSTOMER_INITIATED', title: 'Credit approval — customer-initiated', payload: {
     kind: 'CREDIT_APPROVAL', appliesWhen: { fact: 'facility.origin', op: 'eq', value: 'CUSTOMER' }, priority: 10,
     stages: [
-      { type: 'TASK', key: 'RM_REVIEW', name: 'Relationship Manager review', role: 'RM', taskType: 'REVIEW', assignTo: 'RELATIONSHIP_MANAGER', actions: reviewActions, slaPolicyKey: 'RM_REVIEW', returnTargets: ['CUSTOMER'] },
+      { type: 'TASK', key: 'RM_REVIEW', name: 'Relationship Manager review', role: 'RM', taskType: 'REVIEW', assignTo: 'RELATIONSHIP_MANAGER', actions: reviewActions, slaPolicyKey: 'RM_REVIEW', returnTargets: ['CUSTOMER'], prerequisites: ['DOCUMENTS_VERIFIED'] },
       { type: 'TASK', key: 'BM_REVIEW', name: 'Business Manager review', role: 'BM', taskType: 'REVIEW', actions: reviewActions, slaPolicyKey: 'BM_REVIEW', returnTargets: ['PREVIOUS', 'CUSTOMER'] },
       ...creditTail,
     ], declineBehaviour: 'TERMINATE', resumeAfterReturn: 'RETURNING_STAGE' } },
@@ -358,10 +358,10 @@ const workflows: BaselineItem[] = [
     kind: 'FULFILMENT', appliesWhen: always, priority: 10,
     stages: [
       { type: 'PARALLEL', key: 'DOCUMENTATION', name: 'Legal & Shariah documentation', branches: [
-        { key: 'LEGAL', name: 'Legal documentation & perfection', role: 'LEGAL', taskType: 'FULFILMENT', actions: ['COMPLETE', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'LEGAL_REVIEW' },
-        { key: 'SHARIAH', name: 'Shariah review & sign-off', role: 'SHARIAH', taskType: 'FULFILMENT', actions: ['COMPLETE', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'SHARIAH_REVIEW' },
+        { key: 'LEGAL', name: 'Legal documentation & perfection', role: 'LEGAL', taskType: 'FULFILMENT', actions: ['COMPLETE', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'LEGAL_REVIEW', prerequisites: ['CONDITIONS_LEGAL'] },
+        { key: 'SHARIAH', name: 'Shariah review & sign-off', role: 'SHARIAH', taskType: 'FULFILMENT', actions: ['COMPLETE', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'SHARIAH_REVIEW', prerequisites: ['CONDITIONS_SHARIAH'] },
       ] },
-      { type: 'TASK', key: 'CREDIT_OPS', name: 'Credit Operations — conditions & booking', role: 'CREDIT_OPS', taskType: 'FULFILMENT', actions: ['COMPLETE', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'CREDIT_OPS_REVIEW' },
+      { type: 'TASK', key: 'CREDIT_OPS', name: 'Credit Operations — conditions & booking', role: 'CREDIT_OPS', taskType: 'FULFILMENT', actions: ['COMPLETE', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'CREDIT_OPS_REVIEW', prerequisites: ['CONDITIONS_ALL_MANDATORY'] },
     ], declineBehaviour: 'TERMINATE', resumeAfterReturn: 'RETURNING_STAGE' } },
 ];
 const authority: BaselineItem = { kind: 'approval_authority', key: 'STANDARD', title: 'Credit approval authority matrix', payload: {

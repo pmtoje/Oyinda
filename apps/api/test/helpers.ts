@@ -96,3 +96,64 @@ export async function onboardCustomer(a: FastifyInstance, accountNumber: string,
 export async function rewindOtpThrottle() {
   await q(db(), `UPDATE otp_challenge SET created_at = created_at - interval '1 hour'`);
 }
+
+/** Multipart upload through the real HTTP stack. */
+export async function upload(c: Client, url: string, filename: string, content: Buffer, mime = 'application/pdf', fields: Record<string, string> = {}) {
+  const boundary = '----gazelle' + Math.random().toString(16).slice(2);
+  const parts: Buffer[] = [];
+  for (const [k, v] of Object.entries(fields)) parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`));
+  parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${mime}\r\n\r\n`), content, Buffer.from(`\r\n--${boundary}--\r\n`));
+  return c.req('POST', url, Buffer.concat(parts), { 'content-type': `multipart/form-data; boundary=${boundary}` });
+}
+
+export const pdf = (text = 'Gazelle test document') => Buffer.from(`%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\n% ${text} ${Math.random()}\ntrailer << /Root 1 0 R >>\n%%EOF\n`);
+
+export const ABC = { account: '0100000001', phone: '08030000001' };
+
+/** Onboard ABC (once) and return a signed-in client. */
+export async function abcClient(a: FastifyInstance): Promise<Client> {
+  const existing = await q(db(), `SELECT 1 FROM customer_user WHERE email='treasury.lead@abc-manufacturing.demo'`);
+  await rewindOtpThrottle();
+  if (!existing.length) return onboardCustomer(a, ABC.account, 'treasury.lead@abc-manufacturing.demo', ABC.phone);
+  const c = new Client(a);
+  const s = await c.post('/api/auth/customer/login/start', { email: 'treasury.lead@abc-manufacturing.demo' });
+  const r = await c.post('/api/auth/customer/login/verify', { email: 'treasury.lead@abc-manufacturing.demo', challengeId: s.body.data.challengeId, code: await lastOtp(ABC.phone) });
+  if (r.status !== 200) throw new Error('ABC login failed ' + JSON.stringify(r.body));
+  return c;
+}
+
+/** Complete ABC's profile to a realistic standard. */
+export async function completeAbcProfile(c: Client, customerId: string) {
+  await c.put(`/api/customers/${customerId}/profile`, { businessType: 'LIMITED_LIABILITY', sectorCode: 'MANUFACTURING', industry: 'Packaging & plastics', businessDescription: 'Manufacturer of rigid plastic packaging for food and beverage producers in West Africa.', productsServices: 'PET preforms, HDPE bottles, closures', valueChain: 'Imports resin; supplies bottlers in Lagos and Ogun', geographicFootprint: 'Lagos, Ogun, Kano', employeeCount: 420, hasLitigation: false, hasRegulatoryMatters: false });
+  const parties = (await c.get(`/api/customers/${customerId}/profile`)).body.data.parties;
+  if (!parties.length) {
+    await c.post(`/api/customers/${customerId}/parties`, { partyType: 'DIRECTOR', fullName: 'Ade Johnson', designation: 'Managing Director', bvn: '22212345678', yearsExperience: 22 });
+    await c.post(`/api/customers/${customerId}/parties`, { partyType: 'SHAREHOLDER', fullName: 'Ade Johnson', ownershipPct: 60, bvn: '22212345678' });
+    await c.post(`/api/customers/${customerId}/parties`, { partyType: 'SHAREHOLDER', entityKind: 'CORPORATE', fullName: 'Johnson Holdings Ltd', ownershipPct: 40 });
+    await c.post(`/api/customers/${customerId}/parties`, { partyType: 'KEY_EXECUTIVE', fullName: 'Ngozi Peters', designation: 'Chief Financial Officer', yearsExperience: 15 });
+  }
+}
+
+/** Create and fill a Murabaha request (₦150m, 36 months) up to document upload. */
+export async function draftMurabaha(c: Client, opts: { amountMinor?: number; idem?: string } = {}) {
+  const f = await c.post('/api/facilities', { productCode: 'MURABAHA', idempotencyKey: opts.idem ?? `t-${Math.random().toString(36).slice(2)}` });
+  const id = f.body.data.id;
+  let rv = f.body.data.rowVersion;
+  const p1 = await c.patch(`/api/facilities/${id}`, { rowVersion: rv, step: 'DETAILS', completeStep: true, currency: 'NGN', amountMinor: opts.amountMinor ?? 150_000_000_00, tenorMonths: 36, purpose: 'Purchase of PET resin and moulding equipment spares', paymentFrequency: 'MONTHLY', sourceOfPayment: 'Proceeds of sales to bottling customers, domiciled to Alternative Bank', paymentStructure: 'Equal monthly instalments of cost plus profit' });
+  if (p1.status !== 200) throw new Error('details ' + JSON.stringify(p1.body));
+  rv = p1.body.data.rowVersion;
+  const p2 = await c.patch(`/api/facilities/${id}`, { rowVersion: rv, step: 'PRODUCT_INFO', completeStep: true, supplierName: 'Resin Supplies FZE (DEMO)', underlyingAsset: '1,200 tonnes PET resin', productFields: { assetDescription: '1,200 tonnes bottle-grade PET resin', supplierQuoteRef: 'PFI-2026-118', assetCostMinor: 160_000_000_00, customerContributionMinor: 10_000_000_00, deliveryLocation: 'Ikeja, Lagos' } });
+  if (p2.status !== 200) throw new Error('product ' + JSON.stringify(p2.body));
+  rv = p2.body.data.rowVersion;
+  const p3 = await c.patch(`/api/facilities/${id}`, { rowVersion: rv, step: 'SECURITY', completeStep: true, proposedSecurity: 'Legal mortgage over factory premises at Ikeja; domiciliation of receivables' });
+  return { id, rowVersion: p3.body.data.rowVersion, ref: f.body.data.ref };
+}
+
+export async function uploadAllRequired(c: Client, facilityId: string) {
+  const docs = (await c.get(`/api/facilities/${facilityId}/documents`)).body.data;
+  for (const d of docs.filter((x: any) => x.mandatory && x.status === 'REQUIRED')) {
+    const r = await upload(c, `/api/documents/${d.id}/upload`, `${d.docType.toLowerCase()}.pdf`, pdf(d.title));
+    if (r.status !== 201) throw new Error('upload ' + JSON.stringify(r.body));
+  }
+  return docs;
+}

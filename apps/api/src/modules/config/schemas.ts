@@ -47,6 +47,8 @@ const optionCode = z.string().regex(/^[A-Z0-9][A-Z0-9_]{0,60}$/, 'Use upper-case
 const minor = z.number().int().nonnegative();
 const pct = z.number().min(0).max(100);
 const roleCode = z.string().regex(/^[A-Z][A-Z0-9_]{1,40}$/);
+export const PREREQUISITES = ['BUREAU', 'EXPOSURE', 'FINANCIAL_ANALYSIS', 'STATEMENT_ANALYSIS', 'COLLATERAL', 'RISK_RATING', 'RARORAC', 'CREDIT_MEMO', 'ES_ASSESSMENT', 'CONDITIONS_LEGAL', 'CONDITIONS_SHARIAH', 'CONDITIONS_ALL_MANDATORY', 'DOCUMENTS_VERIFIED'] as const;
+const prereqs = z.array(z.enum(PREREQUISITES)).default([]);
 
 export const productField = z.object({
   key: z.string().regex(/^[a-z][a-zA-Z0-9]{1,40}$/),
@@ -203,8 +205,8 @@ export const schemas = {
     appliesWhen: condition,
     priority: z.number().int(),
     stages: z.array(z.discriminatedUnion('type', [
-      z.object({ type: z.literal('TASK'), key: code, name: z.string(), role: roleCode, taskType: z.enum(['REVIEW', 'ANALYSIS', 'FULFILMENT', 'CHECK']), when: condition.optional(), actions: z.array(z.enum(['RECOMMEND', 'DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT', 'COMPLETE'])).min(1), slaPolicyKey: z.string(), assignTo: z.enum(['ROLE_QUEUE', 'RELATIONSHIP_MANAGER', 'BRANCH_MANAGER']).default('ROLE_QUEUE'), returnTargets: z.array(z.enum(['CUSTOMER', 'RM', 'PREVIOUS'])).default(['PREVIOUS']) }),
-      z.object({ type: z.literal('PARALLEL'), key: code, name: z.string(), branches: z.array(z.object({ key: code, name: z.string(), role: roleCode, taskType: z.enum(['REVIEW', 'ANALYSIS', 'FULFILMENT', 'CHECK']), when: condition.optional(), actions: z.array(z.enum(['RECOMMEND', 'DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT', 'COMPLETE'])).min(1), slaPolicyKey: z.string() })).min(2) }),
+      z.object({ type: z.literal('TASK'), key: code, name: z.string(), role: roleCode, taskType: z.enum(['REVIEW', 'ANALYSIS', 'FULFILMENT', 'CHECK']), when: condition.optional(), actions: z.array(z.enum(['RECOMMEND', 'DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT', 'COMPLETE'])).min(1), slaPolicyKey: z.string(), prerequisites: prereqs, assignTo: z.enum(['ROLE_QUEUE', 'RELATIONSHIP_MANAGER', 'BRANCH_MANAGER']).default('ROLE_QUEUE'), returnTargets: z.array(z.enum(['CUSTOMER', 'RM', 'PREVIOUS'])).default(['PREVIOUS']) }),
+      z.object({ type: z.literal('PARALLEL'), key: code, name: z.string(), branches: z.array(z.object({ key: code, name: z.string(), role: roleCode, taskType: z.enum(['REVIEW', 'ANALYSIS', 'FULFILMENT', 'CHECK']), when: condition.optional(), actions: z.array(z.enum(['RECOMMEND', 'DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT', 'COMPLETE'])).min(1), slaPolicyKey: z.string(), prerequisites: prereqs })).min(2) }),
       z.object({ type: z.literal('APPROVAL_CHAIN'), key: code, name: z.string(), authorityKey: z.string() }),
     ])).min(1),
     declineBehaviour: z.enum(['TERMINATE', 'CONTINUE_TO_FINAL']).default('TERMINATE'),
