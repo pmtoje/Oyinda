@@ -6,10 +6,11 @@ import multipart from '@fastify/multipart';
 import { randomUUID } from 'node:crypto';
 import { env, integrationModes } from '../config/env.js';
 import { getPool } from '../db/pool.js';
-import { AppError } from '../lib/errors.js';
+import { AppError, unauthorized } from '../lib/errors.js';
 import { resolveSession, SESSION_COOKIE } from '../modules/identity/session.js';
 import { safeEqualHex } from '../lib/crypto.js';
 import { metrics } from '../lib/metrics.js';
+import { PUBLIC_ROUTES, routeKey } from './public-routes.js';
 import { registerRoutes } from './routes.js';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -24,6 +25,11 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
     trustProxy: e.TRUST_PROXY,
     bodyLimit: 1024 * 1024,
   });
+
+  // Inventory of every route (method + path), used by the deny-by-default access test and the API reference.
+  const routeList: { method: string; url: string }[] = [];
+  app.addHook('onRoute', (r) => { for (const m of [r.method].flat()) if (m !== 'HEAD' && m !== 'OPTIONS') routeList.push({ method: m, url: r.url }); });
+  app.decorate('routeList', routeList);
 
   await app.register(helmet, {
     contentSecurityPolicy: {
@@ -65,6 +71,15 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
     const token = req.cookies[SESSION_COOKIE];
     // Background refreshes mark themselves passive so polling never keeps an idle session alive.
     if (token) req.auth = (await resolveSession(getPool(), token, { passive: req.headers['x-gz-passive'] === '1' || req.url.startsWith('/api/auth/session/status') })) ?? undefined;
+  });
+
+  // Deny by default: every /api route needs a session unless it is explicitly public (http/public-routes.ts).
+  // Runs before body parsing and validation, so anonymous callers learn nothing about inputs or records.
+  app.addHook('onRequest', async (req) => {
+    if (req.auth || !req.url.startsWith('/api/')) return;
+    const template = req.routeOptions?.url;
+    if (!template) return; // unknown route: normal 404
+    if (!PUBLIC_ROUTES.has(routeKey(req.method, template))) throw unauthorized();
   });
 
   // Per-user limit (fixed one-minute window, per instance).

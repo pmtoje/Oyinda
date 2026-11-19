@@ -56,4 +56,4 @@ pnpm --filter @gazelle/api test           # unit + API integration + end-to-end 
 pnpm --filter @gazelle/web e2e            # browser journeys (Playwright); requires API + web running
 ```
 
-Further detail: [`docs/`](docs) — start with `architecture-assessment.md`, then `security-model.md`, `workflow-model.md`, `requirements-traceability.md` and `production-readiness.md`.
+Further detail: [`docs/`](docs) — `master-prompt-gap-assessment.md` gives the current status against the master prompt and what remains; `api-reference.md` lists every endpoint. Start with `architecture-assessment.md`, then `security-model.md`, `workflow-model.md`, `requirements-traceability.md` and `production-readiness.md`.

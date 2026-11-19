@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { defineConfig } from '@playwright/test';
 import { e2eEnv } from './e2e/env';
 
@@ -13,7 +14,8 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'off',
-    launchOptions: { executablePath: '/opt/pw-browsers/chromium' },
+    // Use the pre-installed browser where present (cloud dev containers); CI installs Playwright's own Chromium.
+    ...(existsSync('/opt/pw-browsers/chromium') ? { launchOptions: { executablePath: '/opt/pw-browsers/chromium' } } : {}),
     viewport: { width: 1360, height: 900 },
   },
   webServer: [

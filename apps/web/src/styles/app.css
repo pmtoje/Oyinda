@@ -242,7 +242,7 @@ table.data .primary-cell { font-weight: 500; color: var(--ink-900); }
 .auth-main { display: flex; align-items: center; justify-content: center; padding: 40px 24px; background: var(--canvas); }
 .auth-card { width: min(440px, 100%); }
 .auth-card h2 { margin-bottom: 6px; }
-@media (max-width: 860px) { .auth-wrap { grid-template-columns: 1fr; } .auth-aside { padding: 28px 24px; } .auth-aside h1 { font-size: 1.5rem; } .auth-aside::after { display: none; } }
+@media (max-width: 860px) { .auth-wrap { grid-template-columns: minmax(0, 1fr); } .auth-aside { padding: 28px 24px; } .auth-aside h1 { font-size: 1.5rem; } .auth-aside::after { display: none; } }
 
 /* ---------- timeline ---------- */
 .timeline { list-style: none; margin: 0; padding: 0; }
@@ -349,3 +349,12 @@ th[aria-sort='ascending'] .sort-mark, th[aria-sort='descending'] .sort-mark { co
 .metric-button.selected { box-shadow: inset 0 0 0 2px var(--link); }
 .metric-button:focus-visible { outline: none; box-shadow: var(--focus); }
 .stack-xs { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+
+/* Phone: nothing may widen the page. Flex/grid children shrink; the step indicator compacts. */
+.auth-main > .auth-card { min-width: 0; }
+/* Step labels never spill into the next step: they wrap (hyphenating long words) within their own column. */
+.stepper li { overflow-wrap: break-word; hyphens: auto; padding-left: 2px; padding-right: 2px; }
+@media (max-width: 640px) {
+  .auth-main { padding: 24px 16px; }
+  .stepper li { min-width: 100px; font-size: var(--fs-xs); }
+}

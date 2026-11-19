@@ -13,7 +13,8 @@
     "test": "vitest run",
     "demo:totp": "tsx src/seed/demo-totp.ts",
     "demo:otp": "tsx src/seed/demo-otp.ts",
-    "staff:activation-link": "tsx src/seed/staff-link.ts"
+    "staff:activation-link": "tsx src/seed/staff-link.ts",
+    "docs:api": "tsx scripts/api-reference.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.10.0",

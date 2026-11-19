@@ -17,12 +17,20 @@ test.skip(e2eEnv.STAFF_AUTH_MODE === 'local', 'Directory-mode suite');
 test.describe.configure({ mode: 'serial' });
 
 const THEMES = ['light', 'dark'] as const;
+/**
+ * Pixel baselines are tied to the machine image that recorded them (installed fonts, anti-aliasing). They run where
+ * they were recorded; on CI they are opt-in (VISUAL_BASELINES=strict after recording on the CI image with
+ * --update-snapshots). Layout, overlap, clipping and accessibility checks always run.
+ */
+const COMPARE_PIXELS = !process.env.CI || process.env.VISUAL_BASELINES === 'strict';
 const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 900 },
   { name: 'laptop', width: 1280, height: 800 },
   { name: 'tablet', width: 1024, height: 768 },
   { name: 'tablet-portrait', width: 768, height: 1024 },
 ];
+/** Customer-facing screens are also checked on a phone; the staff workspace is supported from tablet width up. */
+const PHONE = { name: 'phone', width: 390, height: 844 };
 const LONG_NAME = 'ABC Manufacturing, Packaging, Plastics & Allied Industrial Products Holdings Nigeria Limited (formerly ABC Rigid Containers and Bottling Supplies West Africa Company) — Lagos, Ogun, Kano & Abuja Operations';
 
 /** Runs in the page: returns layout defects. */
@@ -96,12 +104,12 @@ async function setTheme(page: Page, theme: string, account?: { table: 'app_user'
   await page.evaluate((t) => { localStorage.setItem('gz-theme', t); }, theme);
 }
 
-async function audit(page: Page, name: string, theme: string, opts: { axe?: boolean } = {}) {
+async function audit(page: Page, name: string, theme: string, opts: { axe?: boolean; phone?: boolean } = {}) {
   await page.waitForLoadState('networkidle');
   await expect(page.locator('.skeleton')).toHaveCount(0, { timeout: 10_000 }).catch(() => { /* some pages keep a skeleton for optional panels */ });
   expect(await page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe(theme);
   const found: Record<string, string[]> = {};
-  for (const vp of VIEWPORTS) {
+  for (const vp of opts.phone ? [...VIEWPORTS, PHONE] : VIEWPORTS) {
     await page.setViewportSize({ width: vp.width, height: vp.height });
     await page.waitForTimeout(150);
     await page.screenshot({ path: `test-results/visual/${name}-${theme}-${vp.name}.png`, fullPage: true });
@@ -117,6 +125,11 @@ async function audit(page: Page, name: string, theme: string, opts: { axe?: bool
   }
 }
 
+// Deterministic rendering: web fonts are not fetched, so screenshot baselines never depend on network access.
+test.beforeEach(async ({ page }) => {
+  await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+});
+
 test.beforeAll(async () => {
   // Extreme data on the DEMO customer: very long name, a huge request and long free text.
   await sql(`UPDATE customer SET legal_name=$1 WHERE customer_ref='GZ-CUS-000001'`, [LONG_NAME]);
@@ -131,8 +144,8 @@ for (const theme of THEMES) {
       for (const [path, name] of [['/', 'welcome'], ['/login', 'customer-login'], ['/staff/login', 'staff-login'], ['/onboarding', 'onboarding']] as const) {
         await setTheme(page, theme);
         await page.goto(path);
-        await audit(page, name, theme);
-        await expect(page).toHaveScreenshot(`${name}-${theme}.png`, { fullPage: true, maxDiffPixelRatio: 0.01 });
+        await audit(page, name, theme, { phone: true });
+        if (COMPARE_PIXELS) await expect(page).toHaveScreenshot(`${name}-${theme}.png`, { fullPage: true, maxDiffPixelRatio: 0.01 });
       }
     });
 
@@ -143,7 +156,7 @@ for (const theme of THEMES) {
       const [ij] = await sql(`SELECT id FROM facility_request WHERE facility_ref='GZ-FAC-2026-000002'`);
       for (const [path, name] of [['/portal', 'portal-dashboard'], [`/portal/facilities/${mur.id}`, 'portal-facility'], [`/portal/facilities/${ij.id}/apply`, 'portal-application'], ['/portal/profile', 'portal-profile'], ['/portal/users', 'portal-users'], ['/portal/facilities/new', 'portal-new-facility'], ['/portal/security', 'portal-security']] as const) {
         await page.goto(path);
-        await audit(page, name, theme);
+        await audit(page, name, theme, { phone: true });
       }
     });
 
