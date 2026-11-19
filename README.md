@@ -39,11 +39,11 @@ pnpm dev:web                               # http://localhost:5173
 
 | Who | Sign-in | Notes |
 |---|---|---|
-| Customer (ABC Manufacturing Ltd) | `/login` → `treasury@abc-manufacturing.demo` | The OTP goes to the mock outbox: `pnpm --filter @gazelle/api demo:otp` |
-| New customer onboarding | `/` → "Yes" → account `0100000003` (Kano Agro-Allied, DEMO) | |
-| Staff | `/staff/login` → `demo.rm`, `demo.bm`, `demo.analyst`, `demo.es`, `demo.ctl`, `demo.ghcr`, `demo.cro`, `demo.ed`, `demo.md`, `demo.legal`, `demo.shariah`, `demo.creditops`, `demo.creditops2`, `demo.admin`, `demo.superadmin`, `demo.auditor` … | Password = `MOCK_AD_DEMO_PASSWORD`. First sign-in enrols TOTP; for users enrolled by the seed: `pnpm --filter @gazelle/api demo:totp demo.analyst` |
+| Customer (ABC Manufacturing Ltd) | `/login` → `treasury@abc-manufacturing.demo`, DEMO password `Gazelle#Portal2026` | Then the sign-in OTP, which goes to the mock outbox: `pnpm --filter @gazelle/api demo:otp` |
+| New customer onboarding | `/` → "Yes" → account `0100000003` (Kano Agro-Allied, DEMO), your name and role | The OTP goes to the CBA phone and e-mail (mock outbox); the welcome e-mail link is in the mock outbox too |
+| Staff | `/staff/login` → `demo.rm`, `demo.bm` (Team Lead), `demo.rbe`, `demo.dh`, `demo.analyst`, `demo.es`, `demo.ctl`, `demo.ghcr`, `demo.cro`, `demo.ed`, `demo.ed2`, `demo.md`, `demo.ned1`–`3`, `demo.brmcchair`, `demo.boardchair`, `demo.legal`, `demo.shariah`, `demo.creditops`, `demo.creditops2`, `demo.admin`, `demo.superadmin`, `demo.auditor` … | Password = `MOCK_AD_DEMO_PASSWORD`. First sign-in enrols TOTP; for users enrolled by the seed: `pnpm --filter @gazelle/api demo:totp demo.analyst` |
 
-Seeded state: a ₦150m Murabaha with Credit Analysis and E&S, a draft Ijarah, and a ₦45m APG with an offer awaiting the customer.
+Seeded state: a ₦150m Murabaha with Credit Analysis (Manufacturing is outside the E&S sectors), a draft Ijarah, and a ₦45m APG approved by the MD (request + outstanding exposure) with a signed offer awaiting the customer.
 
 ## Tests
 

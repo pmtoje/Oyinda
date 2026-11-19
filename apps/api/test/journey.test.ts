@@ -99,7 +99,7 @@ describe('Phase 77 — end-to-end Murabaha journey for ABC Manufacturing Ltd', (
   it('Journey 7: authority follows request + outstanding exposure (PRD); HCR → CRO → Line ED → ED concurrence → MD approves', async () => {
     expect((await act(staff.ctl!, facilityId, 'CTL_REVIEW', 'RECOMMEND')).status).toBe(200);
     const route = (await q(db(), `SELECT route FROM workflow_instance WHERE facility_id=$1`, [facilityId]))[0].route;
-    // ₦150m request + ₦180m Murabaha + ₦60m APG outstanding = ₦390m → MD + CRO + HCR band with ED concurrence
+    // ₦150m request + ₦180m Murabaha + ₦30m APG (₦60m at 50% CCF) outstanding = ₦360m → MD + CRO + HCR band with ED concurrence
     expect(route.explanation.join(' ')).toMatch(/outstanding exposure/);
     expect(route.stages.filter((s: any) => s.type === 'APPROVAL_LEVEL').map((s: any) => s.key)).toEqual(['HCR', 'CRO', 'ED', 'ED_CONCURRENCE', 'MD']);
     const hcrTask = (await q(db(), `SELECT id FROM workflow_task WHERE facility_id=$1 AND stage_key='HCR'`, [facilityId]))[0];

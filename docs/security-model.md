@@ -6,11 +6,13 @@ Gazelle is treated as a banking system of record: security controls live in the 
 
 | Actor | Mechanism | Controls |
 |---|---|---|
-| Existing-account customer | Account number → **CBA lookup** (identity never taken from the client) → 6-digit OTP to the **CBA-registered phone** → contact details → email OTP | OTP hashed (HMAC-SHA256, keyed, per-challenge salt); never returned by any API or written to logs; 5-minute TTL; 5 attempts; single use; only the newest challenge valid; resend throttle (30 s, 5 per 15 min); per-IP rate limit; journey state is server-held behind an opaque HttpOnly cookie. |
-| Returning customer | Email → OTP to registered phone | Same response whether or not the user exists (no enumeration); 5 failures → 30-minute account lock. |
+| Existing-account customer (SWR §1) | Account number + applicant name and role → **CBA lookup** (identity never taken from the client) → one 6-digit OTP to the **phone and e-mail registered on the CBA** → account name shown → password (username = CBA company e-mail) → terms and data privacy → welcome e-mail with a single-use verification link (48 h) | The start step returns the same generic message for every valid-format account (SWR TC-2); the account name appears only after the OTP. OTP hashed (HMAC-SHA256, keyed, per-challenge salt); never returned by any API or written to logs; 5-minute TTL; 5 attempts; single use; only the newest challenge valid; resend throttle (30 s, 5 per 15 min); per-IP rate limit; journey state is server-held behind an opaque HttpOnly cookie. Passwords: configurable policy (`password_policy`), checked server-side (the browser pop-up is a convenience), scrypt (N=2¹⁵) with per-user salt, never logged. One portal account per business. |
+| Returning customer | Company e-mail + password → 6-digit OTP to the CBA-registered phone | Identical error for unknown users and wrong passwords; constant-work password check; configurable lockout (default 5 failures → 30 minutes) on password and on OTP; blocked (suspended) customers cannot sign in. |
 | Staff | Active Directory (LDAPS adapter; mock directory in non-production) → **TOTP MFA** (RFC 6238) | No local passwords. Enrolment at first sign-in; secret AES-256-GCM encrypted; ±1 step drift; replay blocked by last-used step; 5 MFA failures → session revoked and account locked; session token rotated after MFA (fixation defence); pre-MFA sessions can only call MFA endpoints. |
 
 ## 2. Sessions & CSRF
+
+* **Single session (SWR TC-22, PRD):** a new fully authenticated sign-in (staff: after MFA) ends the user's other live sessions (`SINGLE_SESSION`, default on). Blocking a customer ends all of its sessions at once.
 
 * Opaque 256-bit tokens; only an HMAC of the token is stored. Cookies are `HttpOnly; Secure; SameSite=Strict`.
 * Idle timeout 15 minutes (sliding), absolute 8 hours (configurable). Sessions are revocable per device. Deactivation and role changes revoke all of a user's sessions.

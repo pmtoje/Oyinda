@@ -27,6 +27,8 @@ Consequences:
 * The master build prompt is the working source of truth (`MBP-§n` references in the traceability matrix).
 * Where a missing image held specific business values (SLA hours, committee limits, exact routing), Gazelle ships **configurable defaults**, clearly marked as defaults. Each one is logged in `open-questions.md` for Credit Risk to confirm. Nothing is hard-coded.
 
+**Update, 19-Nov-2026.** The SWR (27-Oct-2026) and the combined PRD/BRD (with its embedded approval grid, facility-type list, Credit Approval Memo template, offer-letter template and E&S checklist) were supplied and the build was reconciled against them. The SWR is treated as authoritative; every conflict between the SWR, the PRD and earlier defaults is recorded in `requirements-decisions.md` (D-21 to D-48), the remaining questions in `open-questions.md` (OQ-17 to OQ-30), and coverage in the SWR/PRD section of `requirements-traceability.md`. Existing environments pick up the new baseline through baseline release `2026.11-SWR`.
+
 ## 2. Target architecture
 
 Modular monolith, API-first, with strict domain modules and adapter-based integrations. A bank-scale credit platform needs strong transactional consistency across workflow, decisions and audit, and that is much easier to guarantee inside one database transaction than across microservices. Module boundaries are drawn so a module can be split out later (for example document processing or notifications) without rewriting it.

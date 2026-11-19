@@ -4,9 +4,9 @@ Assessment of the current build against MBP Phase 72. **PASS** means implemented
 
 | Area | Verdict | Evidence | Condition for go-live |
 |---|---|---|---|
-| Security | CONDITIONAL | 135 API tests incl. `auth`, `security`, `platform` suites; OWASP controls in `security-model.md`; `pnpm audit` clean | Independent penetration test by Group InfoSec; WAF at the API Gateway |
-| Functional requirements | CONDITIONAL | `requirements-traceability.md` | PRD/BRD and SWR review against the build (OQ-01); default business values confirmed (OQ-03 to OQ-08) |
-| Workflow | PASS | Customer- and RM-initiated routes, concurrent E&S, authority chain, overrides, committees, returns, SLA, escalation, segregation of duties (`journey`, `committee`, `engines`) | Default route and limits confirmed by Credit Risk |
+| Security | CONDITIONAL | 145 API tests incl. `auth`, `security`, `platform` suites; OWASP controls in `security-model.md`; `pnpm audit` clean | Independent penetration test by Group InfoSec; WAF at the API Gateway |
+| Functional requirements | CONDITIONAL | `requirements-traceability.md` (MBP, SWR and PRD sections); conflicts in `requirements-decisions.md` D-21 to D-48 | Business sign-off of the SWR/PRD decisions and the open questions OQ-17 to OQ-30; SWR item 7 pilot test before production (SWR TC-7) |
+| Workflow | PASS | SWR routes (RM–TL–RBE–DH–[E&S ∥ CA]–TL CA–HCR–CRO–ED–MD–MIC–BRMC–Board), PRD approval grid per workflow type with combination and concurrence levels, aggregate-exposure authority, insider/PEP full chain, committee signature rules, decision recorded from minutes, per-stage decline behaviour, returns, SWR SLAs and PRD escalation, segregation of duties (`journey`, `committee`, `engines`) | Credit Risk confirmation of OQ-18 and OQ-29 |
 | Financial calculations | PASS | Ratios, annualisation, statement turnover, FX, exposure with CCF, collateral haircuts, RARORAC threshold, payment schedules (`engines`, `journey`) | Ratio bands and weights confirmed by Credit Risk |
 | Access control | PASS | RBAC + object-level checks + 404 for inaccessible records; matrix tests at API level; browser route guards | — |
 | Audit | PASS | Hash-chained, trigger-protected audit log; immutable decision tables; verification in the UI | Off-site log shipping to the SIEM |
@@ -21,8 +21,8 @@ Assessment of the current build against MBP Phase 72. **PASS** means implemented
 
 ## Test inventory (last run)
 
-* API (Vitest, real PostgreSQL): **135 tests** — auth & OTP security, kernel, engines (financial, statements, XLSX, FX, authority, committee, SLA, FIPG, scorecards, exposure), origination, documents, full Phase 77 journey, committee & negotiation, platform (config maker-checker, privileged access, access-control matrix, AI guard, reports, notifications, health), security assessment (IDOR, ID manipulation, mass assignment, SQLi, XSS, path traversal, SSRF, workflow manipulation, replay, session separation, oversized upload, secret leakage). Stable across shuffled file orders.
-* Browser (Playwright, isolated DB): **6 journeys** — onboarding with a wrong-code retry, offer acceptance, analyst claim and prerequisites, executive decision view, customer → staff route guard, accessibility basics.
+* API (Vitest, real PostgreSQL): **145 tests** — auth & OTP security, kernel, engines (financial, statements, XLSX, FX, authority, committee, SLA, FIPG, scorecards, exposure), origination, documents, full Phase 77 journey, committee & negotiation, platform (config maker-checker, privileged access, access-control matrix, AI guard, reports, notifications, health), baseline-release reconciliation, customer block/unblock, user export, statement spooling owner check, SWR onboarding (password policy, generic start response, welcome link, single business registration, single session), CAM term sheet, offer sign-off, security assessment (IDOR, ID manipulation, mass assignment, SQLi, XSS, path traversal, SSRF, workflow manipulation, replay, session separation, oversized upload, secret leakage). Stable across shuffled file orders.
+* Browser (Playwright, isolated DB): **6 journeys** — SWR onboarding (account + name + role, wrong-code retry, account name after OTP, password pop-up, welcome link, CBA details on the dashboard), offer acceptance, analyst claim and prerequisites, executive decision view, customer → staff route guard, accessibility basics.
 
 ## Phase 79 persona review (summary)
 

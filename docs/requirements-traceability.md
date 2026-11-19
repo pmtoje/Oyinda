@@ -1,6 +1,6 @@
 # Requirements Traceability
 
-`MBP-n` = master build prompt phase. Status: **Done** (implemented, tested, documented) · **Partial** (works; a named gap remains) · **Blocked** (needs an external dependency; interface plus labelled mock in place).
+`MBP-n` = master build prompt phase; `SWR-n` = item n of the 27-Oct-2026 SWR process table (TC-n = technology control n); `PRD` = PRD/BRD section. Status: **Done** (implemented, tested, documented) · **Partial** (works; a named gap remains) · **Blocked** (needs an external dependency; interface plus labelled mock in place).
 Tests live in `apps/api/test/*.test.ts` (API, unit and journey) and `apps/web/e2e/*.spec.ts` (browser).
 
 | Req | Requirement | Implementation | Tests | Status |
@@ -23,7 +23,7 @@ Tests live in `apps/api/test/*.test.ts` (API, unit and journey) and `apps/web/e2
 | MBP-13 | Collateral: Shariah-aligned types, haircuts, eligible value, coverage, perfection, expiry | `collateral_type` config, credit routes | `journey.test.ts` | Done |
 | MBP-14 | ORR / FRR / industry / collateral / combined; configurable and versioned; history preserved | `risk-engine.ts`, `scorecard`, `rating_model` | `engines.test.ts`, `journey.test.ts`, `platform.test.ts` | Done |
 | MBP-15 | RARORAC via adapter, thresholds, exception justification, MOCK labelled | `rarorac_threshold`, `MockRarorac` | `journey.test.ts` | Blocked on the pricing portal (mock labelled everywhere) |
-| MBP-16 | E&S trigger (configurable), concurrent with credit analysis | `es_trigger`, PARALLEL stage | `journey.test.ts` | Done (sector group pending OQ-05) |
+| MBP-16 | E&S trigger (configurable), concurrent with credit analysis | `es_trigger`, PARALLEL stage | `committee.test.ts`, `journey.test.ts` | Done |
 | MBP-17–18 | Configurable workflow engine; customer- and RM-initiated routes | `workflow/*`, `workflow_definition` | `journey.test.ts`, `committee.test.ts` | Done |
 | MBP-19 | Actions by authority (no Approve above limit) | `actionsFor` | `journey.test.ts` | Done |
 | MBP-20 | Committees: quorum, votes, required roles, serial/parallel | `committeeDecision` | `engines.test.ts`, `committee.test.ts` | Done |
@@ -49,7 +49,7 @@ Tests live in `apps/api/test/*.test.ts` (API, unit and journey) and `apps/web/e2
 | MBP-51 | Adapter integration architecture | `integrations/*` | all | Done |
 | MBP-52 | Environment separation, no secrets in source | `config/env.ts`, `.env.example` | — | Done |
 | MBP-53 | Demo seed data (ABC Manufacturing; Murabaha, Ijarah, APG; all roles) labelled DEMO | `seed/*` | seed run | Done |
-| MBP-54–56 | Unit, integration, E2E, negative tests, workflow matrix | `apps/api/test`, `apps/web/e2e` | 135 API tests, 6 browser journeys | Done |
+| MBP-54–56 | Unit, integration, E2E, negative tests, workflow matrix | `apps/api/test`, `apps/web/e2e` | 145 API tests, 6 browser journeys | Done |
 | MBP-78 | Final security assessment | `security.test.ts`, `pnpm audit` | 12 attack-class tests | Done (external pen test pending) |
 | MBP-57–58 | UX QA, accessibility | see `production-readiness.md` | e2e + manual review | Done (formal WCAG audit recommended) |
 | MBP-59–60 | Observability, admin system health | `metrics.ts`, `/api/admin/health` | `platform.test.ts` | Done (OTel exporter: Partial) |
@@ -57,3 +57,39 @@ Tests live in `apps/api/test/*.test.ts` (API, unit and journey) and `apps/web/e2
 | MBP-62–63 | Relational design, constraints, immutable decisions | migrations | `auth.test.ts`, `journey.test.ts` | Done |
 | MBP-64 | No fake functionality; mocks labelled | banner, `MOCK` tags, production refusal | — | Done |
 | MBP-77 | Final end-to-end scenario | `journey.test.ts` (Phase 77 block) | passes | Done |
+
+## SWR (27-Oct-2026) and PRD/BRD
+
+| Req | Requirement | Implementation | Tests | Status |
+|---|---|---|---|---|
+| SWR-1 | Onboarding: account number, name and role; CBA validation; OTP to CBA phone **and** e-mail; account name shown; username = CBA e-mail; password per policy with pop-up; T&C and privacy; welcome e-mail with verification link; dashboard shows account name, number, sector, branch, TIN, RC | `identity/routes.ts`, `identity/password.ts`, `password_policy`, `pages/public/Onboarding.tsx`, `VerifyEmail.tsx`, `portal/Dashboard.tsx` | `auth.test.ts`, e2e Journey 1 | Done (D-22, D-23, D-24) |
+| SWR-2 | Spool bank statements from CBA, or upload | `cba.getStatement`, `/bank-statements/spool`, `SpoolStatement.tsx` | `security.test.ts` | Done (live API: Blocked, OQ-25) |
+| SWR-2 | FIPG stops the process when minimum criteria are unmet | `fipg/service.ts` (blocking on INELIGIBLE) | `origination.test.ts` | Done |
+| SWR-2 | Credit checks: BVN for promoters, RC and TIN for the business | bureau routes | `journey.test.ts` | Blocked on bureau APIs (mock) |
+| SWR-2 | 3 years audited + management accounts with stated period; figures with commas | financial engine, `money()` | `engines.test.ts` | Done |
+| SWR-2 | Concise credit memo; credit approval memo with CPs | `generateMemo`, CAM term sheet | `journey.test.ts` | Done |
+| SWR-2 | AD sync of roles | `DirectoryAdapter` | — | Partial: roles managed in Gazelle; AD group sync needs AD details |
+| SWR-2 | RARORAC validation with exception justification | `rarorac_threshold`, justify route | `journey.test.ts` | Done (portal: Blocked) |
+| SWR-2 | Next-step pop-ups | E&S checklist banner, password dialog, dashboard actions | e2e | Done |
+| SWR-3 | Islamic facility types, no special characters | `product` config, schema rule | `origination.test.ts` | Done (D-36) |
+| SWR-4 | 13 collateral types; clean-up of test types | `collateral_type`, `BASELINE_RETIRED`, `reconcileBaseline` | `platform.test.ts` | Done (D-37) |
+| SWR-5 | Terminology: facility and payment (incl. T&C and privacy) | templates, labels, legal terms | `journey.test.ts` (offer text) | Done |
+| SWR-6 | Concise memo with financial and statement analysis | `buildMemoContent` | `journey.test.ts` | Done |
+| SWR-7 | Customer and RM routes, SWR SLAs, E&S ∥ credit, validator/checker removed, DH added | `workflow_definition`, `sla_policy` | `journey.test.ts`, `committee.test.ts` | Done (D-26, D-34) |
+| SWR-9 | Name "Gazelle by Alternative Bank" | shells, documents, e-mails | e2e | Done |
+| SWR-10 | E&S checklist prompt for ≥ ₦100m HEART / O&G / Mining / Aviation | `es_trigger` checklist, RM `es.checklist`, workspace banner | `committee.test.ts` | Done (D-35) |
+| SWR-11 | SLM profile and reports by facility type and period | `reports/routes.ts` | `platform.test.ts` | Done |
+| SWR §2 output | Statement table: months, debit, credit, closing balances, wallet share (%), FCY converted | `statement-analysis.ts`, `financials.tsx` | `journey.test.ts` | Done (D-43) |
+| SWR TC-2, 5, 6 | Generic identity responses; rate limiting; statement owner check | onboarding start, `AUTH_LIMIT`, spool route | `auth.test.ts`, `security.test.ts` | Done |
+| SWR TC-11, 12 | 6-digit OTP never returned; AD + MFA for admins | `otp.ts`, staff login | `auth.test.ts` | Done |
+| SWR TC-13 | Requests within authorised limits | aggregate-exposure authority amount | `committee.test.ts` | Done (D-33) |
+| SWR TC-17, 22 | Session timeout; restrict concurrent logins | `SESSION_IDLE_MINUTES`, `enforceSingleSession` | `auth.test.ts` | Done (D-38, D-39) |
+| PRD | Approval grid by workflow type; combination and concurrence; insider / PEP to Board; aggregate exposure | `approval_authority` ×4, `resolveChain` | `engines.test.ts`, `journey.test.ts`, `committee.test.ts` | Done (D-27–D-30, D-33) |
+| PRD | Committee signatures (MIC 3 NED + 2 ED incl. MD; BRMC chair + 2 NED; Board chairman); single access to record decision | `committee` config, `requiredRoleCounts`, `RECORD_DECISION` | `engines.test.ts`, `committee.test.ts` | Done (D-31) |
+| PRD | Decline behaviour per stage | `onDecline` | `journey.test.ts` | Done (D-32) |
+| PRD | Cash-backed ≥ 110% | `policy_cash_backed` | `engines.test.ts` | Done (D-25) |
+| PRD | Combined term sheet in CAM format, Word, auto-generated and updated, names and timestamps, all names at the bottom, view / edit / download | `docgen/cam.ts`, `termsheet.refresh` job, `memo.tsx` | `journey.test.ts` | Done (D-40) |
+| PRD | Offer letter sign-off bands; maker-checker | `offer_signoff`, `signOffer` | `journey.test.ts`, `committee.test.ts` | Done (D-41) |
+| PRD | Block / unblock customers (checker to unblock); export users to Excel; single admin session | admin routes, `Users.tsx` | `platform.test.ts`, `auth.test.ts` | Done (D-47, D-39) |
+| PRD | Product paper workflows | — | — | Open (OQ-28) |
+

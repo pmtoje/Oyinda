@@ -78,7 +78,7 @@ export async function seedDemoData(db: Db): Promise<void> {
   await s.analyst.post(`/api/tasks/${t.id}/claim`);
   await h.performCreditAnalysis(s.analyst, aid, customerId, { rate: 2 });
   must(await h.act(s.analyst, aid, 'CREDIT_ANALYSIS', 'COMPLETE'), 'apg analysis');
-  // ₦45m request + ₦240m outstanding = ₦285m: HCR → CRO → Line ED → ED concurrence → MD (PRD grid, non-cash-backed contingent)
+  // ₦45m request + ₦210m outstanding (direct + CCF-weighted contingent) = ₦255m: HCR → CRO → Line ED → ED concurrence → MD (PRD grid, non-cash-backed contingent)
   for (const [u, k] of [['ctl', 'CTL_REVIEW'], ['ghcr', 'HCR'], ['cro', 'CRO'], ['ed', 'ED'], ['ed2', 'ED_CONCURRENCE']] as const) must(await h.act(s[u], aid, k, 'RECOMMEND'), k);
   must(await h.act(s.md, aid, 'MD', 'APPROVE', { comment: 'Approved. Contract award verified; cash cover and counter-indemnity adequate.', conditions: ['Lien on 30% cash deposit before issuance'] }), 'md');
   must(await s.creditops.post(`/api/facilities/${aid}/offer`), 'offer');
