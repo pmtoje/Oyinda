@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { APPLICATION_STEPS, FACILITY_STATUS_LABEL } from '@gazelle/shared';
 import { getPool, maybe, one, q, tx } from '../../db/pool.js';
 import { actorOf, ok, parse, requireStaff } from '../../http/context.js';
-import { conflict, forbidden, notFound, unprocessable } from '../../lib/errors.js';
+import { conflict, notFound, unauthorized, unprocessable } from '../../lib/errors.js';
 import { nextRef } from '../../lib/ids.js';
 import { formatMoney } from '../../lib/money.js';
 import { audit } from '../audit/audit.js';
@@ -73,7 +73,7 @@ export async function facilityRoutes(app: FastifyInstance) {
 
   app.get('/api/products', async (req, reply) => {
     const isCustomer = req.auth?.subjectType === 'CUSTOMER';
-    if (!req.auth) throw forbidden();
+    if (!req.auth) throw unauthorized();
     if (!isCustomer) requireStaff(req);
     const rows = await listActive(db, 'product');
     return ok(reply, rows.filter((r) => !isCustomer || r.payload.customerSelectable).map((r) => ({ configId: r.id, version: r.version, ...r.payload })));
@@ -109,7 +109,7 @@ export async function facilityRoutes(app: FastifyInstance) {
   app.get('/api/facilities', async (req, reply) => {
     const qs = parse(z.object({ status: z.string().max(40).optional(), customerId: z.uuid().optional(), search: z.string().max(80).optional(), limit: z.coerce.number().int().min(1).max(200).default(50) }), req.query);
     const a = req.auth;
-    if (!a) throw forbidden();
+    if (!a) throw unauthorized();
     const where: string[] = []; const vals: unknown[] = [];
     if (a.subjectType === 'CUSTOMER') { vals.push(a.customer!.customerId); where.push(`f.customer_id=$${vals.length}`); }
     else {

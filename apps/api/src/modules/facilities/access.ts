@@ -10,6 +10,11 @@ import type { StaffPrincipal } from '../identity/session.js';
  */
 export async function staffCanSeeCustomer(db: Db, s: StaffPrincipal, customerId: string): Promise<boolean> {
   if (s.permissions.has('customer.view.all')) return true;
+  return staffCanSeePortfolio(db, s, customerId);
+}
+
+/** Portfolio relationship: the customer's RM, or business-unit managers. Ignores bank-wide view rights. */
+export async function staffCanSeePortfolio(db: Db, s: StaffPrincipal, customerId: string): Promise<boolean> {
   if (!s.permissions.has('customer.view.assigned')) return false;
   const c = await maybe<{ relationship_manager_id: string | null; business_unit_code: string | null }>(db, 'SELECT relationship_manager_id, business_unit_code FROM customer WHERE id=$1', [customerId]);
   if (!c) return false;
@@ -19,7 +24,8 @@ export async function staffCanSeeCustomer(db: Db, s: StaffPrincipal, customerId:
 }
 
 export async function staffCanSeeFacility(db: Db, s: StaffPrincipal, f: { id: string; customer_id: string; status: string }): Promise<boolean> {
-  if (s.permissions.has('facility.view.all') && f.status !== 'DRAFT') return true;
+  if (f.status === 'DRAFT') return staffCanSeePortfolio(db, s, f.customer_id); // drafts: customer's own RM / business unit only
+  if (s.permissions.has('facility.view.all')) return true;
   if (await staffCanSeeCustomer(db, s, f.customer_id)) return true;
   // Anyone who holds or held a task on the facility (e.g. committee member).
   const t = await maybe(db, 'SELECT 1 FROM workflow_task WHERE facility_id=$1 AND (assigned_user_id=$2 OR claimed_by=$2 OR completed_by=$2 OR role_code = ANY($3)) LIMIT 1', [f.id, s.id, s.roles]);
