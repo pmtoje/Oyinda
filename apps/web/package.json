@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "e2e": "playwright test --trace off"
+    "e2e": "node e2e/prepare.mjs && playwright test --trace off"
   },
   "dependencies": {
     "@gazelle/shared": "workspace:*",
@@ -20,9 +20,11 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "pg": "^8.23.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.1"

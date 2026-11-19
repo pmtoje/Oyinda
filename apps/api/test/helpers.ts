@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/http/app.js';
 import { getPool, q, tx } from '../src/db/pool.js';
 import { migrate } from '../src/db/migrate.js';
-import { seedBaseline, seedDemoUsers } from '../src/seed/seed.js';
+import { seedBaseline, seedDemoUsers } from '../src/seed/baseline.js';
 import { decryptField } from '../src/lib/crypto.js';
 import { hotp, totpStep } from '../src/modules/identity/totp.js';
 
@@ -173,7 +173,7 @@ export async function act(c: Client, facilityId: string, stageKey: string, actio
     const cl = await c.post(`/api/tasks/${t[0].id}/claim`);
     if (cl.status !== 200) throw new Error(`claim ${stageKey}: ${JSON.stringify(cl.body)}`);
   }
-  const r = await c.post(`/api/tasks/${t[0].id}/actions`, { action, idempotencyKey: idem(), comment: extra.comment ?? `${action} — reviewed and in order.`, ...extra });
+  const r = await c.post(`/api/tasks/${t[0].id}/actions`, { action, idempotencyKey: idem(), comment: extra.comment ?? 'Reviewed against policy; in order.', ...extra });
   return { ...r, taskId: t[0].id };
 }
 

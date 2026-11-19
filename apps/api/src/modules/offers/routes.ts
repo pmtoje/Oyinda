@@ -16,13 +16,13 @@ export async function offerRoutes(app: FastifyInstance) {
   app.get('/api/facilities/:id/offer', async (req, reply) => {
     const f = await loadFacility(db, req, parse(idParam, req.params).id);
     const cust = req.auth!.subjectType === 'CUSTOMER';
-    const offers = await q<any>(db, `SELECT o.*, g.content, g.rendered_document_id, t.version_no AS terms_version, t.amount_minor, t.currency, t.tenor_months, t.profit_rate_pct, t.payment_frequency, mk.display_name AS maker_name, ck.display_name AS checker_name
-      FROM offer_letter o JOIN generated_document g ON g.id=o.generated_document_id JOIN approved_terms t ON t.id=o.terms_id LEFT JOIN app_user mk ON mk.id=o.maker_id LEFT JOIN app_user ck ON ck.id=o.checker_id
+    const offers = await q<any>(db, `SELECT o.*, g.content, g.rendered_document_id, t.version_no AS terms_version, t.amount_minor, t.currency, t.tenor_months, t.profit_rate_pct, t.payment_frequency, (SELECT payload->>'pricingBasis' FROM config_item WHERE id=f2.product_config_id) AS pricing_basis, mk.display_name AS maker_name, ck.display_name AS checker_name
+      FROM offer_letter o JOIN facility_request f2 ON f2.id=o.facility_id JOIN generated_document g ON g.id=o.generated_document_id JOIN approved_terms t ON t.id=o.terms_id LEFT JOIN app_user mk ON mk.id=o.maker_id LEFT JOIN app_user ck ON ck.id=o.checker_id
       WHERE o.facility_id=$1 ${cust ? `AND o.status IN ('ISSUED','ACCEPTED','REJECTED','NEGOTIATING','SUPERSEDED','EXPIRED')` : ''} ORDER BY o.created_at DESC`, [f.id]);
     const negotiations = await q<any>(db, `SELECT n.*, u.display_name AS reviewer FROM negotiation_request n LEFT JOIN app_user u ON u.id=n.reviewer_id WHERE n.facility_id=$1 ORDER BY n.created_at DESC`, [f.id]);
     const terms = cust ? [] : await q(db, 'SELECT id, version_no AS version, source, amount_minor AS "amountMinor", tenor_months AS "tenorMonths", profit_rate_pct AS "profitRatePct", approved_by_names AS "approvedBy", created_at AS "createdAt" FROM approved_terms WHERE facility_id=$1 ORDER BY version_no', [f.id]);
     return ok(reply, {
-      offers: offers.map((o) => ({ id: o.id, status: o.status, termsVersion: o.terms_version, amount: formatMoney(o.amount_minor, o.currency), tenorMonths: o.tenor_months, profitRatePct: o.profit_rate_pct, paymentFrequency: o.payment_frequency, title: o.content.title, sections: o.content.sections, documentId: o.rendered_document_id, issuedAt: o.issued_at, expiresAt: o.expires_at, respondedAt: o.responded_at, responseNote: o.response_note, rowVersion: o.row_version, ...(cust ? {} : { maker: o.maker_name, checker: o.checker_name }) })),
+      offers: offers.map((o) => ({ id: o.id, status: o.status, termsVersion: o.terms_version, amount: formatMoney(o.amount_minor, o.currency), tenorMonths: o.tenor_months, profitRatePct: o.profit_rate_pct, pricingBasis: o.pricing_basis, pricingLabel: ({ PROFIT_RATE: 'Profit rate', RENTAL: 'Rental rate', PROFIT_SHARING_RATIO: 'Expected profit rate', FEE: 'Commission', NONE: 'Profit' } as Record<string, string>)[o.pricing_basis] ?? 'Profit rate', paymentFrequency: o.payment_frequency, title: o.content.title, sections: o.content.sections, documentId: o.rendered_document_id, issuedAt: o.issued_at, expiresAt: o.expires_at, respondedAt: o.responded_at, responseNote: o.response_note, rowVersion: o.row_version, ...(cust ? {} : { maker: o.maker_name, checker: o.checker_name }) })),
       negotiations: negotiations.map((n) => ({ id: n.id, status: n.status, requestedAmount: n.requested_amount_minor ? formatMoney(n.requested_amount_minor) : null, requestedTenorMonths: n.requested_tenor_months, requestedProfitRatePct: n.requested_profit_rate_pct, requestedOther: n.requested_other, justification: n.justification, decisionNote: n.decision_note, createdAt: n.created_at, decidedAt: n.decided_at, ...(cust ? {} : { reviewer: n.reviewer }) })),
       termsVersions: terms,
     });
@@ -108,6 +108,11 @@ export async function offerRoutes(app: FastifyInstance) {
     const c0 = await maybe<any>(db, 'SELECT * FROM condition_item WHERE id=$1', [cid]);
     if (!c0 || c0.owner_team !== 'CUSTOMER') throw notFound('Condition');
     const f = await loadFacility(db, req, c0.facility_id);
+    // Idempotent: reuse the evidence slot if it is still awaiting a file (prevents orphans on retry).
+    if (c0.evidence_document_id) {
+      const existing = await maybe<any>(db, `SELECT id, status FROM document WHERE id=$1 AND deleted_at IS NULL`, [c0.evidence_document_id]);
+      if (existing && ['REQUIRED', 'REJECTED'].includes(existing.status)) return ok(reply, { documentId: existing.id }, 200);
+    }
     const d = await one<any>(db, `INSERT INTO document(customer_id, facility_id, doc_type, title, status, mandatory) VALUES ($1,$2,'CONDITION_EVIDENCE',$3,'REQUIRED',false) RETURNING id`, [f.customer_id, f.id, `Evidence: ${c0.description.slice(0, 150)}`]);
     await q(db, 'UPDATE condition_item SET evidence_document_id=$2 WHERE id=$1', [cid, d.id]);
     await emit(db, 'DOCUMENTATION_PENDING', { facilityId: f.id });

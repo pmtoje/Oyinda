@@ -23,7 +23,6 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
     genReqId: () => randomUUID(),
     trustProxy: e.TRUST_PROXY,
     bodyLimit: 1024 * 1024,
-    disableRequestLogging: false,
   });
 
   await app.register(helmet, {
@@ -32,6 +31,10 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
         styleSrc: ["'self'", 'https://fonts.googleapis.com'],
+        // React style attributes only; style elements and all scripts remain 'self'.
+        styleSrcAttr: ["'unsafe-inline'"],
+        scriptSrcAttr: ["'none'"],
+        upgradeInsecureRequests: [],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         imgSrc: ["'self'", 'data:', 'blob:'],
         connectSrc: ["'self'"],
@@ -108,10 +111,25 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
     return reply.status(500).send({ error: { code: 'INTERNAL', message: 'Something went wrong on our side. Please try again. If it persists, quote this reference.', requestId: req.id } });
   });
 
-  app.setNotFoundHandler((req, reply) => reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Not found.', requestId: req.id } }));
+  if (!process.env.WEB_DIST_DIR) app.setNotFoundHandler((req, reply) => reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Not found.', requestId: req.id } }));
 
   app.get('/api/meta', async () => ({ data: { product: 'Gazelle by Alternative Bank', environment: e.APP_ENV, integrationModes: integrationModes(e), nonProduction: e.APP_ENV !== 'production' } }));
 
   await registerRoutes(app);
+
+  // Production: serve the built web app from the same origin, under the same security headers.
+  const webDist = process.env.WEB_DIST_DIR;
+  if (webDist) {
+    const { default: fastifyStatic } = await import('@fastify/static');
+    const { resolve } = await import('node:path');
+    await app.register(fastifyStatic, { root: resolve(webDist), wildcard: false, index: false, maxAge: '1h', immutable: true });
+    app.setNotFoundHandler((req, reply) => {
+      if (req.method === 'GET' && !req.url.startsWith('/api/') && !req.url.startsWith('/internal/') && !req.url.startsWith('/health')) {
+        reply.header('Cache-Control', 'no-store');
+        return reply.sendFile('index.html');
+      }
+      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Not found.', requestId: req.id } });
+    });
+  }
   return app;
 }

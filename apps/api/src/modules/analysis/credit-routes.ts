@@ -227,7 +227,7 @@ export async function creditRoutes(app: FastifyInstance) {
     const row = await tx(async (c) => {
       await q(c, `UPDATE risk_assessment SET status='SUPERSEDED' WHERE facility_id=$1 AND kind='COMBINED' AND status='SUBMITTED'`, [f.id]);
       const a = await one<any>(c, `INSERT INTO risk_assessment(facility_id, kind, scorecard_config_id, status, raw_score, normalised_score, grade, grade_description, inputs, breakdown, assessed_by, submitted_at)
-        VALUES ($1,'COMBINED',$2,'SUBMITTED',$3,$3,$4,$5,$6,$7,$8, now()) RETURNING *`, [f.id, model.id, r.score, r.grade, `${r.description} (${r.riskLevel.toLowerCase()} risk)`, JSON.stringify({ componentAssessmentIds: subs.map((x) => x.id) }), JSON.stringify(r.components), s.id]);
+        VALUES ($1,'COMBINED',$2,'SUBMITTED',$3,$3,$4,$5,$6,$7,$8, now()) RETURNING *`, [f.id, model.id, r.score, r.grade, `${r.description} — ${r.riskLevel.toLowerCase()} risk`, JSON.stringify({ componentAssessmentIds: subs.map((x) => x.id) }), JSON.stringify(r.components), s.id]);
       await audit(c, actorOf(req), { action: 'RISK_ASSESSMENT_SUBMITTED', entityType: 'risk_assessment', entityId: a.id, facilityId: f.id, metadata: { kind: 'COMBINED', score: r.score, grade: r.grade, modelVersion: model.version } });
       return a;
     });
@@ -246,12 +246,15 @@ export async function creditRoutes(app: FastifyInstance) {
     const threshold = await requireActive(db, 'rarorac_threshold', 'STANDARD');
     const col = await collateralSummary(db, f.id, f.amount_minor, f.currency);
     const prof = await maybe<any>(db, 'SELECT sector_code FROM business_profile WHERE customer_id=$1', [f.customer_id]);
-    const request = { facilityRef: f.facility_ref, product: f.product_code, amountMinor: f.amount_minor, currency: f.currency, tenorMonths: f.tenor_months, proposedProfitRatePct: b.proposedProfitRatePct, managementFeePct: b.managementFeePct, riskGrade: combined.grade, collateralCoveragePct: col.coveragePct, customerSector: prof?.sector_code ?? 'UNKNOWN' };
+    const request = { facilityRef: f.facility_ref, product: f.product_code, amountMinor: f.amount_minor, currency: f.currency, tenorMonths: f.tenor_months, proposedProfitRatePct: b.proposedProfitRatePct, managementFeePct: b.managementFeePct, riskGrade: combined.grade, collateralCoveragePct: col.coveragePct, customerSector: prof?.sector_code ?? 'UNKNOWN', productCategory: (await getById<any>(db, f.product_config_id)).payload.category };
     const adapter = integrations().rarorac;
     let resp; let error: string | null = null;
     try { resp = await adapter.compute(request); } catch (e) { error = e instanceof IntegrationError ? e.message : 'RARORAC service error'; }
     const tp = threshold.payload as any;
-    const within = resp ? resp.raroracPct >= tp.hurdlePct && b.proposedProfitRatePct >= tp.minProfitRatePct : null;
+    const basis = (await getById<any>(db, f.product_config_id)).payload.pricingBasis;
+    // Rate floor depends on the pricing basis: fee floor for Kafalah, none for Qard, profit-rate floor otherwise.
+    const rateOk = basis === 'FEE' ? b.proposedProfitRatePct >= (tp.minFeePct ?? 1) : basis === 'NONE' ? true : b.proposedProfitRatePct >= tp.minProfitRatePct;
+    const within = resp ? resp.raroracPct >= tp.hurdlePct && rateOk : null;
     const row = await one<any>(db, `INSERT INTO rarorac_computation(facility_id, mode, provider, request, response, status, pricing_rate_pct, rarorac_pct, hurdle_pct, threshold_config_id, within_threshold, exception_required, provider_ref, error, requested_by)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
       [f.id, adapter.mode, adapter.provider, JSON.stringify(request), resp ? JSON.stringify(resp) : null, error ? 'FAILED' : 'COMPLETED', b.proposedProfitRatePct, resp?.raroracPct ?? null, tp.hurdlePct, threshold.id, within, within === false, resp?.providerRef ?? null, error, s.id]);

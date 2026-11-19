@@ -1,0 +1,41 @@
+/*
+ * Gazelle by Alternative Bank — design tokens.
+ * The brand values below are a restrained placeholder (deep green, brass) pending the approved Alternative Bank
+ * brand guidelines (see docs/open-questions.md OQ-09). Replace values here only; components consume tokens.
+ */
+:root {
+  --brand-900: #0a2a22;
+  --brand-800: #0e3b30;
+  --brand-700: #145040;
+  --brand-600: #1b6652;
+  --brand-100: #e4efe9;
+  --brand-50: #f1f6f3;
+  --accent-600: #9c7638;
+  --accent-500: #b88d4b;
+  --accent-100: #f5ecdc;
+
+  --ink-900: #16201c;
+  --ink-700: #36423d;
+  --ink-500: #5d6964;
+  --ink-400: #808a85;
+  --ink-300: #a9b1ad;
+  --line: #e2e0d9;
+  --line-strong: #cfccc2;
+  --surface: #ffffff;
+  --canvas: #f6f5f1;
+  --canvas-deep: #eeece5;
+
+  --ok-700: #1f6b46; --ok-100: #e3f1e8;
+  --warn-700: #8a5a00; --warn-100: #fbf0d9;
+  --danger-700: #a12f2a; --danger-100: #f9e4e2;
+  --info-700: #1d4f7a; --info-100: #e3edf6;
+
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'IBM Plex Serif', Georgia, serif;
+  --fs-xs: 0.75rem; --fs-sm: 0.8125rem; --fs-md: 0.875rem; --fs-base: 0.9375rem; --fs-lg: 1.0625rem; --fs-xl: 1.375rem; --fs-2xl: 1.75rem;
+  --radius-sm: 3px; --radius: 5px; --radius-lg: 8px;
+  --shadow-sm: 0 1px 2px rgba(22, 32, 28, 0.06);
+  --shadow: 0 1px 3px rgba(22, 32, 28, 0.08), 0 4px 12px rgba(22, 32, 28, 0.04);
+  --focus: 0 0 0 3px rgba(184, 141, 75, 0.45);
+  --sidebar-w: 236px;
+}

@@ -58,7 +58,8 @@ export async function buildFacts(db: Db, facilityId: string) {
       category: customer.customer_category,
       sector: profile?.sector_code ?? undefined,
       yearsInOperation: yearsBetween(profile?.incorporation_date),
-      yearsWithBank: yearsBetween(customer.created_at) !== undefined ? Math.max(yearsBetween(customer.created_at)!, 0) : undefined,
+      // Relationship tenure comes from the core banking 'customer since' date, not the Gazelle onboarding date.
+      yearsWithBank: customer.bank_relationship_since ? Math.max(yearsBetween(customer.bank_relationship_since)!, 0) : undefined,
       hasRcNumber: !!profile?.rc_number,
       hasTin: !!profile?.tin,
       hasLitigation: profile?.has_litigation ?? undefined,
@@ -79,7 +80,6 @@ export async function buildFacts(db: Db, facilityId: string) {
       raroracWithinThreshold: rar ? rar.within_threshold : undefined,
     },
   };
-  // Customer years-with-bank: prefer the CBA relationship start date captured at onboarding.
   const trig = await getActive(db, 'es_trigger', 'STANDARD');
   if (trig) facts.risk.esRequired = evaluate(trig.payload.triggerWhen as any, facts).result;
   return { facts, facility: f, product, esTriggerConfigId: trig?.id };

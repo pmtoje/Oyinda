@@ -420,7 +420,7 @@ const policies: BaselineItem[] = [
     ],
     categoryThresholds: { A: 12, B: 5 },
   } },
-  { kind: 'rarorac_threshold', key: 'STANDARD', title: 'RARORAC pricing threshold', payload: { hurdlePct: 15, minProfitRatePct: 18, exceptionApproverRole: 'GH_CREDIT_RISK', justificationMinLength: 50 } },
+  { kind: 'rarorac_threshold', key: 'STANDARD', title: 'RARORAC pricing threshold', payload: { hurdlePct: 15, minProfitRatePct: 18, minFeePct: 1, exceptionApproverRole: 'GH_CREDIT_RISK', justificationMinLength: 50 } },
   { kind: 'legal_terms', key: 'CUSTOMER_PORTAL', title: 'Customer portal terms & privacy notice', payload: {
     version: '2026.1',
     termsText: 'These terms govern your use of Gazelle by Alternative Bank. Information you submit is used to assess requests for non-interest (Islamic) financing facilities. Submitting a request does not constitute an offer or commitment by the Bank. Any facility is subject to credit approval, Shariah compliance, documentation and the conditions stated in an offer letter accepted by you. You confirm that the information you provide is true and complete and that you are authorised to act for the business.',
@@ -457,7 +457,7 @@ const notifications: BaselineItem[] = [
 ];
 const templates: BaselineItem[] = [
   { kind: 'template', key: 'OFFER_LETTER_STANDARD', title: 'Offer letter — standard', payload: { kind: 'OFFER_LETTER', title: 'Offer of {{terms.productName}} Facility', sections: [
-    { heading: 'Introduction', body: 'We are pleased to inform {{customer.name}} ("the Customer") that Alternative Bank Limited ("the Bank") has approved a {{terms.productName}} facility on the terms and conditions set out below.' },
+    { heading: 'Introduction', body: 'We are pleased to inform {{customer.name}} ("the Customer") that Alternative Bank Limited ("the Bank") has approved the facility described below ({{terms.productName}}), on the terms and conditions set out in this letter.' },
     { heading: 'Facility', body: 'Facility type: {{terms.productName}}\nFacility reference: {{facility.ref}}\nFacility amount: {{terms.amount}}\nTenor: {{terms.tenor}}\nPurpose: {{facility.purpose}}' },
     { heading: 'Pricing', body: '{{terms.pricingText}}\nManagement fee: {{terms.managementFee}}' },
     { heading: 'Payment', body: 'Payment frequency: {{terms.paymentFrequency}}\nMoratorium: {{terms.moratorium}}\nSource of payment: {{facility.sourceOfPayment}}' },

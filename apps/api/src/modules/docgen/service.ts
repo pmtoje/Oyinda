@@ -129,7 +129,7 @@ export async function decisionView(db: Db, facilityId: string) {
   const g = await gatherFacility(db, facilityId);
   const memo = await maybe<any>(db, `SELECT * FROM generated_document WHERE facility_id=$1 AND kind='CREDIT_MEMO' ORDER BY version_no DESC LIMIT 1`, [facilityId]);
   const inst = await maybe<any>(db, `SELECT * FROM workflow_instance WHERE facility_id=$1 AND kind='CREDIT_APPROVAL' ORDER BY started_at DESC LIMIT 1`, [facilityId]);
-  const chain = await q<any>(db, `SELECT a.actor_name, a.actor_role, a.action, a.comment, a.created_at, t.stage_name FROM workflow_action a LEFT JOIN workflow_task t ON t.id=a.task_id WHERE a.facility_id=$1 AND a.action IN ('RECOMMEND','APPROVE','DECLINE','COMPLETE','RETURN') ORDER BY a.created_at`, [facilityId]);
+  const chain = await q<any>(db, `SELECT a.actor_name, COALESCE(ro.name, a.actor_role) AS actor_role, a.action, a.comment, a.created_at, t.stage_name FROM workflow_action a LEFT JOIN workflow_task t ON t.id=a.task_id LEFT JOIN role ro ON ro.code=a.actor_role WHERE a.facility_id=$1 AND a.action IN ('RECOMMEND','APPROVE','DECLINE','COMPLETE','RETURN') ORDER BY a.created_at`, [facilityId]);
   const sa = g.sa?.summary;
   return {
     facility: { id: g.f.id, ref: g.f.facility_ref, customer: g.f.legal_name, product: g.product.payload.name, amount: M(g.f.amount_minor, g.f.currency), amountMinor: g.f.amount_minor, tenor: g.f.tenor_months, purpose: g.f.purpose, status: g.f.status, sector: g.profile?.sector_name, rm: g.f.rm_name },

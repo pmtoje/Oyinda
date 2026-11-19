@@ -120,9 +120,10 @@ export class MockRarorac implements RaroracAdapter {
     const lgd = Math.max(0.1, 0.45 * (1 - Math.min(req.collateralCoveragePct, 150) / 150));
     const ead = req.amountMinor;
     const el = ead * p * lgd;
-    const ec = ead * 0.08 * (1 + p * 4);
+    const unfunded = req.productCategory === 'CONTINGENT';
+    const ec = ead * 0.08 * (1 + p * 4) * (unfunded ? 0.5 : 1);
     const income = ead * ((req.proposedProfitRatePct + req.managementFeePct / Math.max(req.tenorMonths / 12, 1)) / 100);
-    const fundingCost = ead * 0.12;
+    const fundingCost = unfunded ? 0 : ead * 0.12; // guarantees are unfunded until invoked
     const opCost = ead * 0.01;
     const rarorac = ((income - fundingCost - opCost - el) / ec) * 100;
     const recommended = ((fundingCost + opCost + el + ec * 0.18) / ead) * 100;

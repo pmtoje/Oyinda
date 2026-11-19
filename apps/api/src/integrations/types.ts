@@ -95,6 +95,7 @@ export interface RaroracRequest {
   riskGrade: string;
   collateralCoveragePct: number;
   customerSector: string;
+  productCategory: 'DIRECT' | 'CONTINGENT' | 'INVESTMENT';
 }
 export interface RaroracResponse {
   providerRef: string;

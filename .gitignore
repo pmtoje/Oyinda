@@ -9,3 +9,5 @@ playwright-report/
 test-results/
 storage/
 .vite/
+storage-*/
+apps/web/test-results/

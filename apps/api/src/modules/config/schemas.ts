@@ -198,6 +198,8 @@ export const schemas = {
   rarorac_threshold: z.object({
     hurdlePct: z.number().min(0).max(100),
     minProfitRatePct: z.number().min(0).max(100),
+    /** Minimum commission for fee-priced (Kafalah / contingent) products; profit-rate minimum does not apply to them. */
+    minFeePct: z.number().min(0).max(100).default(1),
     exceptionApproverRole: roleCode,
     justificationMinLength: z.number().int().min(20).max(2000),
   }),

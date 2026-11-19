@@ -161,9 +161,9 @@ export async function identityRoutes(app: FastifyInstance) {
         const bu = cba.businessUnitCode ? await maybe<{ code: string }>(c, 'SELECT code FROM business_unit WHERE code=$1', [cba.businessUnitCode]) : undefined;
         customer = await one(
           c,
-          `INSERT INTO customer(customer_ref, cba_customer_id, legal_name, relationship_manager_id, business_unit_code, status, is_demo)
-           VALUES ($1,$2,$3,$4,$5,'ACTIVE',$6) RETURNING *`,
-          [await nextRef(c, 'CUS'), cba.cbaCustomerId, cba.businessName, rm?.id ?? null, bu?.code ?? null, integrations().cba.mode === 'MOCK'],
+          `INSERT INTO customer(customer_ref, cba_customer_id, legal_name, relationship_manager_id, business_unit_code, status, is_demo, bank_relationship_since)
+           VALUES ($1,$2,$3,$4,$5,'ACTIVE',$6,$7) RETURNING *`,
+          [await nextRef(c, 'CUS'), cba.cbaCustomerId, cba.businessName, rm?.id ?? null, bu?.code ?? null, integrations().cba.mode === 'MOCK', cba.customerSince ?? null],
         );
         for (const a of cba.accounts) {
           await q(c, `INSERT INTO customer_account(customer_id, account_number, account_name, currency, product_name, is_primary) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (account_number) DO NOTHING`, [customer.id, a.accountNumber, a.accountName, a.currency, a.productName, a.accountNumber === cba.accounts[0].accountNumber]);
@@ -341,6 +341,12 @@ export async function identityRoutes(app: FastifyInstance) {
   // ---------------------------------------------------------------------------
   // Session management
   // ---------------------------------------------------------------------------
+  /** Session probe for the SPA: 200 with null when signed out (avoids noisy 401s before sign-in). */
+  app.get('/api/auth/session', async (req, reply) => {
+    if (!req.auth) return ok(reply, null);
+    return reply.redirect('/api/auth/me', 307);
+  });
+
   app.get('/api/auth/me', async (req, reply) => {
     const a = req.auth;
     if (!a) throw unauthorized();

@@ -84,9 +84,9 @@ export async function reportRoutes(app: FastifyInstance) {
     const byStage = await (async () => { const vv: unknown[] = []; return q(db, `SELECT t.stage_name AS stage, count(*)::int AS count, count(*) FILTER (WHERE t.breached_at IS NOT NULL)::int AS breached ${BASE} JOIN workflow_task t ON t.facility_id=f.id AND t.status IN ('OPEN','CLAIMED') WHERE ${where(fl, vv)} GROUP BY 1 ORDER BY count DESC`, vv); })();
     return ok(reply, {
       totals, sla, byStage, byAnalyst,
-      bySector: await by(`COALESCE(bp.sector_code,'UNSPECIFIED')`, 'sector'),
+      bySector: await by(`COALESCE((SELECT name FROM sector WHERE code=bp.sector_code),'Unspecified')`, 'sector'),
       byProduct: await by(`ci.payload->>'name'`, 'product'),
-      byDirectorate: await by(`COALESCE(bu.directorate_code,'UNASSIGNED')`, 'directorate'),
+      byDirectorate: await by(`COALESCE((SELECT name FROM directorate WHERE code=bu.directorate_code),'Unassigned')`, 'directorate'),
       byRm: await by(`COALESCE(rm.display_name,'Unassigned')`, 'rm', 'LEFT JOIN app_user rm ON rm.id=c.relationship_manager_id'),
       bySize: await by(`CASE WHEN f.amount_minor < 5000000000 THEN 'Below ₦50m' WHEN f.amount_minor < 25000000000 THEN '₦50m–₦250m' WHEN f.amount_minor < 100000000000 THEN '₦250m–₦1bn' ELSE '₦1bn and above' END`, 'band'),
     });

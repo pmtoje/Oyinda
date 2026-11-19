@@ -10,7 +10,9 @@
     "migrate": "tsx src/db/migrate.ts",
     "seed": "tsx src/seed/seed.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "demo:totp": "tsx src/seed/demo-totp.ts",
+    "demo:otp": "tsx src/seed/demo-otp.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.10.0",
@@ -19,6 +21,7 @@
     "@fastify/helmet": "^13.2.0",
     "@fastify/multipart": "^10.1.9",
     "@fastify/rate-limit": "^11.2.2",
+    "@fastify/static": "^10.1.11",
     "@gazelle/shared": "workspace:*",
     "docx": "^9.16.0",
     "exceljs": "^4.4.0",

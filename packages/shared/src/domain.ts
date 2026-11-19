@@ -50,3 +50,10 @@ export const WORKFLOW_ACTION_LABEL: Record<string, string> = {
   VOTE: 'Vote',
   COMPLETE: 'Complete',
 };
+
+export const ROLE_LABEL: Record<string, string> = {
+  RM: 'Relationship Manager', BM: 'Business Manager', RBE: 'Regional Business Executive', DH: 'Directorate Head',
+  CREDIT_ANALYST: 'Credit Analyst', ES_ANALYST: 'E&S Analyst', CREDIT_TEAM_LEAD: 'Credit Team Lead', GH_CREDIT_RISK: 'Group Head, Credit Risk',
+  CRO: 'Chief Risk Officer', ED: 'Executive Director', MD: 'Managing Director', MIC_MEMBER: 'MIC member', BCC_MEMBER: 'BCC member', BOARD_MEMBER: 'Board member',
+  LEGAL: 'Legal', SHARIAH: 'Shariah Compliance', CREDIT_OPS: 'Credit Operations', ADMIN: 'Administrator', SUPER_ADMIN: 'Super Administrator', AUDITOR: 'Internal Audit',
+};

@@ -13,7 +13,7 @@ import { revokeAllFor } from '../identity/session.js';
 import { loadFacility } from '../facilities/access.js';
 import { buildFacts } from '../facilities/facts.js';
 
-const configView = (r: any) => ({ id: r.id, kind: r.kind, key: r.key, version: r.version, status: r.status, title: r.title, payload: r.payload, effectiveFrom: r.effective_from, effectiveTo: r.effective_to, changeReason: r.change_reason, createdBy: r.created_by_name ?? null, approvedBy: r.approved_by_name ?? null, approvedAt: r.approved_at, createdAt: r.created_at, rejectedReason: r.rejected_reason });
+const configView = (r: any) => ({ id: r.id, kind: r.kind, key: r.key, version: r.version, status: r.status, title: r.title, payload: r.payload, effectiveFrom: r.effective_from, effectiveTo: r.effective_to, changeReason: r.change_reason, createdBy: r.created_by_name ?? null, createdById: r.created_by ?? null, approvedBy: r.approved_by_name ?? null, approvedAt: r.approved_at, createdAt: r.created_at, rejectedReason: r.rejected_reason });
 const CFG_SELECT = `SELECT ci.*, cu.display_name AS created_by_name, au.display_name AS approved_by_name FROM config_item ci LEFT JOIN app_user cu ON cu.id=ci.created_by LEFT JOIN app_user au ON au.id=ci.approved_by`;
 
 export async function adminRoutes(app: FastifyInstance) {
@@ -96,7 +96,8 @@ export async function adminRoutes(app: FastifyInstance) {
     requireAnyPerm(req, ['user.manage', 'task.reassign']);
     const rows = await q(db, `SELECT u.id, u.ad_username AS username, u.display_name AS name, u.email, u.staff_number AS "staffNumber", u.directorate_code AS directorate, u.business_unit_code AS "businessUnit", u.status, u.mfa_enrolled_at IS NOT NULL AS "mfaEnrolled", u.last_login_at AS "lastLoginAt", u.is_demo AS "isDemo",
       COALESCE((SELECT array_agg(role_code ORDER BY role_code) FROM user_role WHERE user_id=u.id), '{}') AS roles,
-      COALESCE((SELECT json_agg(json_build_object('role', role_code, 'limitMinor', limit_minor)) FROM user_approval_limit l WHERE l.user_id=u.id AND (effective_to IS NULL OR effective_to > now())), '[]') AS limits
+      COALESCE((SELECT json_agg(json_build_object('role', role_code, 'limitMinor', limit_minor)) FROM user_approval_limit l WHERE l.user_id=u.id AND (effective_to IS NULL OR effective_to > now())), '[]') AS limits,
+      COALESCE((SELECT array_agg(sector_code ORDER BY sector_code) FROM user_sector WHERE user_id=u.id), '{}') AS sectors
       FROM app_user u ORDER BY u.display_name`);
     return ok(reply, rows);
   });
@@ -217,6 +218,21 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get('/api/admin/customers', async (req, reply) => {
     requireAnyPerm(req, ['user.manage', 'customer.view.all']);
     return ok(reply, await q(db, `SELECT c.id, c.customer_ref AS ref, c.legal_name AS name, c.status, c.is_demo AS "isDemo", u.display_name AS rm, c.business_unit_code AS "businessUnit", (SELECT count(*)::int FROM facility_request f WHERE f.customer_id=c.id) AS facilities FROM customer c LEFT JOIN app_user u ON u.id=c.relationship_manager_id ORDER BY c.legal_name`));
+  });
+
+  /** Read-only staff directory for choosing colleagues (clarifications, delegations). No contact or access data. */
+  app.get('/api/staff/directory', async (req, reply) => {
+    requireAnyPerm(req, ['task.work', 'thread.participate']);
+    return ok(reply, await q(db, `SELECT u.id, u.display_name AS name, u.business_unit_code AS "businessUnit", 'ACTIVE' AS status, COALESCE((SELECT array_agg(role_code ORDER BY role_code) FROM user_role WHERE user_id=u.id), '{}') AS roles FROM app_user u WHERE u.status='ACTIVE' ORDER BY u.display_name`));
+  });
+
+  /** Portfolio-scoped customer list (RM: own customers; BM/RBE/DH: business unit; bank-wide roles: all). */
+  app.get('/api/customers', async (req, reply) => {
+    const s = requireAnyPerm(req, ['customer.view.assigned', 'customer.view.all']);
+    const all = s.permissions.has('customer.view.all');
+    const onlyOwn = s.roles.every((r) => r === 'RM');
+    const where = all ? '' : onlyOwn ? 'WHERE c.relationship_manager_id=$1' : 'WHERE (c.relationship_manager_id=$1 OR c.business_unit_code=$2)';
+    return ok(reply, await q(db, `SELECT c.id, c.customer_ref AS ref, c.legal_name AS name, c.status, c.is_demo AS "isDemo", u.display_name AS rm, c.business_unit_code AS "businessUnit", (SELECT count(*)::int FROM facility_request f WHERE f.customer_id=c.id) AS facilities FROM customer c LEFT JOIN app_user u ON u.id=c.relationship_manager_id ${where} ORDER BY c.legal_name`, all ? [] : onlyOwn ? [s.id] : [s.id, s.businessUnit]));
   });
 
   // ---------------------------------------------------------------- delegation
