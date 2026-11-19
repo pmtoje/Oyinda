@@ -65,7 +65,10 @@ export const productField = z.object({
 export const schemas = {
   product: z.object({
     code,
-    name: z.string().min(2),
+    /** SWR: facility names must not contain special characters. */
+    name: z.string().min(2).max(80).regex(/^[A-Za-z0-9 ]+$/, 'Facility names may contain letters, digits and spaces only'),
+    /** Plain-language description shown beside the name, e.g. "Cost Plus Financing". */
+    descriptor: z.string().max(80).optional(),
     family: z.enum(['MURABAHA', 'IJARAH', 'ISTISNA', 'SALAM', 'QARD', 'MUSHARAKA', 'MUDARABA', 'DIRECT_INVESTMENT', 'COMMON_STOCK', 'WAKALAH_BIL_ISTITHMAR', 'KAFALAH']),
     category: z.enum(['DIRECT', 'CONTINGENT', 'INVESTMENT']),
     contingentType: z.enum(['APG', 'BANK_GUARANTEE', 'BID_BOND', 'PERFORMANCE_BOND', 'CUSTOM_BOND', 'BAIL_BOND', 'OTHER']).optional(),
@@ -169,7 +172,7 @@ export const schemas = {
   collateral_type: z.object({
     code,
     name: z.string(),
-    category: z.enum(['REAL_ESTATE', 'CASH', 'SECURITIES', 'GUARANTEE', 'CHARGE', 'NEGATIVE_PLEDGE', 'LEASED_ASSET', 'RECEIVABLES']),
+    category: z.enum(['REAL_ESTATE', 'CASH', 'SECURITIES', 'GUARANTEE', 'CHARGE', 'NEGATIVE_PLEDGE', 'LEASED_ASSET', 'RECEIVABLES', 'INSTRUMENT']),
     defaultHaircutPct: pct,
     cashEquivalent: z.boolean(),
     shariahCompliant: z.literal(true),
@@ -209,15 +212,22 @@ export const schemas = {
     appliesWhen: condition,
     priority: z.number().int(),
     stages: z.array(z.discriminatedUnion('type', [
-      z.object({ type: z.literal('TASK'), key: code, name: z.string(), role: roleCode, taskType: z.enum(['REVIEW', 'ANALYSIS', 'FULFILMENT', 'CHECK']), when: condition.optional(), actions: z.array(z.enum(['RECOMMEND', 'DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT', 'COMPLETE'])).min(1), slaPolicyKey: z.string(), prerequisites: prereqs, assignTo: z.enum(['ROLE_QUEUE', 'RELATIONSHIP_MANAGER', 'BRANCH_MANAGER']).default('ROLE_QUEUE'), returnTargets: z.array(z.enum(['CUSTOMER', 'RM', 'PREVIOUS'])).default(['PREVIOUS']) }),
-      z.object({ type: z.literal('PARALLEL'), key: code, name: z.string(), branches: z.array(z.object({ key: code, name: z.string(), role: roleCode, taskType: z.enum(['REVIEW', 'ANALYSIS', 'FULFILMENT', 'CHECK']), when: condition.optional(), actions: z.array(z.enum(['RECOMMEND', 'DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT', 'COMPLETE'])).min(1), slaPolicyKey: z.string(), prerequisites: prereqs })).min(2) }),
-      z.object({ type: z.literal('APPROVAL_CHAIN'), key: code, name: z.string(), authorityKey: z.string() }),
+      z.object({ type: z.literal('TASK'), key: code, name: z.string(), role: roleCode, taskType: z.enum(['REVIEW', 'ANALYSIS', 'FULFILMENT', 'CHECK']), when: condition.optional(), actions: z.array(z.enum(['RECOMMEND', 'DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT', 'COMPLETE'])).min(1), slaPolicyKey: z.string(), prerequisites: prereqs, onDecline: z.enum(['TERMINATE', 'CONTINUE']).default('TERMINATE'), assignTo: z.enum(['ROLE_QUEUE', 'RELATIONSHIP_MANAGER', 'BRANCH_MANAGER']).default('ROLE_QUEUE'), returnTargets: z.array(z.enum(['CUSTOMER', 'RM', 'PREVIOUS'])).default(['PREVIOUS']) }),
+      z.object({ type: z.literal('PARALLEL'), key: code, name: z.string(), branches: z.array(z.object({ key: code, name: z.string(), role: roleCode, taskType: z.enum(['REVIEW', 'ANALYSIS', 'FULFILMENT', 'CHECK']), when: condition.optional(), actions: z.array(z.enum(['RECOMMEND', 'DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT', 'COMPLETE'])).min(1), slaPolicyKey: z.string(), prerequisites: prereqs, onDecline: z.enum(['TERMINATE', 'CONTINUE']).default('TERMINATE') })).min(2) }),
+      /** authorityKey pins one matrix; when omitted the active matrix whose appliesWhen matches (highest priority) is used. */
+      z.object({ type: z.literal('APPROVAL_CHAIN'), key: code, name: z.string(), authorityKey: z.string().optional() }),
     ])).min(1),
     declineBehaviour: z.enum(['TERMINATE', 'CONTINUE_TO_FINAL']).default('TERMINATE'),
     resumeAfterReturn: z.enum(['RETURNING_STAGE', 'START']).default('RETURNING_STAGE'),
   }),
 
   approval_authority: z.object({
+    /** Workflow type this matrix governs (e.g. approved line direct, cash-backed contingent). */
+    workflowType: z.string().optional(),
+    appliesWhen: condition.optional(),
+    priority: z.number().int().default(0),
+    /** REQUEST: the requested amount. AGGREGATE_EXPOSURE: requested amount plus the obligor's outstanding exposure (PRD). */
+    amountBasis: z.enum(['REQUEST', 'AGGREGATE_EXPOSURE']).default('REQUEST'),
     levels: z.array(z.object({
       code,
       name: z.string(),
@@ -228,6 +238,12 @@ export const schemas = {
       cashBackedLimitMinor: minor.optional(),
       slaPolicyKey: z.string(),
       alwaysReview: z.boolean().default(false),
+      /** The level only takes part when the amount exceeds this value (combination / concurrence approvals). */
+      participatesAboveMinor: minor.optional(),
+      /** A concurring level that never holds final authority on its own. */
+      canBeFinal: z.boolean().default(true),
+      /** Reached only through an override (e.g. insider-related to Board). */
+      overrideOnly: z.boolean().default(false),
     })).min(1),
     overrides: z.array(z.object({
       code,
@@ -236,6 +252,8 @@ export const schemas = {
       finalLevel: z.string().optional(),
       minimumFinalLevel: z.string().optional(),
       addReviewRole: roleCode.optional(),
+      /** Every level up to the final level takes part, regardless of amount thresholds. */
+      fullChain: z.boolean().default(false),
     })).default([]),
   }),
 
@@ -246,8 +264,12 @@ export const schemas = {
     quorum: z.number().int().positive(),
     requiredApprovals: z.number().int().positive(),
     requiredRoles: z.array(roleCode).default([]),
+    /** Minimum approving signatures per role, e.g. { NED: 3, ED: 2 }. */
+    requiredRoleCounts: z.record(z.string(), z.number().int().positive()).default({}),
     voting: z.enum(['PARALLEL', 'SERIAL']),
     serialOrder: z.array(roleCode).default([]),
+    /** A role (e.g. Credit Operations) permitted to record the decision taken at the committee meeting, citing the minutes. */
+    recordedByRole: roleCode.optional(),
   }).refine((c) => c.requiredApprovals <= c.quorum, 'Required approvals cannot exceed quorum'),
 
   sla_policy: z.object({

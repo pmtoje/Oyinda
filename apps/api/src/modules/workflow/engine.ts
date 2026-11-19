@@ -13,10 +13,10 @@ import { committeeDecision, resolveChain } from './authority.js';
 import { unmetPrerequisites } from './prerequisites.js';
 import { computeDue } from './sla.js';
 
-export interface Branch { key: string; name: string; role: string; taskType: string; actions: string[]; slaPolicyKey: string; prerequisites?: string[]; included: boolean; reason?: string }
+export interface Branch { key: string; name: string; role: string; taskType: string; actions: string[]; slaPolicyKey: string; prerequisites?: string[]; onDecline?: 'TERMINATE' | 'CONTINUE'; included: boolean; reason?: string }
 export interface RouteStage {
   index: number; key: string; name: string; type: 'TASK' | 'PARALLEL' | 'APPROVAL_CHAIN' | 'APPROVAL_LEVEL';
-  role?: string; taskType?: string; actions?: string[]; slaPolicyKey?: string; assignTo?: string; returnTargets?: string[]; prerequisites?: string[];
+  role?: string; taskType?: string; actions?: string[]; slaPolicyKey?: string; assignTo?: string; returnTargets?: string[]; prerequisites?: string[]; onDecline?: 'TERMINATE' | 'CONTINUE';
   branches?: Branch[]; authorityKey?: string;
   level?: { code: string; name: string; kind: 'INDIVIDUAL' | 'COMMITTEE'; role?: string; committeeKey?: string; effectiveLimitMinor: number; isFinal: boolean };
   skipped?: boolean; reason?: string;
@@ -24,7 +24,7 @@ export interface RouteStage {
 export interface Route { stages: RouteStage[]; explanation: string[]; returnedAtIndex?: number | null }
 
 const BUSINESS_ROLES = new Set(['RM', 'BM', 'RBE', 'DH']);
-const DECISION_ACTIONS = new Set(['APPROVE', 'RECOMMEND', 'COMPLETE', 'VOTE']);
+const DECISION_ACTIONS = new Set(['APPROVE', 'RECOMMEND', 'COMPLETE', 'VOTE', 'RECORD_DECISION']);
 
 // ---------------------------------------------------------------------------
 // Facility status
@@ -52,7 +52,7 @@ export function resolveStages(def: any, facts: Record<string, any>): Route {
     if (s.type === 'TASK') {
       const included = !s.when || evaluate(s.when, facts).result;
       if (!included) explanation.push(`${s.name} skipped: condition not met.`);
-      return { index, key: s.key, name: s.name, type: 'TASK', role: s.role, taskType: s.taskType, actions: s.actions, slaPolicyKey: s.slaPolicyKey, assignTo: s.assignTo, returnTargets: s.returnTargets, prerequisites: s.prerequisites ?? [], skipped: !included, reason: included ? undefined : 'Condition not met' };
+      return { index, key: s.key, name: s.name, type: 'TASK', role: s.role, taskType: s.taskType, actions: s.actions, slaPolicyKey: s.slaPolicyKey, assignTo: s.assignTo, returnTargets: s.returnTargets, prerequisites: s.prerequisites ?? [], onDecline: s.onDecline ?? 'TERMINATE', skipped: !included, reason: included ? undefined : 'Condition not met' };
     }
     if (s.type === 'PARALLEL') {
       const branches: Branch[] = s.branches.map((b: any) => {
@@ -71,13 +71,33 @@ async function amountNgnMinor(db: Db, f: any) {
   return (await toNgn(db, f.amount_minor, f.currency)).minor;
 }
 
+/** Select the authority matrix: a pinned key, or the active matrix for the workflow type that matches the facts. */
+export async function chooseAuthority(db: Db, facts: Record<string, any>, key?: string) {
+  if (key) return requireActive(db, 'approval_authority', key);
+  const all = (await listActive(db, 'approval_authority')).filter((a) => !a.payload.appliesWhen || evaluate(a.payload.appliesWhen as any, facts).result);
+  if (!all.length) throw conflict('NO_AUTHORITY', 'No approval authority matrix applies to this facility. An administrator must configure one.');
+  return all.sort((a, b) => (b.payload.priority ?? 0) - (a.payload.priority ?? 0))[0]!;
+}
+
+/** Amount that determines approval authority: the request, or (PRD) the request plus the obligor's outstanding exposure. */
+export async function authorityAmount(db: Db, facility: any, basis: string | undefined) {
+  const request = await amountNgnMinor(db, facility);
+  if (basis !== 'AGGREGATE_EXPOSURE') return { amount: request, request, outstanding: 0 };
+  const e = await maybe<any>(db, 'SELECT direct_exposure_minor, contingent_exposure_minor FROM exposure_snapshot WHERE facility_id=$1 ORDER BY created_at DESC LIMIT 1', [facility.id]);
+  const outstanding = e ? Number(e.direct_exposure_minor) + Number(e.contingent_exposure_minor) : 0;
+  return { amount: request + outstanding, request, outstanding };
+}
+
 /** Expand an APPROVAL_CHAIN placeholder into concrete levels using the facts at that moment. */
 async function expandChain(db: Db, instance: any, route: Route, idx: number) {
   const chainStage = route.stages[idx]!;
-  const authority = await requireActive(db, 'approval_authority', chainStage.authorityKey!);
   const { facts, facility } = await buildFacts(db, instance.facility_id);
-  const amount = await amountNgnMinor(db, facility);
+  const authority = await chooseAuthority(db, facts, chainStage.authorityKey);
+  const amt = await authorityAmount(db, facility, (authority.payload as any).amountBasis);
+  const amount = amt.amount;
   const r = resolveChain(authority.payload as any, facts, amount);
+  if (amt.outstanding) r.reasons.unshift(`Authority amount ${formatMoney(amount)} = request ${formatMoney(amt.request)} + outstanding exposure ${formatMoney(amt.outstanding)}.`);
+  r.reasons.unshift(`Authority matrix: ${authority.title}.`);
   const levels: RouteStage[] = r.chain.map((l, i) => ({
     index: idx + i, key: l.code, name: l.name, type: 'APPROVAL_LEVEL', slaPolicyKey: l.slaPolicyKey,
     level: { code: l.code, name: l.name, kind: l.kind, role: l.role, committeeKey: l.committeeKey, effectiveLimitMinor: l.effectiveLimitMinor, isFinal: l.isFinal },
@@ -149,7 +169,7 @@ async function openStage(db: Db, instance: any, route: Route, idx: number, actor
       const members = await q<{ id: string }>(db, `SELECT DISTINCT u.id FROM app_user u JOIN user_role r ON r.user_id=u.id WHERE r.role_code = ANY($1) AND u.status='ACTIVE' ORDER BY u.id`, [cp.memberRoles]);
       const t = await createTask(db, instance, stage, { name: `${cp.name} ${l.isFinal ? 'decision' : 'recommendation'}`, role: cp.memberRoles[0], taskType: 'COMMITTEE', actions: ['VOTE', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: stage.slaPolicyKey, authority: { level: l.code, isFinal: l.isFinal, limitMinor: l.effectiveLimitMinor, members: members.map((m) => m.id) } });
       await q(db, `INSERT INTO committee_session(task_id, facility_id, committee_key, committee_config_id, rules, members) VALUES ($1,$2,$3,$4,$5,$6)`,
-        [t.id, instance.facility_id, cp.code, com.id, JSON.stringify({ quorum: cp.quorum, requiredApprovals: cp.requiredApprovals, requiredRoles: cp.requiredRoles, voting: cp.voting, serialOrder: cp.serialOrder, memberRoles: cp.memberRoles }), members.map((m) => m.id)]);
+        [t.id, instance.facility_id, cp.code, com.id, JSON.stringify({ quorum: cp.quorum, requiredApprovals: cp.requiredApprovals, requiredRoles: cp.requiredRoles, requiredRoleCounts: cp.requiredRoleCounts ?? {}, voting: cp.voting, serialOrder: cp.serialOrder, memberRoles: cp.memberRoles, recordedByRole: cp.recordedByRole ?? null }), members.map((m) => m.id)]);
       if (members.length < cp.quorum) await recordAction(db, instance, t.id, SYSTEM, 'COMMENT', `Warning: only ${members.length} eligible members are configured; quorum is ${cp.quorum}.`);
     }
   }
@@ -235,6 +255,9 @@ export async function actionsFor(db: Db, user: StaffPrincipal, task: any): Promi
   const onBehalfOf = !roles.own.has(task.role_code) && roles.delegated.has(task.role_code) ? roles.delegated.get(task.role_code)! : null;
   if (task.task_type === 'COMMITTEE') {
     const s = await one<any>(db, 'SELECT * FROM committee_session WHERE task_id=$1', [task.id]);
+    if (s.rules.recordedByRole && user.roles.includes(s.rules.recordedByRole) && !s.members.includes(user.id)) {
+      return { actions: ['RECORD_DECISION', 'COMMENT'], onBehalfOf: null, notes: ['You may record the committee decision taken at its meeting, citing the minutes reference.'] };
+    }
     if (!s.members.includes(user.id)) return { actions: [], onBehalfOf: null, notes: ['You are not a member of this committee.'] };
     const voted = await maybe(db, 'SELECT 1 FROM committee_vote WHERE session_id=$1 AND member_id=$2', [s.id, user.id]);
     return { actions: voted ? ['COMMENT', 'REQUEST_CLARIFICATION'] : task.permitted_actions, onBehalfOf: null, notes: voted ? ['You have voted.'] : [] };
@@ -308,7 +331,9 @@ export async function reassignTask(db: Db, actor: Actor, taskId: string, toUserI
 // Actions
 // ---------------------------------------------------------------------------
 export interface ActionInput {
-  action: 'APPROVE' | 'RECOMMEND' | 'DECLINE' | 'RETURN' | 'REQUEST_CLARIFICATION' | 'COMMENT' | 'VOTE' | 'COMPLETE';
+  action: 'APPROVE' | 'RECOMMEND' | 'DECLINE' | 'RETURN' | 'REQUEST_CLARIFICATION' | 'COMMENT' | 'VOTE' | 'COMPLETE' | 'RECORD_DECISION';
+  /** RECORD_DECISION: reference of the signed committee minutes. */
+  minutesReference?: string;
   comment?: string;
   idempotencyKey: string;
   rowVersion?: number;
@@ -333,13 +358,14 @@ export async function performAction(db: Db, user: StaffPrincipal, actor: Actor, 
   if (input.rowVersion !== undefined && input.rowVersion !== task.row_version) throw conflict('STALE', 'This task has changed. Reload and try again.');
   const { actions, onBehalfOf } = await actionsFor(db, user, task);
   if (!actions.includes(input.action)) throw forbidden(`"${input.action}" is not available to you on this task.`);
-  const needsComment = ['DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT'].includes(input.action) || (input.action === 'VOTE' && input.vote === 'DECLINE');
+  const needsComment = ['DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT', 'RECORD_DECISION'].includes(input.action) || (input.action === 'VOTE' && input.vote === 'DECLINE');
   if (needsComment && (!input.comment || input.comment.trim().length < 5)) throw unprocessable('COMMENT_REQUIRED', 'A comment of at least 5 characters is required for this action.');
   const route: Route = instance.route;
   const stage = route.stages[task.stage_index]!;
   const branch = task.branch_key ? stage.branches?.find((b) => b.key === task.branch_key) : undefined;
 
-  if (['COMPLETE', 'RECOMMEND', 'APPROVE'].includes(input.action)) {
+  const onDecline = (branch?.onDecline ?? stage.onDecline ?? 'TERMINATE') as string;
+  if (['COMPLETE', 'RECOMMEND', 'APPROVE'].includes(input.action) || (input.action === 'DECLINE' && onDecline === 'CONTINUE')) {
     const pre = (branch?.prerequisites ?? stage.prerequisites ?? []) as string[];
     const unmet = await unmetPrerequisites(db, pre, task.facility_id);
     if (unmet.length) throw unprocessable('PREREQUISITES', 'Complete the required items before finishing this task.', unmet);
@@ -363,7 +389,8 @@ export async function performAction(db: Db, user: StaffPrincipal, actor: Actor, 
     case 'DECLINE': {
       await closeTask('DECLINE');
       const def = await getById<any>(db, instance.definition_config_id);
-      if (def.payload.declineBehaviour === 'CONTINUE_TO_FINAL' && !(stage.level?.isFinal)) {
+      // A "not recommended" at a stage configured to continue (e.g. RM, E&S, credit analyst) is recorded and the request moves on.
+      if (onDecline === 'CONTINUE' || (def.payload.declineBehaviour === 'CONTINUE_TO_FINAL' && !(stage.level?.isFinal))) {
         await advanceAfterTask(db, instance, route, task, actor);
       } else await completeInstance(db, instance, 'DECLINED', actor, input.comment);
       return { actionId: action.id };
@@ -422,6 +449,21 @@ export async function performAction(db: Db, user: StaffPrincipal, actor: Actor, 
       else await advanceAfterTask(db, instance, route, task, actor);
       return { actionId: action.id, committee: decision };
     }
+    case 'RECORD_DECISION': {
+      if (!input.vote || !['APPROVE', 'DECLINE'].includes(input.vote)) throw unprocessable('VOTE_REQUIRED', 'Record whether the committee approved or declined.');
+      if (!input.minutesReference || input.minutesReference.trim().length < 3) throw unprocessable('MINUTES_REQUIRED', 'Cite the reference of the signed committee minutes.');
+      const s = await one<any>(db, 'SELECT * FROM committee_session WHERE task_id=$1 FOR UPDATE', [taskId]);
+      if (s.status === 'DECIDED') throw conflict('DECIDED', 'This committee decision has already been recorded.');
+      const decision = input.vote === 'APPROVE' ? 'APPROVED' : 'DECLINED';
+      const outcome = decision === 'APPROVED' ? (stage.level?.isFinal ? 'APPROVE' : 'RECOMMEND') : 'DECLINE';
+      await q(db, `UPDATE committee_session SET status='DECIDED', decision=$2, decided_at=now() WHERE id=$1`, [s.id, decision]);
+      await q(db, `UPDATE workflow_task SET status='COMPLETED', outcome=$2, completed_at=now(), completed_by=$3, row_version=row_version+1 WHERE id=$1`, [taskId, outcome, user.id]);
+      await recordAction(db, instance, taskId, SYSTEM, outcome, `${s.committee_key} decision recorded by ${actor.label ?? 'Credit Operations'} from minutes ${input.minutesReference.trim()}: ${decision}`, { committee: s.committee_key, recorded: true, minutesReference: input.minutesReference.trim() });
+      if (decision === 'DECLINED') await completeInstance(db, instance, 'DECLINED', actor, `${s.committee_key} declined`);
+      else if (stage.level?.isFinal) await completeInstance(db, instance, 'APPROVED', actor);
+      else await advanceAfterTask(db, instance, route, task, actor);
+      return { actionId: action.id, committee: decision };
+    }
     case 'APPROVE': {
       await closeTask('APPROVE');
       await completeInstance(db, instance, 'APPROVED', actor);
@@ -456,7 +498,7 @@ async function escalateBeyondFinal(db: Db, instance: any, route: Route, task: an
   const authority = await getById<any>(db, instance.authority_config_id);
   const levels = authority.payload.levels;
   const cur = levels.findIndex((l: any) => l.code === route.stages[task.stage_index]!.level!.code);
-  const next = levels[cur + 1];
+  const next = levels.slice(cur + 1).find((l: any) => l.canBeFinal !== false);
   if (!next) throw unprocessable('NO_HIGHER_AUTHORITY', 'There is no higher approving authority configured.');
   route.stages[task.stage_index]!.level!.isFinal = false;
   const add: RouteStage = { index: task.stage_index + 1, key: next.code, name: next.name, type: 'APPROVAL_LEVEL', slaPolicyKey: next.slaPolicyKey, level: { code: next.code, name: next.name, kind: next.kind, role: next.role, committeeKey: next.committeeKey, effectiveLimitMinor: next.limitMinor, isFinal: true } };

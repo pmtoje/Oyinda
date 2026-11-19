@@ -16,6 +16,7 @@ const ACTION_HELP: Record<string, string> = {
   REQUEST_CLARIFICATION: 'Ask a question without leaving Gazelle. The task stays with you.',
   COMMENT: 'Add a comment to the record without moving the task.',
   VOTE: 'Cast your committee vote. Each member votes once.',
+  RECORD_DECISION: 'Record the decision taken at the committee meeting. Cite the signed minutes; the record is permanent.',
 };
 
 /** Pick the task this user should see: the one in the URL, else the first open task they can act on. */
@@ -66,7 +67,7 @@ export function ActionRail({ facilityId, task, loading, openCount }: { facilityI
           {decisionActions.length > 0 && (
             <div className="stack" style={{ ['--gap' as any]: '8px' }}>
               {decisionActions.map((a: any) => (
-                <Button key={a.code} variant={['APPROVE', 'RECOMMEND', 'COMPLETE', 'VOTE'].includes(a.code) ? 'primary' : a.code === 'DECLINE' ? 'danger' : undefined} className="block"
+                <Button key={a.code} variant={['APPROVE', 'RECOMMEND', 'COMPLETE', 'VOTE', 'RECORD_DECISION'].includes(a.code) ? 'primary' : a.code === 'DECLINE' ? 'danger' : undefined} className="block"
                   disabled={['APPROVE', 'RECOMMEND', 'COMPLETE'].includes(a.code) && unmet.length > 0} onClick={() => setAction(a.code)}
                   title={['APPROVE', 'RECOMMEND', 'COMPLETE'].includes(a.code) && unmet.length ? 'Complete the outstanding items first' : undefined}>{a.label}</Button>
               ))}
@@ -104,6 +105,7 @@ function ActionDrawer({ facilityId, task, action, onClose, onDone }: { facilityI
   const [items, setItems] = useState<{ section: string; message: string }[]>([{ section: 'DOCUMENTS', message: '' }]);
   const [conditions, setConditions] = useState<string[]>([]);
   const [vote, setVote] = useState('APPROVE');
+  const [minutes, setMinutes] = useState('');
   const [toCustomer, setToCustomer] = useState(true);
   const [toUserId, setToUserId] = useState('');
   const [subject, setSubject] = useState('');
@@ -113,18 +115,25 @@ function ActionDrawer({ facilityId, task, action, onClose, onDone }: { facilityI
     const body: any = { action, idempotencyKey: key, rowVersion: task.rowVersion };
     if (comment.trim()) body.comment = comment.trim();
     if (action === 'RETURN') { body.returnTarget = target; if (target === 'CUSTOMER') body.reworkItems = items.filter((i) => i.message.trim()); }
-    if (action === 'VOTE') body.vote = vote;
+    if (action === 'VOTE' || action === 'RECORD_DECISION') body.vote = vote;
+    if (action === 'RECORD_DECISION') body.minutesReference = minutes.trim();
     if (['APPROVE', 'RECOMMEND'].includes(action) && conditions.some((c) => c.trim())) body.conditions = conditions.filter((c) => c.trim());
     if (action === 'REQUEST_CLARIFICATION') body.clarification = { subject: subject.trim(), ...(toCustomer ? { toCustomer: true } : { toUserId }) };
     await api.post(`/api/tasks/${task.id}/actions`, body);
     onDone();
   });
-  const needsComment = ['DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT'].includes(action) || (action === 'VOTE' && vote === 'DECLINE');
+  const needsComment = ['DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT', 'RECORD_DECISION'].includes(action) || (action === 'VOTE' && vote === 'DECLINE');
   const label = task.availableActions.find((a: any) => a.code === action)?.label ?? humanize(action);
   return (
-    <Drawer title={`${label} — ${task.stageName}`} onClose={onClose} footer={<><Button onClick={onClose}>Cancel</Button><Button variant={action === 'DECLINE' ? 'danger' : 'primary'} loading={submit.loading} onClick={() => submit.run()} disabled={needsComment && comment.trim().length < 5}>{label}</Button></>}>
+    <Drawer title={`${label} — ${task.stageName}`} onClose={onClose} footer={<><Button onClick={onClose}>Cancel</Button><Button variant={action === 'DECLINE' ? 'danger' : 'primary'} loading={submit.loading} onClick={() => submit.run()} disabled={(needsComment && comment.trim().length < 5) || (action === 'RECORD_DECISION' && minutes.trim().length < 3)}>{label}</Button></>}>
       <div className="stack">
         <p className="small muted">{ACTION_HELP[action]}</p>
+        {action === 'RECORD_DECISION' && (
+          <>
+            <SelectInput label="Committee decision" value={vote} onChange={(e) => setVote(e.target.value)} options={[{ value: 'APPROVE', label: 'Approved' }, { value: 'DECLINE', label: 'Declined' }]} />
+            <TextInput label="Minutes reference" value={minutes} onChange={(e) => setMinutes(e.target.value)} required hint="Reference of the signed minutes, e.g. MIC/2026/41." />
+          </>
+        )}
         {action === 'VOTE' && <SelectInput label="Your vote" value={vote} onChange={(e) => setVote(e.target.value)} options={[{ value: 'APPROVE', label: 'Approve' }, { value: 'DECLINE', label: 'Decline' }, { value: 'ABSTAIN', label: 'Abstain' }]} />}
         {action === 'RETURN' && (
           <>

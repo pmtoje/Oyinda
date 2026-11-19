@@ -238,24 +238,26 @@ export function EsTab({ id }: { id: string }) {
       const t = q.data.trigger;
       if (!q.data.required && !a) return <Panel title="Environmental & social"><Empty title="E&S review not required">{t?.description}</Empty></Panel>;
       const done = a?.status === 'SUBMITTED';
-      const editable = can('es.assess') && !done;
+      const analyst = can('es.assess');
+      const editable = (analyst || can('es.checklist')) && !done;
       const score = t ? t.questionnaire.reduce((n: number, qq: any) => n + (qq.options.find((o: any) => o.code === answers?.[qq.code])?.weight ?? 0), 0) : 0;
       return (
         <div className="stack">
           <Alert tone="info" title="E&S review required">{t?.description} Trigger v{t?.version}. {(a?.triggerReasons ?? []).join('; ')}</Alert>
+          {!analyst && editable && <Alert tone="warn" title="Next step: complete the E&S checklist">Complete the E&S risk checklist with the customer and save it. The E&S risk analyst reviews it concurrently with credit analysis, then records findings and submits.</Alert>}
           <div className="grid cols-3">
             <div className="metric"><div className="label">Category</div><div className="value">{a?.category ?? '—'}</div><div className="sub">A ≥ {t?.thresholds.A}, B ≥ {t?.thresholds.B}; score {score}</div></div>
             <div className="metric"><div className="label">Recommendation</div><div className="value" style={{ fontSize: '1rem' }}>{humanize(a?.recommendation)}</div></div>
             <div className="metric"><div className="label">Status</div><div className="value" style={{ fontSize: '1rem' }}><Status value={a?.status} /></div><div className="sub">{done && dateTime(a.submittedAt)}</div></div>
           </div>
-          <Panel title="Questionnaire" footer={editable && <div className="row end"><Button onClick={() => save.run(false)} loading={save.loading}>Save</Button><Button variant="primary" onClick={() => save.run(true)} loading={save.loading}>Submit assessment</Button></div>}>
+          <Panel title="E&S risk checklist (IFC Performance Standards)" footer={editable && <div className="row end"><Button variant={analyst ? undefined : 'primary'} onClick={() => save.run(false)} loading={save.loading}>{analyst ? 'Save' : 'Save checklist'}</Button>{analyst && <Button variant="primary" onClick={() => save.run(true)} loading={save.loading}>Submit assessment</Button>}</div>}>
             <div className="stack">
               {t?.questionnaire.map((qq: any) => (
                 <div key={qq.code} role="radiogroup" aria-label={qq.text}><div className="small" style={{ fontWeight: 500 }}>{qq.text}</div>
                   <div className="row" style={{ marginTop: 4 }}>{qq.options.map((o: any) => <label key={o.code} className="check"><input type="radio" disabled={!editable} name={`es-${qq.code}`} checked={answers?.[qq.code] === o.code} onChange={() => setAnswers({ ...(answers ?? {}), [qq.code]: o.code })} /><span>{o.label}</span></label>)}</div></div>))}
-              <TextArea label="Findings" value={findings} disabled={!editable} onChange={(e) => setFindings(e.target.value)} />
-              <SelectInput label="Recommendation" value={rec} disabled={!editable} onChange={(e) => setRec(e.target.value)} placeholder="Select" options={['PROCEED', 'PROCEED_WITH_CONDITIONS', 'DO_NOT_PROCEED'].map((r) => ({ value: r, label: humanize(r) }))} />
-              <TextArea label="E&S conditions (one per line)" value={conds} disabled={!editable} onChange={(e) => setConds(e.target.value)} />
+              <TextArea label="Findings" value={findings} disabled={!editable || !analyst} onChange={(e) => setFindings(e.target.value)} />
+              <SelectInput label="Recommendation" value={rec} disabled={!editable || !analyst} onChange={(e) => setRec(e.target.value)} placeholder="Select" options={['PROCEED', 'PROCEED_WITH_CONDITIONS', 'DO_NOT_PROCEED'].map((r) => ({ value: r, label: humanize(r) }))} />
+              <TextArea label="E&S conditions (one per line)" value={conds} disabled={!editable || !analyst} onChange={(e) => setConds(e.target.value)} />
               <ErrorAlert error={save.error} />
             </div>
           </Panel>

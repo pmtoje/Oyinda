@@ -49,11 +49,12 @@ export const WORKFLOW_ACTION_LABEL: Record<string, string> = {
   COMMENT: 'Comment',
   VOTE: 'Vote',
   COMPLETE: 'Complete',
+  RECORD_DECISION: 'Record committee decision',
 };
 
 export const ROLE_LABEL: Record<string, string> = {
-  RM: 'Relationship Manager', BM: 'Business Manager', RBE: 'Regional Business Executive', DH: 'Directorate Head',
-  CREDIT_ANALYST: 'Credit Analyst', ES_ANALYST: 'E&S Analyst', CREDIT_TEAM_LEAD: 'Credit Team Lead', GH_CREDIT_RISK: 'Group Head, Credit Risk',
-  CRO: 'Chief Risk Officer', ED: 'Executive Director', MD: 'Managing Director', MIC_MEMBER: 'MIC member', BCC_MEMBER: 'BCC member', BOARD_MEMBER: 'Board member',
+  RM: 'Relationship Manager', BM: 'Team Lead (Business)', RBE: 'Regional Business Executive', DH: 'Divisional / Directorate Head',
+  CREDIT_ANALYST: 'Credit Analyst', ES_ANALYST: 'E&S Analyst', CREDIT_TEAM_LEAD: 'Team Lead, Credit Analysis', GH_CREDIT_RISK: 'Group Head, Credit Risk (HCR)',
+  CRO: 'Chief Risk Officer', ED: 'Executive Director', MD: 'Managing Director', MIC_MEMBER: 'MIC member', NED: 'Non-Executive Director', BRMC_CHAIR: 'BRMC Chairman', BRMC_MEMBER: 'BRMC member', BOARD_CHAIR: 'Board Chairman', BOARD_MEMBER: 'Board member',
   LEGAL: 'Legal', SHARIAH: 'Shariah Compliance', CREDIT_OPS: 'Credit Operations', ADMIN: 'Administrator', SUPER_ADMIN: 'Super Administrator', AUDITOR: 'Internal Audit',
 };

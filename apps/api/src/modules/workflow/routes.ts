@@ -111,7 +111,8 @@ export async function workflowRoutes(app: FastifyInstance) {
     const s = requireStaff(req, 'task.work');
     const { taskId } = parse(z.object({ taskId: z.uuid() }), req.params);
     const body = parse(z.object({
-      action: z.enum(['APPROVE', 'RECOMMEND', 'DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT', 'VOTE', 'COMPLETE']),
+      action: z.enum(['APPROVE', 'RECOMMEND', 'DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT', 'VOTE', 'COMPLETE', 'RECORD_DECISION']),
+      minutesReference: z.string().trim().max(120).optional(),
       comment: z.string().trim().max(5000).optional(),
       idempotencyKey: z.string().min(8).max(100),
       rowVersion: z.number().int().optional(),

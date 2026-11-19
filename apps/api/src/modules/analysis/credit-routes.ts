@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { getPool, maybe, one, q, tx } from '../../db/pool.js';
-import { actorOf, ok, parse, requireStaff } from '../../http/context.js';
+import { actorOf, ok, parse, requireAnyPerm, requireStaff } from '../../http/context.js';
 import { decryptField, hmac } from '../../lib/crypto.js';
-import { conflict, notFound, unprocessable } from '../../lib/errors.js';
+import { conflict, forbidden, notFound, unprocessable } from '../../lib/errors.js';
 import { maskTail } from '../../lib/mask.js';
 import { formatMoney } from '../../lib/money.js';
 import { integrations } from '../../integrations/index.js';
@@ -301,8 +301,10 @@ export async function creditRoutes(app: FastifyInstance) {
   });
 
   app.put('/api/facilities/:id/es', async (req, reply) => {
-    const s = requireStaff(req, 'es.assess');
+    // SWR §10 / E&S checklist form: the RM completes the checklist with the customer; the E&S analyst reviews, categorises and submits.
+    const s = requireAnyPerm(req, ['es.assess', 'es.checklist']);
     const f = await loadFacility(db, req, parse(idParam, req.params).id);
+    const analyst = s.permissions.has('es.assess');
     const b = parse(z.object({ answers: z.record(z.string().max(60), z.string().max(60)), findings: z.string().trim().max(5000).optional(), recommendation: z.enum(['PROCEED', 'PROCEED_WITH_CONDITIONS', 'DO_NOT_PROCEED']).optional(), conditions: z.array(z.string().trim().min(5).max(500)).max(20).default([]), submit: z.boolean().default(false) }), req.body);
     const a = await maybe<any>(db, `SELECT * FROM es_assessment WHERE facility_id=$1 AND status IN ('PENDING','IN_PROGRESS')`, [f.id]);
     if (!a) throw conflict('NO_OPEN_ASSESSMENT', 'There is no open E&S assessment for this facility.');
@@ -311,13 +313,15 @@ export async function creditRoutes(app: FastifyInstance) {
     let total = 0; const missing: string[] = [];
     for (const qq of qn) { const o = qq.options.find((x: any) => x.code === b.answers[qq.code]); if (!o) missing.push(qq.code); else total += o.weight; }
     const category = total >= trig.payload.categoryThresholds.A ? 'A' : total >= trig.payload.categoryThresholds.B ? 'B' : 'C';
+    if (b.submit && !analyst) throw forbidden('Only the E&S risk analyst can submit the assessment. Save the checklist for review.');
     if (b.submit) {
       if (missing.length) throw unprocessable('INCOMPLETE', 'Answer every E&S question before submitting.', missing);
       if (!b.recommendation || !b.findings || b.findings.length < 20) throw unprocessable('FINDINGS', 'Record findings (at least 20 characters) and a recommendation before submitting.');
       if (b.recommendation === 'PROCEED_WITH_CONDITIONS' && !b.conditions.length) throw unprocessable('CONDITIONS', 'List the E&S conditions.');
     }
     const row = await one<any>(db, `UPDATE es_assessment SET answers=$2, findings=$3, recommendation=$4, conditions=$5, category=$6, status=$7, analyst_id=$8, submitted_at = CASE WHEN $7='SUBMITTED' THEN now() END WHERE id=$1 RETURNING *`,
-      [a.id, JSON.stringify(b.answers), b.findings ?? null, b.recommendation ?? null, b.conditions, category, b.submit ? 'SUBMITTED' : 'IN_PROGRESS', s.id]);
+      [a.id, JSON.stringify(b.answers), analyst ? b.findings ?? null : a.findings, analyst ? b.recommendation ?? null : a.recommendation, analyst ? b.conditions : a.conditions, category, b.submit ? 'SUBMITTED' : 'IN_PROGRESS', analyst ? s.id : a.analyst_id]);
+    if (!analyst) await audit(db, actorOf(req), { action: 'ES_CHECKLIST_SAVED', entityType: 'es_assessment', entityId: a.id, facilityId: f.id, metadata: { answered: qn.length - missing.length, of: qn.length } });
     if (b.submit) await audit(db, actorOf(req), { action: 'ES_ASSESSMENT_SUBMITTED', entityType: 'es_assessment', entityId: a.id, facilityId: f.id, metadata: { category, recommendation: b.recommendation, score: total } });
     return ok(reply, esView(row));
   });

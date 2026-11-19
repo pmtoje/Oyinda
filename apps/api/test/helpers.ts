@@ -111,16 +111,38 @@ export const pdf = (text = 'Gazelle test document') => Buffer.from(`%PDF-1.4\n1 
 
 export const ABC = { account: '0100000001', phone: '08030000001' };
 
-/** Onboard ABC (once) and return a signed-in client. */
-export async function abcClient(a: FastifyInstance): Promise<Client> {
-  const existing = await q(db(), `SELECT 1 FROM customer_user WHERE email='treasury.lead@abc-manufacturing.demo'`);
+/** Onboard a customer user (once) and return a signed-in client. */
+export async function customerClient(a: FastifyInstance, account: string, email: string, phone: string): Promise<Client> {
+  const existing = await q(db(), `SELECT 1 FROM customer_user WHERE email=$1`, [email]);
   await rewindOtpThrottle();
-  if (!existing.length) return onboardCustomer(a, ABC.account, 'treasury.lead@abc-manufacturing.demo', ABC.phone);
+  if (!existing.length) return onboardCustomer(a, account, email, phone);
+  return customerLogin(a, email, phone);
+}
+
+/** Sign an existing customer user in. */
+export async function customerLogin(a: FastifyInstance, email: string, phone: string): Promise<Client> {
+  await rewindOtpThrottle();
   const c = new Client(a);
-  const s = await c.post('/api/auth/customer/login/start', { email: 'treasury.lead@abc-manufacturing.demo' });
-  const r = await c.post('/api/auth/customer/login/verify', { email: 'treasury.lead@abc-manufacturing.demo', challengeId: s.body.data.challengeId, code: await lastOtp(ABC.phone) });
-  if (r.status !== 200) throw new Error('ABC login failed ' + JSON.stringify(r.body));
+  const s = await c.post('/api/auth/customer/login/start', { email });
+  const r = await c.post('/api/auth/customer/login/verify', { email, challengeId: s.body.data.challengeId, code: await lastOtp(phone) });
+  if (r.status !== 200) throw new Error(`login failed for ${email}: ${JSON.stringify(r.body)}`);
   return c;
+}
+
+/** Onboard ABC (once) and return a signed-in client. */
+export const abcClient = (a: FastifyInstance) => customerClient(a, ABC.account, 'treasury.lead@abc-manufacturing.demo', ABC.phone);
+
+export const KANO = { account: '0100000003', phone: '08030000002' };
+/** Kano Agro-Allied (Agriculture — a HEART sector) for E&S and committee scenarios. */
+export const kanoClient = (a: FastifyInstance) => customerClient(a, KANO.account, 'credit.desk@kano-agro.demo', KANO.phone);
+
+export async function completeKanoProfile(c: Client, customerId: string) {
+  await c.put(`/api/customers/${customerId}/profile`, { businessType: 'LIMITED_LIABILITY', sectorCode: 'AGRICULTURE', industry: 'Grain processing', businessDescription: 'Processor of maize and sorghum into flour and animal feed for northern Nigeria.', productsServices: 'Maize flour, sorghum flour, poultry feed', valueChain: 'Buys grain from out-growers; sells to distributors', geographicFootprint: 'Kano, Kaduna, Jigawa', employeeCount: 260, hasLitigation: false, hasRegulatoryMatters: false });
+  const parties = (await c.get(`/api/customers/${customerId}/profile`)).body.data.parties;
+  if (!parties.length) {
+    await c.post(`/api/customers/${customerId}/parties`, { partyType: 'DIRECTOR', fullName: 'Hauwa Garba', designation: 'Managing Director', bvn: '22287654321', yearsExperience: 18 });
+    await c.post(`/api/customers/${customerId}/parties`, { partyType: 'SHAREHOLDER', fullName: 'Hauwa Garba', ownershipPct: 100, bvn: '22287654321' });
+  }
 }
 
 /** Complete ABC's profile to a realistic standard. */
@@ -197,7 +219,8 @@ export const fyLines = (rev: number, pat: number) => {
 };
 
 /** Perform the full credit analysis for a facility through the API (as an analyst would). */
-export async function performCreditAnalysis(analyst: Client, facilityId: string, customerId: string, opts: { rate?: number } = {}) {
+export async function performCreditAnalysis(analyst: Client, facilityId: string, customerId: string, opts: { rate?: number; account?: string; owner?: string } = {}) {
+  const acct = opts.account ?? '0100000001';
   const fs = (await analyst.get(`/api/customers/${customerId}/financial-statements`)).body.data;
   if (!fs.some((s: any) => s.statementType === 'AUDITED')) {
     for (const [y, rev, pat] of [[2023, 2_400_000_000, 120_000_000], [2024, 2_800_000_000, 150_000_000], [2025, 3_200_000_000, 190_000_000]] as const) {
@@ -210,7 +233,7 @@ export async function performCreditAnalysis(analyst: Client, facilityId: string,
   const sts = (await analyst.get(`/api/facilities/${facilityId}/bank-statements`)).body.data;
   if (!sts.length) {
     const months = ['2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'];
-    await must(upload(analyst, `/api/facilities/${facilityId}/bank-statements`, 'altbank.csv', statementCsv('0100000001', months, 260_000_000), 'text/csv', { bankName: 'Alternative Bank', accountNumber: '0100000001', currency: 'NGN', periodStart: '2025-11-01', periodEnd: '2026-10-31' }), 'stmt1');
+    await must(upload(analyst, `/api/facilities/${facilityId}/bank-statements`, 'altbank.csv', statementCsv(acct, months, 260_000_000), 'text/csv', { bankName: 'Alternative Bank', accountNumber: acct, currency: 'NGN', periodStart: '2025-11-01', periodEnd: '2026-10-31' }), 'stmt1');
     await must(upload(analyst, `/api/facilities/${facilityId}/bank-statements`, 'otherbank.csv', statementCsv('2200000001', months, 40_000), 'text/csv', { bankName: 'Other Commercial Bank', accountNumber: '2200000001', currency: 'USD', periodStart: '2025-11-01', periodEnd: '2026-10-31' }), 'stmt2');
     await drain(['statement.parse']);
   }
@@ -218,7 +241,7 @@ export async function performCreditAnalysis(analyst: Client, facilityId: string,
   await must(analyst.post(`/api/facilities/${facilityId}/bureau-checks`, { subject: 'BUSINESS' }), 'bureau');
   await must(analyst.post(`/api/facilities/${facilityId}/exposure`), 'exposure');
   const cols = (await analyst.get(`/api/facilities/${facilityId}/collateral`)).body.data.items;
-  if (!cols.length) await must(analyst.post(`/api/facilities/${facilityId}/collateral`, { typeKey: 'LEGAL_MORTGAGE', ownerName: 'ABC Manufacturing Ltd', description: 'Factory and warehouse at 14 Industrial Estate Road, Ikeja (C of O)', marketValueMinor: 320_000_000_00, valuationDate: '2026-09-15', valuationSource: 'Demo Estate Surveyors & Valuers', perfectionStatus: 'IN_PROGRESS' }), 'collateral');
+  if (!cols.length) await must(analyst.post(`/api/facilities/${facilityId}/collateral`, { typeKey: 'LEGAL_MORTGAGE', ownerName: opts.owner ?? 'ABC Manufacturing Ltd', description: 'Factory and warehouse at 14 Industrial Estate Road, Ikeja (C of O)', marketValueMinor: 320_000_000_00, valuationDate: '2026-09-15', valuationSource: 'Demo Estate Surveyors & Valuers', perfectionStatus: 'IN_PROGRESS' }), 'collateral');
   const risk = (await analyst.get(`/api/facilities/${facilityId}/risk`)).body.data;
   for (const kind of ['ORR', 'INDUSTRY', 'COLLATERAL']) {
     const card = risk.scorecards.find((s: any) => s.kind === kind);

@@ -120,3 +120,46 @@ export async function bootstrap(db: Db, actor: Actor, kind: ConfigKind, key: str
   const d = await createDraft(db, actor, { kind, key, title, payload, changeReason: 'Initial baseline configuration (bootstrap)' });
   return approve(db, actor, d.id, { system: true });
 }
+
+const canonical = (v: unknown): string => {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
+  if (v && typeof v === 'object') return `{${Object.keys(v as object).sort().map((k) => `${JSON.stringify(k)}:${canonical((v as any)[k])}`).join(',')}}`;
+  return JSON.stringify(v);
+};
+
+/**
+ * Reconcile a baseline release into an environment that was bootstrapped from an earlier baseline.
+ * - Items never configured are created.
+ * - Items still at a system (baseline) version are replaced with the new baseline version.
+ * - Items an administrator has changed (maker-checker) are left alone and reported for manual review.
+ * - Keys listed as retired are deactivated when still at a system version.
+ * Runs once per release code; every change is versioned and audited.
+ */
+export async function reconcileBaseline(db: Db, actor: Actor, release: string, items: { kind: ConfigKind; key: string; title: string; payload: unknown }[], retired: { kind: ConfigKind; key: string }[]) {
+  const done = await maybe(db, 'SELECT 1 FROM baseline_release WHERE code=$1', [release]);
+  if (done) return null;
+  const summary = { created: [] as string[], updated: [] as string[], retired: [] as string[], keptCustomised: [] as string[] };
+  for (const item of items) {
+    const active = await getActive(db, item.kind, item.key);
+    const id = `${item.kind}:${item.key}`;
+    if (!active) { await bootstrap(db, actor, item.kind, item.key, item.title, item.payload); summary.created.push(id); continue; }
+    const desired = validatePayload(item.kind, item.payload);
+    if (canonical(desired) === canonical(active.payload) && active.title === item.title) continue;
+    if (active.created_by) { summary.keptCustomised.push(id); continue; }
+    const pending = await maybe(db, `SELECT id FROM config_item WHERE kind=$1 AND key=$2 AND status IN ('DRAFT','PENDING_APPROVAL')`, [item.kind, item.key]);
+    if (pending) { summary.keptCustomised.push(id); continue; }
+    const d = await createDraft(db, actor, { kind: item.kind, key: item.key, title: item.title, payload: item.payload, changeReason: `Baseline release ${release}` });
+    await approve(db, actor, d.id, { system: true });
+    summary.updated.push(id);
+  }
+  for (const r of retired) {
+    const active = await getActive(db, r.kind, r.key);
+    if (!active) continue;
+    if (active.created_by) { summary.keptCustomised.push(`${r.kind}:${r.key}`); continue; }
+    await deactivate(db, actor, active.id, `Baseline release ${release}: removed`);
+    summary.retired.push(`${r.kind}:${r.key}`);
+  }
+  await q(db, 'INSERT INTO baseline_release(code, summary) VALUES ($1,$2)', [release, JSON.stringify(summary)]);
+  await audit(db, actor, { action: 'BASELINE_RELEASE_APPLIED', entityType: 'baseline_release', entityId: release, metadata: summary });
+  return summary;
+}

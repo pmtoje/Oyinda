@@ -1,6 +1,7 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { humanize, money } from '../../lib/format';
-import { Alert, ErrorAlert, Loading, PageHeader, Status, Tabs } from '../../components/ui';
+import { Alert, Button, ErrorAlert, Loading, PageHeader, Status, Tabs } from '../../components/ui';
+import { useAuth } from '../../lib/auth';
 import { ActionRail, useCurrentTask } from './parts/ActionRail';
 import { SlaBadge, useFac } from './parts/common';
 import { CustomerTab, DocumentsTab, OverviewTab } from './parts/overview';
@@ -16,6 +17,9 @@ export default function FacilityWorkspace() {
   const { id = '' } = useParams();
   const [sp, setSp] = useSearchParams();
   const detail = useFac<any>(id, 'detail', `/api/facilities/${id}`);
+  const { can } = useAuth();
+  const checklistRole = can('es.checklist') && !can('es.assess');
+  const es = useFac<any>(id, 'es', `/api/facilities/${id}/es`, checklistRole && !!detail.data && !['DRAFT', 'DECLINED'].includes(detail.data.facility.status));
   const risk = useFac<any>(id, 'risk', `/api/facilities/${id}/risk`, !!detail.data && detail.data.facility.status !== 'DRAFT');
   const current = useCurrentTask(id, sp.get('task'));
   if (detail.isLoading) return <Loading rows={6} />;
@@ -50,6 +54,9 @@ export default function FacilityWorkspace() {
         <div><div className="label">Current stage</div><div className="value">{t ? <>{t.stageName} <SlaBadge sla={t.sla} /></> : '—'}</div></div>
       </div>
       {f.isDemo && <Alert tone="warn">DEMO / NON-PRODUCTION record.</Alert>}
+      {es.data?.required && es.data.assessment && es.data.assessment.status !== 'SUBMITTED' && !Object.keys(es.data.assessment.answers ?? {}).length && tab !== 'es' && (
+        <Alert tone="warn" title="Next step: E&S checklist">This request is in an E&S-sensitive sector and at or above the E&S threshold. Complete the E&S risk checklist with the customer. <Button size="sm" onClick={() => setTab('es')}>Open the checklist</Button></Alert>
+      )}
       <div className="workspace" style={{ marginTop: f.isDemo ? 12 : 0 }}>
         <div style={{ minWidth: 0 }}>
           <Tabs tabs={tabs} value={tab} onChange={setTab} />

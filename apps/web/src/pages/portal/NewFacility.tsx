@@ -34,7 +34,7 @@ export default function NewFacility() {
                   <div className="grid cols-2">
                     {items.map((p) => (
                       <button key={p.code} className="choice" aria-pressed={selected === p.code} onClick={() => setSelected(p.code)}>
-                        <div className="title">{p.name}</div>
+                        <div className="title">{p.name}{p.descriptor && <span className="muted small"> · {p.descriptor}</span>}</div>
                         <div className="desc">{p.summary}</div>
                       </button>
                     ))}

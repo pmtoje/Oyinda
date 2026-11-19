@@ -1,9 +1,9 @@
 import type { Db } from '../db/pool.js';
 import { q } from '../db/pool.js';
 import { SYSTEM } from '../modules/audit/audit.js';
-import { bootstrap } from '../modules/config/service.js';
+import { reconcileBaseline } from '../modules/config/service.js';
 import { PERMISSIONS, ROLES } from '../modules/identity/rbac.js';
-import { BASELINE } from './baseline-config.js';
+import { BASELINE, BASELINE_RELEASE, BASELINE_RETIRED } from './baseline-config.js';
 import { BUSINESS_UNITS, DIRECTORATES, SECTORS } from './reference-data.js';
 
 /** Baseline: reference data, roles/permissions and default configuration. Safe to run repeatedly. */
@@ -16,7 +16,11 @@ export async function seedBaseline(db: Db) {
     await q(db, 'INSERT INTO role(code,name,is_privileged) VALUES ($1,$2,$3) ON CONFLICT (code) DO NOTHING', [r.code, r.name, !!r.privileged]);
     for (const p of r.perms) await q(db, 'INSERT INTO role_permission(role_code, permission_code) VALUES ($1,$2) ON CONFLICT DO NOTHING', [r.code, p]);
   }
-  for (const item of BASELINE) await bootstrap(db, SYSTEM, item.kind, item.key, item.title, item.payload);
+  // Roles removed from the catalogue keep their rows for history but lose their permissions.
+  const current = new Set(ROLES.map((r) => r.code));
+  const stale = (await q<{ code: string }>(db, 'SELECT code FROM role')).map((r) => r.code).filter((c) => !current.has(c));
+  if (stale.length) await q(db, 'DELETE FROM role_permission WHERE role_code = ANY($1)', [stale]);
+  await reconcileBaseline(db, SYSTEM, BASELINE_RELEASE, BASELINE, BASELINE_RETIRED);
 }
 
 /** DEMO / NON-PRODUCTION staff users — one per role. Authentication is via the mock directory and TOTP enrolment. */
@@ -32,16 +36,18 @@ export const DEMO_USERS: { username: string; name: string; roles: string[]; bu: 
   { username: 'demo.ctl', name: 'Ibrahim Musa (DEMO Credit Team Lead)', roles: ['CREDIT_TEAM_LEAD'], bu: 'CREDIT-RISK' },
   { username: 'demo.ghcr', name: 'Ngozi Obi (DEMO GH Credit Risk)', roles: ['GH_CREDIT_RISK'], bu: 'CREDIT-RISK' },
   { username: 'demo.cro', name: 'Adebayo Ogunleye (DEMO CRO)', roles: ['CRO'], bu: 'CREDIT-RISK' },
-  { username: 'demo.ed', name: 'Aisha Danjuma (DEMO ED)', roles: ['ED', 'MIC_MEMBER'], bu: 'EXECUTIVE' },
-  { username: 'demo.md', name: 'Kabir Sani (DEMO MD)', roles: ['MD', 'MIC_MEMBER'], bu: 'EXECUTIVE' },
-  { username: 'demo.mic1', name: 'Grace Etim (DEMO MIC)', roles: ['MIC_MEMBER'], bu: 'EXECUTIVE' },
-  { username: 'demo.bcc1', name: 'BCC Member One (DEMO)', roles: ['BCC_MEMBER'], bu: 'EXECUTIVE' },
-  { username: 'demo.bcc2', name: 'BCC Member Two (DEMO)', roles: ['BCC_MEMBER'], bu: 'EXECUTIVE' },
-  { username: 'demo.bcc3', name: 'BCC Member Three (DEMO)', roles: ['BCC_MEMBER'], bu: 'EXECUTIVE' },
+  { username: 'demo.ed', name: 'Aisha Danjuma (DEMO Line ED)', roles: ['ED'], bu: 'EXECUTIVE' },
+  { username: 'demo.ed2', name: 'Yemi Coker (DEMO ED)', roles: ['ED'], bu: 'EXECUTIVE' },
+  { username: 'demo.md', name: 'Kabir Sani (DEMO MD)', roles: ['MD'], bu: 'EXECUTIVE' },
+  { username: 'demo.ned1', name: 'NED One (DEMO)', roles: ['NED'], bu: 'EXECUTIVE' },
+  { username: 'demo.ned2', name: 'NED Two (DEMO)', roles: ['NED'], bu: 'EXECUTIVE' },
+  { username: 'demo.ned3', name: 'NED Three (DEMO)', roles: ['NED'], bu: 'EXECUTIVE' },
+  { username: 'demo.brmcchair', name: 'BRMC Chairman (DEMO)', roles: ['BRMC_CHAIR'], bu: 'EXECUTIVE' },
+  { username: 'demo.brmc1', name: 'BRMC Member One (DEMO NED)', roles: ['BRMC_MEMBER', 'NED'], bu: 'EXECUTIVE' },
+  { username: 'demo.brmc2', name: 'BRMC Member Two (DEMO NED)', roles: ['BRMC_MEMBER', 'NED'], bu: 'EXECUTIVE' },
+  { username: 'demo.boardchair', name: 'Board Chairman (DEMO)', roles: ['BOARD_CHAIR'], bu: 'EXECUTIVE' },
   { username: 'demo.board1', name: 'Board Member One (DEMO)', roles: ['BOARD_MEMBER'], bu: 'EXECUTIVE' },
-  { username: 'demo.board2', name: 'Board Member Two (DEMO)', roles: ['BOARD_MEMBER'], bu: 'EXECUTIVE' },
-  { username: 'demo.board3', name: 'Board Member Three (DEMO)', roles: ['BOARD_MEMBER'], bu: 'EXECUTIVE' },
-  { username: 'demo.board4', name: 'Board Member Four (DEMO)', roles: ['BOARD_MEMBER'], bu: 'EXECUTIVE' },
+  { username: 'demo.board4', name: 'Board Member Two (DEMO)', roles: ['BOARD_MEMBER'], bu: 'EXECUTIVE' },
   { username: 'demo.legal', name: 'Bisi Akande (DEMO Legal)', roles: ['LEGAL'], bu: 'LEGAL-SERV' },
   { username: 'demo.shariah', name: 'Mallam Usman Idris (DEMO Shariah)', roles: ['SHARIAH'], bu: 'SHARIAH-COMP' },
   { username: 'demo.creditops', name: 'Kemi Adeleke (DEMO Credit Ops)', roles: ['CREDIT_OPS'], bu: 'CREDIT-OPS' },

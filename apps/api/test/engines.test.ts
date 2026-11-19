@@ -137,31 +137,42 @@ describe('bank statement analysis', () => {
   });
 });
 
-describe('approval authority', () => {
-  const authority = cfg('approval_authority', 'STANDARD')[0]!.payload as any;
+describe('approval authority (PRD grid, SWR order)', () => {
+  const direct = cfg('approval_authority', 'APPROVED_LINE_DIRECT')[0]!.payload as any;
+  const cash = cfg('approval_authority', 'CASH_BACKED_DIRECT')[0]!.payload as any;
   const facts = (o: Record<string, any> = {}) => ({ facility: { isCashBacked: false, ...o.facility }, customer: { isInsider: false, isPep: false, ...o.customer }, risk: { solBreached: false, raroracWithinThreshold: true, ...o.risk } });
-  it('routes by amount: ₦150m → CRO recommends, ED approves', () => {
-    const r = resolveChain(authority, facts(), N(150_000_000));
-    expect(r.chain.map((l) => l.code)).toEqual(['CRO', 'ED']);
-    expect(r.chain[1]!.isFinal).toBe(true);
+  const codes = (a: any, amount: number, f = facts()) => resolveChain(a, f, N(amount)).chain.map((l) => l.code);
+  it('applies the combination limits for approved lines / direct facilities', () => {
+    expect(codes(direct, 50_000_000)).toEqual(['HCR']); // RBE/GH + HCR + DH up to ₦50m
+    expect(codes(direct, 100_000_000)).toEqual(['HCR', 'ED']); // ED + HCR up to ₦100m (CRO not involved)
+    expect(codes(direct, 150_000_000)).toEqual(['HCR', 'CRO', 'ED']); // ED + CRO + HCR up to ₦150m
+    expect(codes(direct, 500_000_000)).toEqual(['HCR', 'CRO', 'ED', 'ED_CONCURRENCE', 'MD']); // MD + CRO + HCR, 1 Line ED + 1 ED concurrence
+    expect(codes(direct, 750_000_000)).toEqual(['HCR', 'CRO', 'ED', 'ED_CONCURRENCE', 'MD', 'MIC']);
+    expect(codes(direct, 1_500_000_000).at(-1)).toBe('BRMC');
+    expect(codes(direct, 1_500_000_001).at(-1)).toBe('BOARD');
   });
-  it('routes small amounts to the CRO alone and very large amounts to the Board', () => {
-    expect(resolveChain(authority, facts(), N(50_000_000)).finalLevel.code).toBe('CRO');
-    expect(resolveChain(authority, facts(), N(3_000_000_000)).finalLevel.code).toBe('BCC');
-    expect(resolveChain(authority, facts(), N(9_000_000_000)).finalLevel.code).toBe('BOARD');
+  it('marks only the last level as final', () => {
+    const r = resolveChain(direct, facts(), N(150_000_000));
+    expect(r.chain.map((l) => l.isFinal)).toEqual([false, false, true]);
   });
-  it('applies cash-backed limits', () => {
-    expect(resolveChain(authority, facts({ facility: { isCashBacked: true } }), N(200_000_000)).finalLevel.code).toBe('CRO');
+  it('applies cash-backed limits (₦1bn / ₦1.5bn / ₦2bn / ₦2.5bn, MIC above)', () => {
+    expect(codes(cash, 1_000_000_000)).toEqual(['HCR']);
+    expect(codes(cash, 1_500_000_000)).toEqual(['HCR', 'ED']);
+    expect(codes(cash, 2_000_000_000)).toEqual(['HCR', 'CRO', 'ED']);
+    expect(codes(cash, 2_500_000_000).at(-1)).toBe('MD');
+    expect(codes(cash, 9_000_000_000).at(-1)).toBe('MIC');
   });
-  it('sends insider-related facilities to the Board irrespective of amount', () => {
-    const r = resolveChain(authority, facts({ customer: { isInsider: true } }), N(10_000_000));
-    expect(r.finalLevel.code).toBe('BOARD');
-    expect(r.reasons.join(' ')).toMatch(/INSIDER_RELATED/);
+  it('sends insider-related and PEP facilities through the full chain to the Board irrespective of amount', () => {
+    for (const c of [{ isInsider: true }, { isPep: true }]) {
+      const r = resolveChain(direct, facts({ customer: c }), N(10_000_000));
+      expect(r.finalLevel.code).toBe('BOARD');
+      expect(r.chain.map((l) => l.code)).toEqual(['HCR', 'CRO', 'ED', 'ED_CONCURRENCE', 'MD', 'MIC', 'BRMC', 'BOARD']);
+    }
+    expect(resolveChain(cash, facts({ customer: { isInsider: true } }), N(10_000_000)).finalLevel.code).toBe('BOARD');
   });
-  it('routes PEP to at least MD, and pricing exceptions to at least ED', () => {
-    expect(resolveChain(authority, facts({ customer: { isPep: true } }), N(10_000_000)).finalLevel.code).toBe('MD');
-    expect(resolveChain(authority, facts({ risk: { raroracWithinThreshold: false } }), N(10_000_000)).finalLevel.code).toBe('ED');
-    expect(resolveChain(authority, facts({ risk: { solBreached: true } }), N(10_000_000)).finalLevel.code).toBe('BOARD');
+  it('raises pricing exceptions to at least the Line ED and SOL breaches to the Board', () => {
+    expect(codes(direct, 10_000_000, facts({ risk: { raroracWithinThreshold: false } }))).toEqual(['HCR', 'ED']);
+    expect(resolveChain(direct, facts({ risk: { solBreached: true } }), N(10_000_000)).finalLevel.code).toBe('BOARD');
   });
 });
 
@@ -176,6 +187,14 @@ describe('committee decisions', () => {
   it('declines when approval becomes impossible', () => {
     expect(committeeDecision(rules, members, [{ member_id: 'md', member_role: 'MD', vote: 'DECLINE' }])).toBe('DECLINED');
     expect(committeeDecision(rules, members, [{ member_id: 'ed', member_role: 'ED', vote: 'DECLINE' }, { member_id: 'cro', member_role: 'CRO', vote: 'DECLINE' }])).toBe('DECLINED');
+  });
+  it('enforces minimum signatures per role (MIC: 3 NEDs + 2 EDs including the MD)', () => {
+    const mic = { quorum: 5, requiredApprovals: 5, requiredRoles: ['MD'], requiredRoleCounts: { NED: 3, 'ED|MD': 2 }, voting: 'PARALLEL' as const, serialOrder: [] };
+    const m = [{ id: 'md', roles: ['MD'] }, { id: 'ed', roles: ['ED'] }, { id: 'ed2', roles: ['ED'] }, { id: 'n1', roles: ['NED'] }, { id: 'n2', roles: ['NED'] }, { id: 'n3', roles: ['NED'] }];
+    const v = (id: string, vote: 'APPROVE' | 'DECLINE' = 'APPROVE') => ({ member_id: id, member_role: m.find((x) => x.id === id)!.roles[0]!, vote });
+    expect(committeeDecision(mic, m, ['md', 'ed', 'ed2', 'n1', 'n2'].map((i) => v(i)))).toBe('PENDING'); // only 2 NEDs
+    expect(committeeDecision(mic, m, ['md', 'ed', 'n1', 'n2', 'n3'].map((i) => v(i)))).toBe('APPROVED');
+    expect(committeeDecision(mic, m, [v('n1', 'DECLINE')])).toBe('DECLINED'); // 3 NED signatures no longer possible
   });
 });
 

@@ -15,7 +15,7 @@ beforeAll(async () => {
   abc = await abcClient(app);
   customerId = (await abc.get('/api/auth/me')).body.data.customer.id;
   await completeAbcProfile(abc, customerId);
-  for (const u of ['rm', 'bm', 'analyst', 'analyst2', 'es', 'ctl', 'ghcr', 'cro', 'ed', 'md', 'legal', 'shariah', 'creditops', 'creditops2']) staff[u] = await staffLogin(app, `demo.${u}`);
+  for (const u of ['rm', 'bm', 'rbe', 'dh', 'ed2', 'analyst', 'analyst2', 'es', 'ctl', 'ghcr', 'cro', 'ed', 'md', 'legal', 'shariah', 'creditops', 'creditops2']) staff[u] = await staffLogin(app, `demo.${u}`);
   await q(db(), `INSERT INTO fx_rate(base_ccy, quote_ccy, rate, rate_date, source) VALUES ('USD','NGN',1520.50,'2025-10-31','CBN NAFEM closing (DEMO)') ON CONFLICT DO NOTHING`);
 });
 
@@ -44,17 +44,21 @@ describe('Phase 77 — end-to-end Murabaha journey for ABC Manufacturing Ltd', (
     expect(r.status).toBe(200);
   });
 
-  it('Journey 5: BM review — unauthorised users cannot act', async () => {
+  it('Journey 5: Team Lead → RBE → DH review (SWR route) — unauthorised users cannot act', async () => {
     const t = (await q(db(), `SELECT id FROM workflow_task WHERE facility_id=$1 AND stage_key='BM_REVIEW' AND status='OPEN'`, [facilityId]))[0];
     expect((await staff.analyst!.post(`/api/tasks/${t.id}/claim`)).status).toBe(403);
     expect((await abc.post(`/api/tasks/${t.id}/claim`)).status).toBe(401);
     const r = await act(staff.bm!, facilityId, 'BM_REVIEW', 'RECOMMEND');
     expect(r.status).toBe(200);
+    expect((await act(staff.rbe!, facilityId, 'RBE_REVIEW', 'RECOMMEND')).status).toBe(200);
+    expect((await act(staff.dh!, facilityId, 'DH_REVIEW', 'RECOMMEND')).status).toBe(200);
   });
 
-  it('Journey 6: credit analysis and E&S review open concurrently; only one analyst can claim', async () => {
+  it('Journey 6: Manufacturing is outside the HEART/E&S sectors, so only credit analysis opens; only one analyst can claim', async () => {
     const tasks = await q(db(), `SELECT stage_key FROM workflow_task WHERE facility_id=$1 AND status='OPEN' ORDER BY stage_key`, [facilityId]);
-    expect(tasks.map((t: any) => t.stage_key)).toEqual(['CREDIT_ANALYSIS', 'ES_REVIEW']);
+    expect(tasks.map((t: any) => t.stage_key)).toEqual(['CREDIT_ANALYSIS']);
+    const route = (await q(db(), `SELECT route FROM workflow_instance WHERE facility_id=$1`, [facilityId]))[0].route;
+    expect(route.explanation.join(' ')).toMatch(/E&S risk review not required/);
     const t = (await q(db(), `SELECT id FROM workflow_task WHERE facility_id=$1 AND stage_key='CREDIT_ANALYSIS'`, [facilityId]))[0];
     const [a, b] = await Promise.all([staff.analyst!.post(`/api/tasks/${t.id}/claim`), staff.analyst2!.post(`/api/tasks/${t.id}/claim`)]);
     expect([a.status, b.status].sort()).toEqual([200, 409]);
@@ -83,50 +87,42 @@ describe('Phase 77 — end-to-end Murabaha journey for ABC Manufacturing Ltd', (
     expect(rar.notes[0]).toMatch(/MOCK/);
     const done = await act(staff.analyst!, facilityId, 'CREDIT_ANALYSIS', 'COMPLETE');
     expect(done.status).toBe(200);
-    // The workflow waits for the concurrent E&S branch
-    const ctl = await q(db(), `SELECT 1 FROM workflow_task WHERE facility_id=$1 AND stage_key='CTL_REVIEW'`, [facilityId]);
-    expect(ctl).toHaveLength(0);
-  });
-
-  it('E&S analyst completes the concurrent review', async () => {
-    const es = (await staff.es!.get(`/api/facilities/${facilityId}/es`)).body.data;
-    expect(es.required).toBe(true);
-    const answers = Object.fromEntries(es.trigger.questionnaire.map((qq: any) => [qq.code, qq.code === 'BIODIVERSITY' ? 'NO' : qq.options[1].code]));
-    const sub = await staff.es!.put(`/api/facilities/${facilityId}/es`, { answers, findings: 'Effluent from moulding is treated on site under a current state EPA permit; no community impacts identified.', recommendation: 'PROCEED_WITH_CONDITIONS', conditions: ['Submit annual environmental audit report'], submit: true });
-    expect(sub.status).toBe(200);
-    expect(sub.body.data.category).toBe('B');
-    expect((await act(staff.es!, facilityId, 'ES_REVIEW', 'COMPLETE')).status).toBe(200);
+    // No E&S branch: Team Lead, Credit Analysis opens straight away.
     expect(await q(db(), `SELECT 1 FROM workflow_task WHERE facility_id=$1 AND stage_key='CTL_REVIEW' AND status='OPEN'`, [facilityId])).toHaveLength(1);
   });
 
-  it('Journey 7: CTL → GH Credit Risk → CRO recommend; ED approves within authority', async () => {
+  it('E&S review is not required for a Manufacturing request (SWR: HEART, Oil & Gas, Mining, Aviation only)', async () => {
+    const es = (await staff.es!.get(`/api/facilities/${facilityId}/es`)).body.data;
+    expect(es.required).toBe(false);
+  });
+
+  it('Journey 7: authority follows request + outstanding exposure (PRD); HCR → CRO → Line ED → ED concurrence → MD approves', async () => {
     expect((await act(staff.ctl!, facilityId, 'CTL_REVIEW', 'RECOMMEND')).status).toBe(200);
-    expect((await act(staff.ghcr!, facilityId, 'GH_CR_REVIEW', 'RECOMMEND')).status).toBe(200);
     const route = (await q(db(), `SELECT route FROM workflow_instance WHERE facility_id=$1`, [facilityId]))[0].route;
-    expect(route.stages.filter((s: any) => s.type === 'APPROVAL_LEVEL').map((s: any) => s.key)).toEqual(['CRO', 'ED']);
-    const croTask = (await q(db(), `SELECT id FROM workflow_task WHERE facility_id=$1 AND stage_key='CRO'`, [facilityId]))[0];
-    await staff.cro!.post(`/api/tasks/${croTask.id}/claim`);
-    const view = (await staff.cro!.get(`/api/tasks/${croTask.id}`)).body.data;
-    const codes = view.availableActions.map((a: any) => a.code);
+    // ₦150m request + ₦180m Murabaha + ₦60m APG outstanding = ₦390m → MD + CRO + HCR band with ED concurrence
+    expect(route.explanation.join(' ')).toMatch(/outstanding exposure/);
+    expect(route.stages.filter((s: any) => s.type === 'APPROVAL_LEVEL').map((s: any) => s.key)).toEqual(['HCR', 'CRO', 'ED', 'ED_CONCURRENCE', 'MD']);
+    const hcrTask = (await q(db(), `SELECT id FROM workflow_task WHERE facility_id=$1 AND stage_key='HCR'`, [facilityId]))[0];
+    await staff.ghcr!.post(`/api/tasks/${hcrTask.id}/claim`);
+    const codes = (await staff.ghcr!.get(`/api/tasks/${hcrTask.id}`)).body.data.availableActions.map((a: any) => a.code);
     expect(codes).toContain('RECOMMEND');
-    expect(codes).not.toContain('APPROVE'); // above CRO authority: Approve must not appear
-    const denied = await staff.cro!.post(`/api/tasks/${croTask.id}/actions`, { action: 'APPROVE', idempotencyKey: idem() });
-    expect(denied.status).toBe(403);
-    expect((await act(staff.cro!, facilityId, 'CRO', 'RECOMMEND')).status).toBe(200);
-    const ed = await act(staff.ed!, facilityId, 'ED', 'APPROVE', { conditions: ['Insurance (Takaful) cover on mortgaged factory noting the Bank'] });
-    expect(ed.status).toBe(200);
+    expect(codes).not.toContain('APPROVE'); // above HCR authority: Approve must not appear
+    expect((await staff.ghcr!.post(`/api/tasks/${hcrTask.id}/actions`, { action: 'APPROVE', idempotencyKey: idem() })).status).toBe(403);
+    for (const [u, k] of [['ghcr', 'HCR'], ['cro', 'CRO'], ['ed', 'ED'], ['ed2', 'ED_CONCURRENCE']] as const) expect((await act(staff[u]!, facilityId, k, 'RECOMMEND')).status).toBe(200);
+    const md = await act(staff.md!, facilityId, 'MD', 'APPROVE', { conditions: ['Insurance (Takaful) cover on mortgaged factory noting the Bank'] });
+    expect(md.status).toBe(200);
     // replayed approval request is not re-applied
     const f = (await abc.get(`/api/facilities/${facilityId}`)).body.data.facility;
     expect(f.status).toBe('APPROVED');
     const terms = await q(db(), 'SELECT * FROM approved_terms WHERE facility_id=$1', [facilityId]);
     expect(terms).toHaveLength(1);
     expect(terms[0].amount_minor).toBe(150_000_000_00);
-    expect(terms[0].approved_by_names).toEqual(expect.arrayContaining([expect.stringMatching(/ED/)]));
+    expect(terms[0].approved_by_names).toEqual(expect.arrayContaining([expect.stringMatching(/DEMO MD/)]));
     await expect(q(db(), 'UPDATE approved_terms SET amount_minor=1 WHERE facility_id=$1', [facilityId])).rejects.toThrow(/GZ_IMMUTABLE/);
   });
 
   it('executive decision view and Word term sheet are produced', async () => {
-    const v = (await staff.ed!.get(`/api/facilities/${facilityId}/decision-view`)).body.data;
+    const v = (await staff.md!.get(`/api/facilities/${facilityId}/decision-view`)).body.data;
     expect(v.summary.requestedAmount).toMatch(/150,000,000/);
     expect(v.recommendations.map((r: any) => r.action)).toEqual(expect.arrayContaining(['RECOMMEND', 'APPROVE', 'COMPLETE']));
     const ts = await staff.analyst!.post(`/api/facilities/${facilityId}/term-sheet`, {});
@@ -236,7 +232,7 @@ describe('workflow controls', () => {
     const cur = (await abc.get(`/api/facilities/${f.id}`)).body.data.facility;
     await abc.post(`/api/facilities/${f.id}/submit`, { rowVersion: cur.rowVersion, declaration: true });
     const t = (await q(db(), `SELECT id FROM workflow_task WHERE facility_id=$1 AND status='OPEN'`, [f.id]))[0];
-    await q(db(), `UPDATE workflow_task SET warn_at=now()-interval '40 hours', due_at=now()-interval '30 hours' WHERE id=$1`, [t.id]);
+    await q(db(), `UPDATE workflow_task SET warn_at=now()-interval '40 hours', due_at=now()-interval '50 hours' WHERE id=$1`, [t.id]);
     const r = await slaSweep(db());
     expect(r.breached).toBeGreaterThanOrEqual(1);
     expect(r.escalated).toBeGreaterThanOrEqual(1);
@@ -301,16 +297,16 @@ describe('workflow controls', () => {
     expect(route.stages.slice(0, 3).map((x: any) => x.key)).toEqual(['BM_REVIEW', 'RBE_REVIEW', 'DH_REVIEW']);
   });
 
-  it('segregation of duties: one officer cannot decide two stages', async () => {
-    // demo.ed holds ED and MIC_MEMBER; make demo.ctl also hold GH_CREDIT_RISK temporarily
-    const ctlId = (await q(db(), `SELECT id FROM app_user WHERE ad_username='demo.ctl'`))[0].id;
-    await q(db(), `INSERT INTO user_role(user_id, role_code) VALUES ($1,'GH_CREDIT_RISK') ON CONFLICT DO NOTHING`, [ctlId]);
-    const fid = (await q(db(), `SELECT f.id FROM facility_request f JOIN workflow_task t ON t.facility_id=f.id WHERE t.stage_key='CTL_REVIEW' AND t.status='COMPLETED' AND t.completed_by=$1 LIMIT 1`, [ctlId]))[0]?.id;
-    expect(fid).toBeTruthy();
-    const ctl2 = await staffLogin(app, 'demo.ctl');
-    const ghTask = (await q(db(), `SELECT id FROM workflow_task WHERE facility_id=$1 AND stage_key='GH_CR_REVIEW'`, [fid]))[0];
-    const view = (await ctl2.get(`/api/tasks/${ghTask.id}`)).body.data;
-    expect(view.availableActions.map((a: any) => a.code)).not.toContain('RECOMMEND');
-    await q(db(), `DELETE FROM user_role WHERE user_id=$1 AND role_code='GH_CREDIT_RISK'`, [ctlId]);
+  it('an RM "not recommended" is recorded and the request still moves to the Team Lead; a Team Lead decline ends it (PRD)', async () => {
+    const f = await draftMurabaha(abc);
+    await uploadAllRequired(abc, f.id);
+    const cur = (await abc.get(`/api/facilities/${f.id}`)).body.data.facility;
+    await abc.post(`/api/facilities/${f.id}/submit`, { rowVersion: cur.rowVersion, declaration: true });
+    for (const d of (await staff.rm!.get(`/api/facilities/${f.id}/documents`)).body.data.filter((x: any) => x.status === 'UPLOADED')) await staff.rm!.post(`/api/documents/${d.id}/review`, { decision: 'VERIFIED' });
+    expect((await act(staff.rm!, f.id, 'RM_REVIEW', 'DECLINE', { comment: 'Turnover does not support the requested amount.' })).status).toBe(200);
+    expect(await q(db(), `SELECT 1 FROM workflow_task WHERE facility_id=$1 AND stage_key='BM_REVIEW' AND status='OPEN'`, [f.id])).toHaveLength(1);
+    expect((await abc.get(`/api/facilities/${f.id}`)).body.data.facility.status).toBe('IN_REVIEW');
+    expect((await act(staff.bm!, f.id, 'BM_REVIEW', 'DECLINE', { comment: 'Declined in line with the RM view.' })).status).toBe(200);
+    expect((await abc.get(`/api/facilities/${f.id}`)).body.data.facility.status).toBe('DECLINED');
   });
 });

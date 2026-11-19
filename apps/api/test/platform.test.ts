@@ -171,3 +171,30 @@ describe('reporting & notifications', () => {
     expect(h.integrations.find((i: any) => i.name === 'cba').status).toBe('MOCK');
   });
 });
+
+describe('baseline release reconciliation', () => {
+  it('updates system-baseline items, keeps administrator changes, retires removed keys, and runs once', async () => {
+    const { bootstrap, reconcileBaseline, getActive, createDraft, approve } = await import('../src/modules/config/service.js');
+    const { SYSTEM } = await import('../src/modules/audit/audit.js');
+    const c = (code: string, haircut: number) => ({ code, name: `Reconcile ${code}`, category: 'CASH', defaultHaircutPct: haircut, cashEquivalent: true, shariahCompliant: true, requiresValuation: false, requiresPerfection: true, countsTowardsCoverage: true });
+    const pool = (await import('./helpers.js')).db();
+    const tag = Math.random().toString(36).slice(2, 7).toUpperCase();
+    const [A, B, R] = [`RC_A_${tag}`, `RC_B_${tag}`, `RC_R_${tag}`];
+    for (const k of [A, B, R]) await bootstrap(pool, SYSTEM, 'collateral_type', k, `Reconcile ${k}`, c(k, 10));
+    // An administrator changes B through maker-checker.
+    const admin = (await q(pool, `SELECT id FROM app_user WHERE ad_username='demo.admin'`))[0].id;
+    const sup = (await q(pool, `SELECT id FROM app_user WHERE ad_username='demo.superadmin'`))[0].id;
+    const d = await createDraft(pool, { type: 'STAFF', id: admin, label: 'admin' } as any, { kind: 'collateral_type', key: B, title: `Reconcile ${B}`, payload: c(B, 15), changeReason: 'Policy update' });
+    await q(pool, `UPDATE config_item SET status='PENDING_APPROVAL' WHERE id=$1`, [d.id]);
+    await approve(pool, { type: 'STAFF', id: sup, label: 'super' } as any, d.id);
+    const items = [A, B].map((k) => ({ kind: 'collateral_type' as const, key: k, title: `Reconcile ${k}`, payload: c(k, 20) }));
+    const sum = await reconcileBaseline(pool, SYSTEM, `TEST-${tag}`, items, [{ kind: 'collateral_type', key: R }]);
+    expect(sum!.updated).toEqual([`collateral_type:${A}`]);
+    expect(sum!.keptCustomised).toEqual([`collateral_type:${B}`]);
+    expect(sum!.retired).toEqual([`collateral_type:${R}`]);
+    expect((await getActive(pool, 'collateral_type', A))!.payload.defaultHaircutPct).toBe(20);
+    expect((await getActive(pool, 'collateral_type', B))!.payload.defaultHaircutPct).toBe(15);
+    expect(await getActive(pool, 'collateral_type', R)).toBeUndefined();
+    expect(await reconcileBaseline(pool, SYSTEM, `TEST-${tag}`, items, [])).toBeNull();
+  });
+});

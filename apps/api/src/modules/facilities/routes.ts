@@ -54,7 +54,7 @@ async function customerProgress(db: ReturnType<typeof getPool>, f: any) {
     DRAFT: ['You', 'Complete each section and submit your request.'],
     RETURNED: ['You', 'Review the items flagged by the Bank, update them, and resubmit.'],
     SUBMITTED: ['Relationship Manager', 'Your relationship manager will review your request.'],
-    IN_REVIEW: [stage ? (stage.stage_key.startsWith('RM') ? 'Relationship Manager' : stage.stage_key.startsWith('BM') || stage.stage_key.startsWith('RBE') || stage.stage_key.startsWith('DH') ? 'Business banking team' : stage.stage_key === 'APPROVAL' || /^(CRO|ED|MD|MIC|BCC|BOARD)/.test(stage.stage_key) ? 'Approving authority' : 'Credit Risk team') : 'Alternative Bank', 'The Bank is assessing your request. You will be notified if anything is needed from you.'],
+    IN_REVIEW: [stage ? (stage.stage_key.startsWith('RM') ? 'Relationship Manager' : stage.stage_key.startsWith('BM') || stage.stage_key.startsWith('RBE') || stage.stage_key.startsWith('DH') ? 'Business banking team' : stage.stage_key === 'APPROVAL' || /^(CRO|ED|MD|MIC|BRMC|BOARD)/.test(stage.stage_key) ? 'Approving authority' : 'Credit Risk team') : 'Alternative Bank', 'The Bank is assessing your request. You will be notified if anything is needed from you.'],
     APPROVED: ['Alternative Bank', 'Your offer letter is being prepared.'],
     OFFER_ISSUED: ['You', 'Review the offer letter and accept, reject or request changes.'],
     IN_NEGOTIATION: ['Alternative Bank', 'The Bank is considering the changes you requested.'],

@@ -11,7 +11,7 @@ export interface BaselineItem { kind: ConfigKind; key: string; title: string; pa
 // ---------------------------------------------------------------------------
 const products: Omit<BaselineItem, 'kind'>[] = [
   { key: 'MURABAHA', title: 'Murabaha', payload: {
-    code: 'MURABAHA', name: 'Murabaha', family: 'MURABAHA', category: 'DIRECT',
+    code: 'MURABAHA', name: 'Murabaha', descriptor: 'Cost Plus Financing', family: 'MURABAHA', category: 'DIRECT',
     summary: 'Cost-plus sale. The Bank purchases the asset or inventory and sells it to the customer at an agreed profit, payable in instalments.',
     shariahStructure: 'The Bank acquires title to the asset (directly or through a Wakalah agent) before selling to the customer at cost plus a disclosed profit. The sale price is fixed at contract and cannot increase.',
     currencies: ['NGN', 'USD'], minAmountMinor: N(5_000_000), maxAmountMinor: N(20_000_000_000), minTenorMonths: 1, maxTenorMonths: 60,
@@ -26,7 +26,7 @@ const products: Omit<BaselineItem, 'kind'>[] = [
       field('expectedDeliveryDate', 'Expected delivery date', 'date', false),
     ] } },
   { key: 'IJARAH', title: 'Ijarah', payload: {
-    code: 'IJARAH', name: 'Ijarah', family: 'IJARAH', category: 'DIRECT',
+    code: 'IJARAH', name: 'Ijarah', descriptor: 'Asset Financing', family: 'IJARAH', category: 'DIRECT',
     summary: 'Lease. The Bank owns the asset and leases it to the customer for an agreed rental. Ijarah Muntahia Bittamleek transfers ownership at the end.',
     shariahStructure: 'The Bank retains ownership and the risks of ownership (including Takaful) throughout the lease. Rentals are payable only for usufruct actually delivered.',
     currencies: ['NGN'], minAmountMinor: N(5_000_000), maxAmountMinor: N(10_000_000_000), minTenorMonths: 12, maxTenorMonths: 84,
@@ -39,8 +39,8 @@ const products: Omit<BaselineItem, 'kind'>[] = [
       field('ownershipTransfer', 'Ownership transfers to customer at end of lease (Ijarah Muntahia Bittamleek)', 'boolean', false),
       field('usefulLifeYears', 'Estimated useful life (years)', 'number', false, { min: 1, max: 50 }),
     ] } },
-  { key: 'ISTISNA', title: "Istisna'a", payload: {
-    code: 'ISTISNA', name: "Istisna'a", family: 'ISTISNA', category: 'DIRECT',
+  { key: 'ISTISNA', title: 'Istisna', payload: {
+    code: 'ISTISNA', name: 'Istisna', descriptor: 'Construction or Project Financing', family: 'ISTISNA', category: 'DIRECT',
     summary: 'Manufacturing or construction contract. The Bank commissions an asset to specification and sells it to the customer on completion.',
     shariahStructure: 'Specification, price and delivery date are fixed at contract. Payment may be staged against construction milestones. A parallel Istisna may be executed with the contractor.',
     currencies: ['NGN'], minAmountMinor: N(20_000_000), maxAmountMinor: N(20_000_000_000), minTenorMonths: 6, maxTenorMonths: 84,
@@ -68,7 +68,7 @@ const products: Omit<BaselineItem, 'kind'>[] = [
       field('deliveryDate', 'Delivery date', 'date', true),
     ] } },
   { key: 'QARD', title: 'Qard', payload: {
-    code: 'QARD', name: 'Qard (Qard Hassan)', family: 'QARD', category: 'DIRECT',
+    code: 'QARD', name: 'Qard', descriptor: 'Benevolent Financing', family: 'QARD', category: 'DIRECT',
     summary: 'Benevolent facility with no profit. Only the principal is repaid; an actual-cost service charge may apply.',
     shariahStructure: 'No return may be charged on a Qard. Any administrative charge must reflect actual cost and cannot be linked to amount or tenor.',
     currencies: ['NGN'], minAmountMinor: N(1_000_000), maxAmountMinor: N(500_000_000), minTenorMonths: 1, maxTenorMonths: 24,
@@ -76,7 +76,7 @@ const products: Omit<BaselineItem, 'kind'>[] = [
     requiresSupplier: false, requiresAsset: false, requiresProject: false, customerSelectable: false,
     fields: [field('justification', 'Basis for Qard request', 'textarea', true, { maxLength: 1500 })] } },
   { key: 'MUSHARAKA', title: 'Musharaka', payload: {
-    code: 'MUSHARAKA', name: 'Musharaka (including Diminishing Musharaka)', family: 'MUSHARAKA', category: 'DIRECT',
+    code: 'MUSHARAKA', name: 'Musharaka', descriptor: 'Partnership Investment Facility', family: 'MUSHARAKA', category: 'DIRECT',
     summary: 'Partnership. The Bank and customer contribute capital to a venture; profit is shared by agreed ratio and losses by capital contribution.',
     shariahStructure: 'Profit-sharing ratio is agreed upfront; losses follow capital contribution. In Diminishing Musharaka the customer progressively buys the Bank’s units.',
     currencies: ['NGN'], minAmountMinor: N(50_000_000), maxAmountMinor: N(20_000_000_000), minTenorMonths: 12, maxTenorMonths: 120,
@@ -89,7 +89,7 @@ const products: Omit<BaselineItem, 'kind'>[] = [
       field('diminishing', 'Diminishing Musharaka (customer buys out Bank units)', 'boolean', false),
     ] } },
   { key: 'MUDARABA', title: 'Mudaraba', payload: {
-    code: 'MUDARABA', name: 'Mudaraba', family: 'MUDARABA', category: 'INVESTMENT',
+    code: 'MUDARABA', name: 'Mudaraba', descriptor: 'Profit Sharing Investment', family: 'MUDARABA', category: 'INVESTMENT',
     summary: 'Investment partnership. The Bank provides capital (Rabb-ul-Maal); the customer provides management (Mudarib). Profit is shared by agreed ratio.',
     shariahStructure: 'Capital losses are borne by the capital provider unless caused by the Mudarib’s negligence or breach. The Mudarib cannot guarantee capital or profit.',
     currencies: ['NGN'], minAmountMinor: N(50_000_000), maxAmountMinor: N(10_000_000_000), minTenorMonths: 6, maxTenorMonths: 60,
@@ -105,7 +105,7 @@ const products: Omit<BaselineItem, 'kind'>[] = [
     requiresSupplier: false, requiresAsset: false, requiresProject: true, customerSelectable: false,
     fields: [field('investmentThesis', 'Investment thesis', 'textarea', true, { maxLength: 3000 }), field('exitStrategy', 'Exit strategy', 'textarea', true, { maxLength: 1500 })] } },
   { key: 'COMMON_STOCK', title: 'Common Stock', payload: {
-    code: 'COMMON_STOCK', name: 'Common Stock (Shariah-screened equity)', family: 'COMMON_STOCK', category: 'INVESTMENT',
+    code: 'COMMON_STOCK', name: 'Common Stock', descriptor: 'Shariah-screened equity', family: 'COMMON_STOCK', category: 'INVESTMENT',
     summary: 'Investment in ordinary shares of a Shariah-screened company.',
     shariahStructure: 'The company must pass business-activity and financial-ratio Shariah screens; any impure income is purified.',
     currencies: ['NGN'], minAmountMinor: N(50_000_000), maxAmountMinor: N(5_000_000_000), minTenorMonths: 12, maxTenorMonths: 120,
@@ -113,7 +113,7 @@ const products: Omit<BaselineItem, 'kind'>[] = [
     requiresSupplier: false, requiresAsset: false, requiresProject: false, customerSelectable: false,
     fields: [field('issuer', 'Issuer', 'text', true), field('shareCount', 'Number of shares', 'number', true, { min: 1 })] } },
   { key: 'WAKALAH_BIL_ISTITHMAR', title: 'Wakalah Bil Istithmar', payload: {
-    code: 'WAKALAH_BIL_ISTITHMAR', name: 'Wakalah Bil Istithmar', family: 'WAKALAH_BIL_ISTITHMAR', category: 'INVESTMENT',
+    code: 'WAKALAH_BIL_ISTITHMAR', name: 'Wakalah Bil Istithmar', descriptor: 'Agency Investment Facility', family: 'WAKALAH_BIL_ISTITHMAR', category: 'INVESTMENT',
     summary: 'Investment agency. The customer invests the Bank’s funds as agent (Wakeel) for an agreed fee and an expected profit.',
     shariahStructure: 'The agent earns a fixed or percentage agency fee; profit above the expected rate may be retained by the agent as an incentive. Capital is not guaranteed except for negligence.',
     currencies: ['NGN', 'USD'], minAmountMinor: N(50_000_000), maxAmountMinor: N(20_000_000_000), minTenorMonths: 3, maxTenorMonths: 60,
@@ -139,7 +139,7 @@ const contingent = (code: string, name: string, type: string, summary: string): 
 });
 products.push(
   contingent('APG', 'Advance Payment Guarantee', 'APG', 'Guarantees repayment of an advance payment made by the beneficiary to the customer under a contract.'),
-  contingent('BANK_GUARANTEE', 'Bank Guarantee (Kafalah)', 'BANK_GUARANTEE', 'General Kafalah guarantee issued in favour of a named beneficiary.'),
+  contingent('BANK_GUARANTEE', 'Bank Guarantee', 'BANK_GUARANTEE', 'General Kafalah guarantee issued in favour of a named beneficiary.'),
   contingent('BID_BOND', 'Bid Bond', 'BID_BOND', 'Supports the customer’s tender submission.'),
   contingent('PERFORMANCE_BOND', 'Performance Bond', 'PERFORMANCE_BOND', 'Guarantees the customer’s performance of contract obligations.'),
   contingent('CUSTOM_BOND', 'Customs Bond', 'CUSTOM_BOND', 'Guarantees duties payable to the Nigeria Customs Service.'),
@@ -309,90 +309,137 @@ const col = (code: string, name: string, category: string, haircut: number, cash
   kind: 'collateral_type', key: code, title: name,
   payload: { code, name, category, defaultHaircutPct: haircut, cashEquivalent: cash, shariahCompliant: true, requiresValuation: valuation, requiresPerfection: perfection, countsTowardsCoverage: counts, ...(validity ? { valuationValidityMonths: validity } : {}) },
 });
+// SWR §4: collateral types aligned with Islamic banking principles and the Bank's FIPG (13 types).
 const collateralTypes: BaselineItem[] = [
   col('LEGAL_MORTGAGE', 'Legal Mortgage', 'REAL_ESTATE', 30, false, true, true, true, 36),
   col('EQUITABLE_MORTGAGE', 'Equitable Mortgage', 'REAL_ESTATE', 40, false, true, true, true, 36),
-  col('CASH_DEPOSIT', 'Cash deposit under lien (Mudarabah / Wadiah)', 'CASH', 0, true, false, true),
-  col('SUKUK', 'Sukuk (FGN / corporate)', 'SECURITIES', 10, false, true, true, true, 3),
-  col('SHARIAH_EQUITIES', 'Shariah-compliant listed equities', 'SECURITIES', 40, false, true, true, true, 1),
-  col('ISLAMIC_CIS', 'Islamic collective investment scheme units', 'SECURITIES', 25, false, true, true, true, 3),
-  col('QUALIFYING_SHARES', 'Qualifying shares (unlisted)', 'SECURITIES', 50, false, true, true, true, 12),
-  col('KAFALAH_BANK', 'Kafalah / guarantee from an acceptable bank', 'GUARANTEE', 0, false, false, true),
-  col('KAFALAH_CORPORATE', 'Corporate or personal guarantee (Kafalah)', 'GUARANTEE', 100, false, false, true, false),
-  col('CHARGE_ON_ASSETS', 'Charge on assets (all-asset debenture)', 'CHARGE', 50, false, true, true, true, 24),
+  col('CASH_DEPOSIT', 'Cash deposit — unrestricted profit-sharing investment account or cash deposit with the Bank', 'CASH', 0, true, false, true),
+  col('SUKUK', 'Sukuk (rated or unrated)', 'SECURITIES', 10, false, true, true, true, 3),
+  col('SHARIAH_EQUITIES', 'Shariah-compliant equities and units in Islamic collective investment schemes', 'SECURITIES', 40, false, true, true, true, 1),
+  col('QUOTED_BLUE_CHIP_SHARES', 'Share certificates of quoted blue-chip companies whose businesses are Shariah-compliant', 'SECURITIES', 35, false, true, true, true, 1),
+  col('DEBENTURE', 'Debenture', 'CHARGE', 50, false, true, true, true, 24),
+  col('BANKERS_ACCEPTANCE', 'Bankers’ Acceptance', 'INSTRUMENT', 10, false, false, true),
+  col('KAFALAH', 'Guarantees (Kafalah)', 'GUARANTEE', 100, false, false, true, false),
+  col('CHARGE_ON_ASSETS', 'Charge on assets (fixed and/or floating)', 'CHARGE', 50, false, true, true, true, 24),
   col('NEGATIVE_PLEDGE', 'Negative pledge', 'NEGATIVE_PLEDGE', 100, false, false, false, false),
   col('LEASED_ASSET', 'Leased asset (Bank title under Ijarah)', 'LEASED_ASSET', 30, false, true, false, true, 12),
-  col('ASSIGNMENT_OF_RECEIVABLES', 'Assignment / domiciliation of receivables', 'RECEIVABLES', 40, false, false, true),
+  col('ASSIGNMENT_OF_RECEIVABLES', 'Assignment of receivables', 'RECEIVABLES', 40, false, false, true),
 ];
+
 
 // ---------------------------------------------------------------------------
 // Workflow, authority, committees, SLA
 // ---------------------------------------------------------------------------
 const reviewActions = ['RECOMMEND', 'DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT'];
-const assessment = { type: 'PARALLEL', key: 'ASSESSMENT', name: 'Credit analysis & E&S review', branches: [
-  { key: 'CREDIT_ANALYSIS', name: 'Credit analysis', role: 'CREDIT_ANALYST', taskType: 'ANALYSIS', actions: ['COMPLETE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'CREDIT_ANALYSIS', prerequisites: ['BUREAU', 'EXPOSURE', 'FINANCIAL_ANALYSIS', 'STATEMENT_ANALYSIS', 'COLLATERAL', 'RISK_RATING', 'RARORAC', 'CREDIT_MEMO'] },
-  { key: 'ES_REVIEW', name: 'E&S review', role: 'ES_ANALYST', taskType: 'ANALYSIS', when: { fact: 'risk.esRequired', op: 'truthy' }, actions: ['COMPLETE', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'ES_REVIEW', prerequisites: ['ES_ASSESSMENT'] },
+// SWR §7 / PRD: a "not recommended" from the RM, the E&S analyst or the credit analyst is recorded and the request still moves on;
+// a decline by the TL, RBE or DH ends the workflow.
+const assessment = { type: 'PARALLEL', key: 'ASSESSMENT', name: 'Credit analysis & E&S review (concurrent)', branches: [
+  { key: 'CREDIT_ANALYSIS', name: 'Credit analysis', role: 'CREDIT_ANALYST', taskType: 'ANALYSIS', actions: ['COMPLETE', 'DECLINE', 'RETURN', 'REQUEST_CLARIFICATION', 'COMMENT'], onDecline: 'CONTINUE', slaPolicyKey: 'CREDIT_ANALYSIS', prerequisites: ['BUREAU', 'EXPOSURE', 'FINANCIAL_ANALYSIS', 'STATEMENT_ANALYSIS', 'COLLATERAL', 'RISK_RATING', 'RARORAC', 'CREDIT_MEMO'] },
+  { key: 'ES_REVIEW', name: 'E&S risk review', role: 'ES_ANALYST', taskType: 'ANALYSIS', when: { fact: 'risk.esRequired', op: 'truthy' }, actions: ['COMPLETE', 'DECLINE', 'REQUEST_CLARIFICATION', 'COMMENT'], onDecline: 'CONTINUE', slaPolicyKey: 'ES_REVIEW', prerequisites: ['ES_ASSESSMENT'] },
 ] };
+const businessReview = [
+  { type: 'TASK', key: 'BM_REVIEW', name: 'Team Lead review', role: 'BM', taskType: 'REVIEW', actions: reviewActions, slaPolicyKey: 'BM_REVIEW', returnTargets: ['PREVIOUS', 'RM', 'CUSTOMER'] },
+  { type: 'TASK', key: 'RBE_REVIEW', name: 'Regional Business Executive review', role: 'RBE', taskType: 'REVIEW', actions: reviewActions, slaPolicyKey: 'RBE_REVIEW', returnTargets: ['PREVIOUS', 'RM'] },
+  { type: 'TASK', key: 'DH_REVIEW', name: 'Divisional Head review', role: 'DH', taskType: 'REVIEW', actions: reviewActions, slaPolicyKey: 'DH_REVIEW', returnTargets: ['PREVIOUS', 'RM'] },
+];
 const creditTail = [
   assessment,
-  { type: 'TASK', key: 'CTL_REVIEW', name: 'Credit Team Lead review', role: 'CREDIT_TEAM_LEAD', taskType: 'REVIEW', actions: reviewActions, slaPolicyKey: 'CTL_REVIEW', returnTargets: ['PREVIOUS', 'RM'] },
-  { type: 'TASK', key: 'GH_CR_REVIEW', name: 'Group Head, Credit Risk review', role: 'GH_CREDIT_RISK', taskType: 'REVIEW', actions: reviewActions, slaPolicyKey: 'GH_CR_REVIEW', returnTargets: ['PREVIOUS', 'RM'] },
-  { type: 'APPROVAL_CHAIN', key: 'APPROVAL', name: 'Approval', authorityKey: 'STANDARD' },
+  { type: 'TASK', key: 'CTL_REVIEW', name: 'Team Lead, Credit Analysis review', role: 'CREDIT_TEAM_LEAD', taskType: 'REVIEW', actions: reviewActions, slaPolicyKey: 'CTL_REVIEW', returnTargets: ['PREVIOUS', 'RM'] },
+  // GH Credit Risk (HCR) onwards: the authority matrix for the workflow type decides who approves.
+  { type: 'APPROVAL_CHAIN', key: 'APPROVAL', name: 'Approval' },
 ];
 const workflows: BaselineItem[] = [
   { kind: 'workflow_definition', key: 'CREDIT_CUSTOMER_INITIATED', title: 'Credit approval — customer-initiated', payload: {
     kind: 'CREDIT_APPROVAL', appliesWhen: { fact: 'facility.origin', op: 'eq', value: 'CUSTOMER' }, priority: 10,
     stages: [
-      { type: 'TASK', key: 'RM_REVIEW', name: 'Relationship Manager review', role: 'RM', taskType: 'REVIEW', assignTo: 'RELATIONSHIP_MANAGER', actions: reviewActions, slaPolicyKey: 'RM_REVIEW', returnTargets: ['CUSTOMER'], prerequisites: ['DOCUMENTS_VERIFIED'] },
-      { type: 'TASK', key: 'BM_REVIEW', name: 'Business Manager review', role: 'BM', taskType: 'REVIEW', actions: reviewActions, slaPolicyKey: 'BM_REVIEW', returnTargets: ['PREVIOUS', 'CUSTOMER'] },
+      { type: 'TASK', key: 'RM_REVIEW', name: 'Relationship Manager review', role: 'RM', taskType: 'REVIEW', assignTo: 'RELATIONSHIP_MANAGER', actions: reviewActions, onDecline: 'CONTINUE', slaPolicyKey: 'RM_REVIEW', returnTargets: ['CUSTOMER'], prerequisites: ['DOCUMENTS_VERIFIED'] },
+      ...businessReview,
       ...creditTail,
     ], declineBehaviour: 'TERMINATE', resumeAfterReturn: 'RETURNING_STAGE' } },
   { kind: 'workflow_definition', key: 'CREDIT_RM_INITIATED', title: 'Credit approval — RM-initiated', payload: {
     kind: 'CREDIT_APPROVAL', appliesWhen: { fact: 'facility.origin', op: 'eq', value: 'RM' }, priority: 10,
     stages: [
-      { type: 'TASK', key: 'BM_REVIEW', name: 'Business Manager review', role: 'BM', taskType: 'REVIEW', actions: reviewActions, slaPolicyKey: 'BM_REVIEW', returnTargets: ['RM'] },
-      { type: 'TASK', key: 'RBE_REVIEW', name: 'Regional Business Executive review', role: 'RBE', taskType: 'REVIEW', actions: reviewActions, slaPolicyKey: 'RBE_REVIEW', returnTargets: ['PREVIOUS', 'RM'] },
-      { type: 'TASK', key: 'DH_REVIEW', name: 'Directorate Head review', role: 'DH', taskType: 'REVIEW', actions: reviewActions, slaPolicyKey: 'DH_REVIEW', returnTargets: ['PREVIOUS', 'RM'] },
+      { ...businessReview[0], returnTargets: ['RM'] },
+      ...businessReview.slice(1),
       ...creditTail,
     ], declineBehaviour: 'TERMINATE', resumeAfterReturn: 'RETURNING_STAGE' } },
-  { kind: 'workflow_definition', key: 'FULFILMENT_STANDARD', title: 'Post-acceptance fulfilment', payload: {
+  { kind: 'workflow_definition', key: 'FULFILMENT_STANDARD', title: 'Post-approval review & documentation', payload: {
     kind: 'FULFILMENT', appliesWhen: always, priority: 10,
     stages: [
       { type: 'PARALLEL', key: 'DOCUMENTATION', name: 'Legal & Shariah documentation', branches: [
         { key: 'LEGAL', name: 'Legal documentation & perfection', role: 'LEGAL', taskType: 'FULFILMENT', actions: ['COMPLETE', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'LEGAL_REVIEW', prerequisites: ['CONDITIONS_LEGAL'] },
         { key: 'SHARIAH', name: 'Shariah review & sign-off', role: 'SHARIAH', taskType: 'FULFILMENT', actions: ['COMPLETE', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'SHARIAH_REVIEW', prerequisites: ['CONDITIONS_SHARIAH'] },
       ] },
-      { type: 'TASK', key: 'CREDIT_OPS', name: 'Credit Operations — conditions & booking', role: 'CREDIT_OPS', taskType: 'FULFILMENT', actions: ['COMPLETE', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'CREDIT_OPS_REVIEW', prerequisites: ['CONDITIONS_ALL_MANDATORY'] },
+      { type: 'TASK', key: 'CREDIT_OPS', name: 'Credit Operations — conditions & disbursement set-up', role: 'CREDIT_OPS', taskType: 'FULFILMENT', actions: ['COMPLETE', 'REQUEST_CLARIFICATION', 'COMMENT'], slaPolicyKey: 'CREDIT_OPS_REVIEW', prerequisites: ['CONDITIONS_ALL_MANDATORY'] },
     ], declineBehaviour: 'TERMINATE', resumeAfterReturn: 'RETURNING_STAGE' } },
 ];
-const authority: BaselineItem = { kind: 'approval_authority', key: 'STANDARD', title: 'Credit approval authority matrix', payload: {
-  levels: [
-    { code: 'CRO', name: 'Chief Risk Officer', kind: 'INDIVIDUAL', role: 'CRO', limitMinor: N(100_000_000), cashBackedLimitMinor: N(250_000_000), slaPolicyKey: 'APPROVAL_INDIVIDUAL' },
-    { code: 'ED', name: 'Executive Director', kind: 'INDIVIDUAL', role: 'ED', limitMinor: N(250_000_000), cashBackedLimitMinor: N(500_000_000), slaPolicyKey: 'APPROVAL_INDIVIDUAL' },
-    { code: 'MD', name: 'Managing Director', kind: 'INDIVIDUAL', role: 'MD', limitMinor: N(500_000_000), cashBackedLimitMinor: N(1_000_000_000), slaPolicyKey: 'APPROVAL_INDIVIDUAL' },
-    { code: 'MIC', name: 'Management Investment Committee', kind: 'COMMITTEE', committeeKey: 'MIC', limitMinor: N(2_000_000_000), slaPolicyKey: 'APPROVAL_COMMITTEE' },
-    { code: 'BCC', name: 'Board Credit Committee', kind: 'COMMITTEE', committeeKey: 'BCC', limitMinor: N(5_000_000_000), slaPolicyKey: 'APPROVAL_COMMITTEE' },
-    { code: 'BOARD', name: 'Board of Directors', kind: 'COMMITTEE', committeeKey: 'BOARD', limitMinor: 9_000_000_000_000_000, slaPolicyKey: 'APPROVAL_COMMITTEE' },
-  ],
-  overrides: [
-    { code: 'INSIDER_RELATED', reason: 'Insider-related facilities are approved by the Board irrespective of amount.', when: { fact: 'customer.isInsider', op: 'truthy' }, finalLevel: 'BOARD' },
-    { code: 'PEP', reason: 'PEP-linked facilities follow the PEP route (minimum MD approval) regardless of obligor rating.', when: { fact: 'customer.isPep', op: 'truthy' }, minimumFinalLevel: 'MD' },
-    { code: 'SOL_BREACH', reason: 'Aggregate exposure above the Single Obligor Limit requires Board approval.', when: { fact: 'risk.solBreached', op: 'truthy' }, finalLevel: 'BOARD' },
-    { code: 'PRICING_EXCEPTION', reason: 'RARORAC below threshold — pricing exception requires at least ED approval.', when: { fact: 'risk.raroracWithinThreshold', op: 'falsy' }, minimumFinalLevel: 'ED' },
-  ],
-} };
-const committees: BaselineItem[] = [
-  { kind: 'committee', key: 'MIC', title: 'Management Investment Committee', payload: { code: 'MIC', name: 'Management Investment Committee', memberRoles: ['MD', 'ED', 'CRO', 'MIC_MEMBER'], quorum: 3, requiredApprovals: 3, requiredRoles: ['MD'], voting: 'PARALLEL', serialOrder: [] } },
-  { kind: 'committee', key: 'BCC', title: 'Board Credit Committee', payload: { code: 'BCC', name: 'Board Credit Committee', memberRoles: ['BCC_MEMBER'], quorum: 3, requiredApprovals: 3, requiredRoles: [], voting: 'PARALLEL', serialOrder: [] } },
-  { kind: 'committee', key: 'BOARD', title: 'Board of Directors', payload: { code: 'BOARD', name: 'Board of Directors', memberRoles: ['BOARD_MEMBER'], quorum: 4, requiredApprovals: 3, requiredRoles: [], voting: 'PARALLEL', serialOrder: [] } },
+
+// ---------------------------------------------------------------------------
+// Approval authority — PRD approval grid per workflow type (approved line direct, cash-backed direct,
+// cash-backed contingent, non-cash-backed contingent). Combination approvals are modelled as levels that
+// join above an amount: e.g. "ED + CRO + HCR up to ₦150m" — the CRO joins above ₦100m, the ED above ₦50m.
+// Order follows the SWR route: GH Credit Risk (HCR) – CRO – ED – MD – MIC – BRMC – Board.
+// ---------------------------------------------------------------------------
+const MAX = 9_000_000_000_000_000;
+const lvl = (code: string, name: string, kind: 'INDIVIDUAL' | 'COMMITTEE', who: string, limit: number, above: number | null, extra: Record<string, unknown> = {}) => ({
+  code, name, kind, ...(kind === 'INDIVIDUAL' ? { role: who } : { committeeKey: who }), limitMinor: limit,
+  ...(above !== null ? { participatesAboveMinor: above } : {}), slaPolicyKey: kind === 'INDIVIDUAL' ? 'APPROVAL_INDIVIDUAL' : 'APPROVAL_COMMITTEE', ...extra,
+});
+/**
+ * Combination limits (₦) from the PRD grid: hcr = HCR (with RBE/TL and DH) limit, above which the Line ED joins;
+ * ed = ED + HCR limit, above which the CRO joins; cro = ED + CRO + HCR limit, above which a second ED and the MD join;
+ * md = MD + CRO + HCR limit, above which MIC joins; mic = MIC limit (BRMC joins above); brmc = BRMC limit; board = Board joins above.
+ * null: the level is reached only through an override (e.g. insider-related).
+ */
+const ladder = (t: { hcr: number; ed: number; cro: number; md: number; mic: number; brmc: number | null; board: number | null }) => [
+  lvl('HCR', 'Group Head, Credit Risk (HCR)', 'INDIVIDUAL', 'GH_CREDIT_RISK', N(t.hcr), null),
+  lvl('CRO', 'Chief Risk Officer', 'INDIVIDUAL', 'CRO', N(t.cro), N(t.ed), { canBeFinal: false }),
+  lvl('ED', 'Line Executive Director', 'INDIVIDUAL', 'ED', N(t.cro), N(t.hcr)),
+  lvl('ED_CONCURRENCE', 'Executive Director (concurrence)', 'INDIVIDUAL', 'ED', N(t.md), N(t.cro), { canBeFinal: false }),
+  lvl('MD', 'Managing Director', 'INDIVIDUAL', 'MD', N(t.md), N(t.cro)),
+  lvl('MIC', 'Management Investment Committee', 'COMMITTEE', 'MIC', t.brmc === null ? MAX : N(t.mic), N(t.md)),
+  lvl('BRMC', 'Board Risk Management Committee', 'COMMITTEE', 'BRMC', t.board === null ? MAX : N(t.brmc ?? 0), t.brmc === null ? null : N(t.mic), t.brmc === null ? { overrideOnly: true } : {}),
+  lvl('BOARD', 'Board of Directors', 'COMMITTEE', 'BOARD', MAX, t.board === null ? null : N(t.board), t.board === null ? { overrideOnly: true } : {}),
 ];
-const esc = [{ afterBreachHours: 24, notifyRoles: ['CRO'], label: 'Prolonged breach — CRO' }, { afterBreachHours: 72, notifyRoles: ['MD', 'ED'], label: 'Extended breach — EXCO' }];
+const overrides = [
+  { code: 'INSIDER_RELATED', reason: 'Insider-related: final approval by the Board of Directors irrespective of amount (PRD).', when: { fact: 'customer.isInsider', op: 'truthy' }, finalLevel: 'BOARD', fullChain: true },
+  { code: 'PEP', reason: 'A principal officer or promoter is a PEP: standard workflow irrespective of obligor rating, final approval by the Board (PRD).', when: { fact: 'customer.isPep', op: 'truthy' }, finalLevel: 'BOARD', fullChain: true },
+  { code: 'SOL_BREACH', reason: 'Aggregate exposure above the Single Obligor Limit requires Board approval.', when: { fact: 'risk.solBreached', op: 'truthy' }, finalLevel: 'BOARD', fullChain: true },
+  { code: 'PRICING_EXCEPTION', reason: 'RARORAC below threshold — pricing exception requires at least Line ED approval.', when: { fact: 'risk.raroracWithinThreshold', op: 'falsy' }, minimumFinalLevel: 'ED' },
+];
+const isContingent = { fact: 'facility.category', op: 'eq', value: 'CONTINGENT' };
+const notContingent = { fact: 'facility.category', op: 'ne', value: 'CONTINGENT' };
+const cashBacked = { fact: 'facility.isCashBacked', op: 'truthy' };
+const notCashBacked = { not: cashBacked };
+const standardLadder = { hcr: 50_000_000, ed: 100_000_000, cro: 150_000_000, md: 500_000_000, mic: 750_000_000, brmc: 1_500_000_000, board: 1_500_000_000 };
+const cashLadder = { hcr: 1_000_000_000, ed: 1_500_000_000, cro: 2_000_000_000, md: 2_500_000_000, mic: 2_500_000_000, brmc: null, board: null };
+const matrix = (key: string, title: string, workflowType: string, appliesWhen: unknown, priority: number, t: typeof standardLadder | typeof cashLadder): BaselineItem => ({
+  kind: 'approval_authority', key, title, payload: { workflowType, appliesWhen, priority, amountBasis: 'AGGREGATE_EXPOSURE', levels: ladder(t as any), overrides },
+});
+const authorities: BaselineItem[] = [
+  matrix('APPROVED_LINE_DIRECT', 'Approval authority — approved line / direct facilities', 'APPROVED_LINE_DIRECT', { all: [notContingent, notCashBacked] }, 10, standardLadder),
+  matrix('CASH_BACKED_DIRECT', 'Approval authority — cash-backed direct facilities', 'CASH_BACKED_DIRECT', { all: [notContingent, cashBacked] }, 20, cashLadder),
+  matrix('CASH_BACKED_CONTINGENT', 'Approval authority — cash-backed contingent facilities', 'CASH_BACKED_CONTINGENT', { all: [isContingent, cashBacked] }, 20, cashLadder),
+  matrix('NON_CASH_BACKED_CONTINGENT', 'Approval authority — non-cash-backed contingent (issuance and release of funds)', 'NON_CASH_BACKED_CONTINGENT', { all: [isContingent, notCashBacked] }, 10, standardLadder),
+];
+const committees: BaselineItem[] = [
+  // PRD: minimum signatures 3 NEDs + 2 EDs including the MD; Credit Operations may record the decision from the signed minutes.
+  { kind: 'committee', key: 'MIC', title: 'Management Investment Committee', payload: { code: 'MIC', name: 'Management Investment Committee', memberRoles: ['MD', 'ED', 'NED'], quorum: 5, requiredApprovals: 5, requiredRoles: ['MD'], requiredRoleCounts: { NED: 3, 'ED|MD': 2 }, voting: 'PARALLEL', serialOrder: [], recordedByRole: 'CREDIT_OPS' } },
+  // PRD: minimum signatures 1 Chairman + 2 NEDs. SWR names the committee BRMC (PRD: BCC).
+  { kind: 'committee', key: 'BRMC', title: 'Board Risk Management Committee', payload: { code: 'BRMC', name: 'Board Risk Management Committee', memberRoles: ['BRMC_CHAIR', 'BRMC_MEMBER'], quorum: 3, requiredApprovals: 3, requiredRoles: ['BRMC_CHAIR'], requiredRoleCounts: { NED: 2 }, voting: 'PARALLEL', serialOrder: [], recordedByRole: 'CREDIT_OPS' } },
+  // PRD: minimum signature — Board Chairman.
+  { kind: 'committee', key: 'BOARD', title: 'Board of Directors', payload: { code: 'BOARD', name: 'Board of Directors', memberRoles: ['BOARD_CHAIR', 'BOARD_MEMBER'], quorum: 1, requiredApprovals: 1, requiredRoles: ['BOARD_CHAIR'], voting: 'PARALLEL', serialOrder: [], recordedByRole: 'CREDIT_OPS' } },
+];
+// PRD: escalation to the CRO after 2 days of breach and to EXCO (MD and EDs) after 5 days. Breach hours are elapsed hours.
+const esc = [{ afterBreachHours: 48, notifyRoles: ['CRO'], label: 'Breach over 2 days — CRO' }, { afterBreachHours: 120, notifyRoles: ['MD', 'ED'], label: 'Breach over 5 days — EXCO' }];
 const sla = (key: string, hours: number, title: string, calendar = 'BUSINESS'): BaselineItem => ({ kind: 'sla_policy', key, title, payload: { durationHours: hours, calendar, warnAtPct: 75, pauseOnClarification: false, escalations: esc } });
+// SWR §7 timelines (business hours): RM 12h, TL 3h, RBE 3h, DH 3h, credit & E&S analysts 24h, TL credit analysis 12h,
+// GH Credit Risk 12h, CRO/ED/MD/Board 48h, post-approval review & documentation 48h (Legal ∥ Shariah 24h, then Credit Ops 24h).
 const slas: BaselineItem[] = [
-  sla('RM_REVIEW', 16, 'RM review'), sla('BM_REVIEW', 16, 'BM review'), sla('RBE_REVIEW', 16, 'RBE review'), sla('DH_REVIEW', 16, 'DH review'),
-  sla('CREDIT_ANALYSIS', 40, 'Credit analysis'), sla('ES_REVIEW', 40, 'E&S review'), sla('CTL_REVIEW', 16, 'Credit Team Lead review'), sla('GH_CR_REVIEW', 16, 'GH Credit Risk review'),
-  sla('APPROVAL_INDIVIDUAL', 16, 'Individual approval'), sla('APPROVAL_COMMITTEE', 40, 'Committee approval'),
-  sla('LEGAL_REVIEW', 24, 'Legal documentation'), sla('SHARIAH_REVIEW', 24, 'Shariah review'), sla('CREDIT_OPS_REVIEW', 16, 'Credit operations'),
+  sla('RM_REVIEW', 12, 'RM review'), sla('BM_REVIEW', 3, 'Team Lead review'), sla('RBE_REVIEW', 3, 'RBE review'), sla('DH_REVIEW', 3, 'DH review'),
+  sla('CREDIT_ANALYSIS', 24, 'Credit analysis'), sla('ES_REVIEW', 24, 'E&S review'), sla('CTL_REVIEW', 12, 'Team Lead, Credit Analysis review'), sla('GH_CR_REVIEW', 12, 'GH Credit Risk review'),
+  sla('APPROVAL_INDIVIDUAL', 48, 'Individual approval'), sla('APPROVAL_COMMITTEE', 48, 'Committee approval'),
+  sla('LEGAL_REVIEW', 24, 'Legal documentation'), sla('SHARIAH_REVIEW', 24, 'Shariah review'), sla('CREDIT_OPS_REVIEW', 24, 'Credit operations'),
   sla('OFFER_CHECK', 8, 'Offer letter check'), sla('NEGOTIATION_REVIEW', 16, 'Negotiation review'), sla('CUSTOMER_REWORK', 120, 'Customer rework', 'CALENDAR'),
 ];
 const calendar: BaselineItem = { kind: 'business_calendar', key: 'NG_HEAD_OFFICE', title: 'Nigeria — head office business calendar', payload: {
@@ -406,17 +453,44 @@ const calendar: BaselineItem = { kind: 'business_calendar', key: 'NG_HEAD_OFFICE
 // Policies
 // ---------------------------------------------------------------------------
 const policies: BaselineItem[] = [
-  { kind: 'policy_cash_backed', key: 'STANDARD', title: 'Cash-backed classification', payload: { minCashCoveragePct: 100, eligibleTypeCodes: ['CASH_DEPOSIT', 'KAFALAH_BANK'] } },
+  // PRD: cash (incl. lien on APG cash proceeds) must be at least 110% of the facility amount in NGN. Treasury bills are excluded (see D-25).
+  { kind: 'policy_cash_backed', key: 'STANDARD', title: 'Cash-backed classification', payload: { minCashCoveragePct: 110, eligibleTypeCodes: ['CASH_DEPOSIT'] } },
   { kind: 'sol_limit', key: 'STANDARD', title: 'Single Obligor Limit', payload: { singleObligorLimitMinor: N(5_000_000_000), basisDescription: 'DEFAULT — set to the CBN single-obligor percentage of the Bank’s shareholders’ funds as advised by Finance (to be confirmed).', contingentConversionPct: 50, sectorLimitsMinor: { MANUFACTURING: N(40_000_000_000), OIL_GAS: N(25_000_000_000), REAL_ESTATE: N(15_000_000_000) } } },
-  { kind: 'es_trigger', key: 'STANDARD', title: 'E&S assessment trigger', payload: {
-    description: 'E&S review is required for facilities of ₦100m and above in environmentally or socially sensitive sectors.',
-    triggerWhen: { all: [{ fact: 'facility.amountNgn', op: 'gte', value: 100_000_000 }, { fact: 'customer.sector', op: 'in', value: ['OIL_GAS', 'MINING', 'AVIATION', 'HEALTHCARE', 'EDUCATION', 'AGRICULTURE', 'REAL_ESTATE', 'TRANSPORT', 'MANUFACTURING', 'POWER'] }] },
+  // SWR §7 & §10: requests of ₦100m and above in HEART (Health, Education, Agriculture, Renewable Energy, Transport),
+  // Oil & Gas, Mining and Aviation are routed for E&S review; questions follow the Bank's E&S Risk Checklist Form (IFC Performance Standards).
+  { kind: 'es_trigger', key: 'STANDARD', title: 'E&S assessment trigger and checklist', payload: {
+    description: 'E&S review is required for requests of ₦100m and above in the HEART sectors (Health, Education, Agriculture, Renewable Energy, Transport), Oil & Gas, Mining and Aviation.',
+    triggerWhen: { all: [{ fact: 'facility.amountNgn', op: 'gte', value: 100_000_000 }, { fact: 'customer.sector', op: 'in', value: ['HEALTHCARE', 'EDUCATION', 'AGRICULTURE', 'RENEWABLE_ENERGY', 'TRANSPORT', 'OIL_GAS', 'MINING', 'AVIATION'] }] },
     questionnaire: [
-      { code: 'EMISSIONS', text: 'Air emissions, effluent or hazardous waste generated', options: [{ code: 'NONE', label: 'None / negligible', weight: 0 }, { code: 'MANAGED', label: 'Present and managed under permit', weight: 2 }, { code: 'SIGNIFICANT', label: 'Significant or unmanaged', weight: 5 }] },
-      { code: 'LAND', text: 'Land acquisition, resettlement or community impact', options: [{ code: 'NONE', label: 'None', weight: 0 }, { code: 'LIMITED', label: 'Limited and mitigated', weight: 2 }, { code: 'MATERIAL', label: 'Material', weight: 5 }] },
-      { code: 'LABOUR', text: 'Labour, health and safety risk', options: [{ code: 'LOW', label: 'Low', weight: 0 }, { code: 'MEDIUM', label: 'Medium', weight: 2 }, { code: 'HIGH', label: 'High', weight: 4 }] },
-      { code: 'PERMITS', text: 'Environmental permits and EIA status', options: [{ code: 'COMPLETE', label: 'All permits in place', weight: 0 }, { code: 'PENDING', label: 'Pending', weight: 2 }, { code: 'NONE', label: 'Not obtained', weight: 4 }] },
-      { code: 'BIODIVERSITY', text: 'Proximity to protected or sensitive areas', options: [{ code: 'NO', label: 'No', weight: 0 }, { code: 'YES', label: 'Yes', weight: 4 }] },
+      { code: 'PERMITS', text: 'Does the company have the relevant regulatory permits in place?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 3 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'FIRE_SAFETY', text: 'Does the company have a fire safety certificate?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 1 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'ESMS', text: 'Does the company have an Environmental and Social Management System or policy addressing all relevant E&S issues?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 2 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'HSE_POLICY', text: 'Does the company have a Health, Safety and Environment (HSE) policy in line with industry or legislated standards?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 2 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'DISCLOSURE', text: 'Does the company publicly disclose relevant E&S information to stakeholders?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 1 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'INCIDENT_RECORDS', text: 'Does the company keep a detailed record of accidents and incidents?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 1 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'CONTINGENCY_PLAN', text: 'Does the company have a contingency or disaster preparedness plan?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 1 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'STAFF_TRAINING', text: 'Are employees trained on safety procedures, fire drills and emergency response?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 1 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'SUPPLY_CHAIN', text: 'Does the company manage E&S issues with its primary suppliers, contractors and other third parties?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 1 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'HSE_OFFICER', text: 'Does the company have a designated Health, Safety and Environment officer?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 1 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'SOP', text: 'Does the company have documented standard operating procedures?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 1 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'MEDIA_3Y', text: 'Has the company been subject to negative E&S media attention in the last 3 years?', options: [{ code: 'YES', label: 'Yes', weight: 2 }, { code: 'NO', label: 'No', weight: 0 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'FINES_3Y', text: 'Has the company incurred material E&S fines or penalties in the last 3 years?', options: [{ code: 'YES', label: 'Yes', weight: 3 }, { code: 'NO', label: 'No', weight: 0 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'CAMPAIGNS_3Y', text: 'Has the company faced NGO campaigns, lawsuits, strikes or protests on E&S issues in the last 3 years?', options: [{ code: 'YES', label: 'Yes', weight: 3 }, { code: 'NO', label: 'No', weight: 0 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'ESIA', text: 'Is there an Environmental and Social Impact Assessment or audit report for this project or request?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 2 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'CLIMATE_PLAN', text: 'Does the company have climate mitigation or adaptation plans?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 1 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'ADVERSE_ENVIRONMENT', text: 'Does the project adversely affect air, water or soil conditions of local communities or ecosystems?', options: [{ code: 'YES', label: 'Yes', weight: 3 }, { code: 'NO', label: 'No', weight: 0 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'WASTE_PLAN', text: 'Does the company have a waste management plan?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 2 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'GHG_MEASURES', text: 'Does the company have measures to manage greenhouse gas emissions from its operations?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 1 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'PROHIBITED_AGROCHEMICALS', text: 'Does the company use WHO class Ia or Ib pesticides or agrochemicals (prohibited)?', options: [{ code: 'YES', label: 'Yes', weight: 10 }, { code: 'NO', label: 'No', weight: 0 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'CHILD_FORCED_LABOUR', text: 'Does the company employ child or forced labour?', options: [{ code: 'YES', label: 'Yes', weight: 10 }, { code: 'NO', label: 'No', weight: 0 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'GRIEVANCE_MECHANISM', text: 'Does the company have a grievance mechanism for employees and communities?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 2 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'GENDER_EQUALITY', text: 'Do labour and working conditions promote gender equality?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 1 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'DISPLACEMENT', text: 'Does the project involve physical or economic displacement from land acquisition?', options: [{ code: 'YES', label: 'Yes', weight: 4 }, { code: 'NO', label: 'No', weight: 0 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'HABITATS', text: 'Does the project adversely affect natural habitats or ecosystem services?', options: [{ code: 'YES', label: 'Yes', weight: 3 }, { code: 'NO', label: 'No', weight: 0 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'DEFORESTATION_CUTOFF', text: 'Has the company disclosed a deforestation and land-conversion cut-off date of 1 January 2014?', options: [{ code: 'YES', label: 'Yes', weight: 0 }, { code: 'NO', label: 'No', weight: 1 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'ENDANGERED_SPECIES', text: 'Does the project affect endangered species, critical habitats or legally protected areas?', options: [{ code: 'YES', label: 'Yes', weight: 4 }, { code: 'NO', label: 'No', weight: 0 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'INDIGENOUS_PEOPLES', text: 'Does the project adversely affect Indigenous Peoples?', options: [{ code: 'YES', label: 'Yes', weight: 4 }, { code: 'NO', label: 'No', weight: 0 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
+      { code: 'CULTURAL_HERITAGE', text: 'Does the project adversely affect tangible or intangible cultural heritage?', options: [{ code: 'YES', label: 'Yes', weight: 3 }, { code: 'NO', label: 'No', weight: 0 }, { code: 'NA', label: 'Not applicable', weight: 0 }] },
     ],
     categoryThresholds: { A: 12, B: 5 },
   } },
@@ -499,5 +573,17 @@ const conditionTemplates: BaselineItem[] = [
 export const BASELINE: BaselineItem[] = [
   ...products.map((p) => ({ ...p, kind: 'product' as ConfigKind })),
   ...documents, ...fipgRules, financialTemplate, ...ratios, orr, industry, collateralCard, ratingModel, ...collateralTypes,
-  ...workflows, authority, ...committees, ...slas, calendar, ...policies, ...notifications, ...templates, ...conditionTemplates,
+  ...workflows, ...authorities, ...committees, ...slas, calendar, ...policies, ...notifications, ...templates, ...conditionTemplates,
+];
+
+/** Current baseline revision. Bump when the baseline changes so existing environments are reconciled. */
+export const BASELINE_RELEASE = '2026.11-SWR';
+/** Keys removed from the baseline (SWR §4 collateral clean-up; authority matrices split by workflow type; BCC renamed BRMC). */
+export const BASELINE_RETIRED: { kind: ConfigKind; key: string }[] = [
+  { kind: 'collateral_type', key: 'ISLAMIC_CIS' },
+  { kind: 'collateral_type', key: 'QUALIFYING_SHARES' },
+  { kind: 'collateral_type', key: 'KAFALAH_BANK' },
+  { kind: 'collateral_type', key: 'KAFALAH_CORPORATE' },
+  { kind: 'approval_authority', key: 'STANDARD' },
+  { kind: 'committee', key: 'BCC' },
 ];
