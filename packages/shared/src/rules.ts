@@ -93,7 +93,8 @@ export function evaluate(cond: Condition, facts: Record<string, unknown>): EvalR
     if ('any' in c) return c.any.map(walk).some(Boolean);
     if ('not' in c) return !walk(c.not);
     const actual = getFact(facts, c.fact);
-    const missing = actual === undefined && c.op !== 'exists' && c.op !== 'falsy';
+    // Unknown facts are never treated as satisfying a rule (including 'falsy'): only 'exists' may test absence.
+    const missing = actual === undefined && c.op !== 'exists';
     if (missing) incomplete = true;
     const passed = !missing && compare(c.op, actual, c.value);
     trace.push({ fact: c.fact, label: c.label, op: c.op, expected: c.value, actual, passed, missing });

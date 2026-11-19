@@ -103,6 +103,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
       return reply.status(409).send({ error: { code: 'IMMUTABLE', message: 'This record is final and cannot be changed. Create a new version instead.', requestId: req.id } });
     }
     req.log.error({ err }, 'unhandled error');
+    if (process.env.GZ_TEST_TRACE && env().APP_ENV === 'test') console.error(err);
     metrics.inc('gazelle_unhandled_errors_total');
     return reply.status(500).send({ error: { code: 'INTERNAL', message: 'Something went wrong on our side. Please try again. If it persists, quote this reference.', requestId: req.id } });
   });

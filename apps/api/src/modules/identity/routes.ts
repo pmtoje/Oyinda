@@ -18,7 +18,7 @@ import { recordStep } from '../analytics/journey.js';
 const ONB_COOKIE = 'gz_onb';
 const accountNumber = z.string().trim().regex(/^[0-9]{10}$/, 'Enter your 10-digit NUBAN account number.');
 const otpCode = z.string().trim().regex(/^[0-9]{6}$/, 'Enter the 6-digit code.');
-const AUTH_LIMIT = { rateLimit: { max: 10, timeWindow: '15 minutes' } };
+
 
 function cookieOpts(maxAgeSeconds?: number) {
   return { httpOnly: true, secure: env().COOKIE_SECURE, sameSite: 'strict' as const, path: '/', ...(maxAgeSeconds ? { maxAge: maxAgeSeconds } : {}) };
@@ -36,6 +36,8 @@ async function dispatchOtp(channel: 'SMS' | 'EMAIL', to: string, code: string, p
 
 export async function identityRoutes(app: FastifyInstance) {
   const db = getPool();
+  // Brute-force protection on every identity endpoint (per client IP), in addition to per-account lockout.
+  const AUTH_LIMIT = { rateLimit: { max: env().AUTH_RATE_LIMIT_PER_15MIN, timeWindow: '15 minutes' } };
 
   // ---------------------------------------------------------------------------
   // Onboarding — existing Alternative Bank account holders

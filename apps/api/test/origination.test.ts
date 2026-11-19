@@ -83,7 +83,7 @@ describe('facility origination', () => {
 
   it('enforces upload security: malware, MIME spoofing, active PDF content, executables', async () => {
     const f = await draftMurabaha(abc);
-    const doc = (await abc.get(`/api/facilities/${f.id}/documents`)).body.data[0];
+    const doc = (await abc.get(`/api/facilities/${f.id}/documents`)).body.data.find((d: any) => d.requirementKey === 'PROFORMA_INVOICE');
     const eicar = Buffer.from('%PDF-1.4\nX5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*\n%%EOF');
     expect((await upload(abc, `/api/documents/${doc.id}/upload`, 'cac.pdf', eicar)).body.error.code).toBe('MALWARE_DETECTED');
     expect((await upload(abc, `/api/documents/${doc.id}/upload`, 'cac.pdf', Buffer.from('MZ\x90\x00 executable'))).body.error.code).toBe('FILE_REJECTED');
@@ -103,7 +103,7 @@ describe('facility origination', () => {
 
   it('serves files only through single-use grants bound to the requester', async () => {
     const f = await draftMurabaha(abc);
-    const doc = (await abc.get(`/api/facilities/${f.id}/documents`)).body.data[0];
+    const doc = (await abc.get(`/api/facilities/${f.id}/documents`)).body.data.find((d: any) => d.requirementKey === 'BOARD_RESOLUTION');
     await upload(abc, `/api/documents/${doc.id}/upload`, 'x.pdf', pdf('grant'));
     const g = await abc.post(`/api/documents/${doc.id}/grant`, { disposition: 'attachment' });
     expect(g.body.data.url).toMatch(/^\/api\/files\//);
@@ -150,5 +150,17 @@ describe('facility origination', () => {
     }
     const unauth = new Client(app);
     expect((await unauth.get(`/api/facilities/${abcFac[0].id}`)).status).toBe(401);
+  });
+});
+
+describe('document reuse', () => {
+  it('reuses verified customer-level documents but never transaction-specific ones', async () => {
+    const verified = await q(db(), `SELECT doc_type FROM document d JOIN customer c ON c.id=d.customer_id WHERE c.legal_name='ABC Manufacturing Ltd' AND d.status='VERIFIED'`);
+    const f = await draftMurabaha(abc);
+    const docs = (await abc.get(`/api/facilities/${f.id}/documents`)).body.data;
+    const byKey = (k: string) => docs.find((d: any) => d.requirementKey === k);
+    expect(byKey('PROFORMA_INVOICE').status).toBe('REQUIRED');
+    expect(byKey('BOARD_RESOLUTION').status).toBe('REQUIRED');
+    if (verified.some((v: any) => v.doc_type === 'CAC_CERTIFICATE')) expect(byKey('CAC_CERTIFICATE').status).toBe('VERIFIED');
   });
 });

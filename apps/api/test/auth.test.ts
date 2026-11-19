@@ -173,9 +173,9 @@ describe('CSRF and session protections', () => {
 describe('staff authentication (AD + MFA)', () => {
   it('requires MFA before any staff API is usable', async () => {
     const c = new Client(app);
-    const r = await c.post('/api/auth/staff/login', { username: 'demo.analyst', password: DEMO_PASSWORD });
+    const r = await c.post('/api/auth/staff/login', { username: 'demo.mic1', password: DEMO_PASSWORD });
     expect(r.status).toBe(200);
-    expect(r.body.data.mfa).toBe('ENROL');
+    expect(r.body.data.mfa).toBe('ENROL'); // demo.mic1 is not used by any other test file
     const me = await c.get('/api/auth/me');
     expect(me.body.data.mfaSatisfied).toBe(false);
     expect(me.body.data.user).toBeNull();
@@ -221,5 +221,22 @@ describe('audit log', () => {
   it('never records OTP codes', async () => {
     const rows = await q(db(), `SELECT count(*)::int AS n FROM audit_log WHERE metadata::text ~ '"code"\\s*:\\s*"\\d{6}"'`);
     expect(rows[0].n).toBe(0);
+  });
+});
+
+describe('rate limiting', () => {
+  it('blocks brute force on identity endpoints at the production default', async () => {
+    const { loadEnv, setEnvForTests, env } = await import('../src/config/env.js');
+    const { buildApp } = await import('../src/http/app.js');
+    const saved = env();
+    setEnvForTests(loadEnv({ ...process.env, AUTH_RATE_LIMIT_PER_15MIN: '10' }));
+    const limited = await buildApp({ logger: false });
+    await limited.ready(); // plugins register lazily; resolve them while the production limit is in force
+    setEnvForTests(saved);
+    const codes: number[] = [];
+    for (let i = 0; i < 12; i++) codes.push((await limited.inject({ method: 'POST', url: '/api/auth/staff/login', headers: { 'content-type': 'application/json' }, payload: { username: 'no.such.user', password: 'wrong-password' } })).statusCode);
+    expect(codes.slice(0, 10).every((c) => c === 401)).toBe(true);
+    expect(codes.slice(10)).toEqual([429, 429]);
+    await limited.close();
   });
 });

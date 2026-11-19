@@ -98,6 +98,8 @@ export const schemas = {
     customerVisible: z.boolean(),
     acceptedMime: z.array(z.enum(['application/pdf', 'image/png', 'image/jpeg', 'text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])).min(1),
     maxSizeMb: z.number().positive().max(50),
+    /** Customer-level documents (e.g. CAC certificate) may be reused across requests once verified. */
+    reusable: z.boolean().default(false),
     validityDays: z.number().int().positive().optional(),
   }),
 

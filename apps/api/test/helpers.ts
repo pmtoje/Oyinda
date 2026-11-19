@@ -157,3 +157,77 @@ export async function uploadAllRequired(c: Client, facilityId: string) {
   }
   return docs;
 }
+
+import { drain } from '../src/jobs/queue.js';
+export { drain };
+
+let keyN = 0;
+export const idem = () => `idem-${Date.now()}-${++keyN}-${Math.random().toString(36).slice(2, 8)}`;
+
+/** Claim (if needed) and act on the open task for a stage. */
+export async function act(c: Client, facilityId: string, stageKey: string, action: string, extra: Record<string, unknown> = {}) {
+  const t = await q<any>(db(), `SELECT id, status FROM workflow_task WHERE facility_id=$1 AND stage_key=$2 AND status IN ('OPEN','CLAIMED') ORDER BY created_at DESC LIMIT 1`, [facilityId, stageKey]);
+  if (!t[0]) throw new Error(`No open task ${stageKey}`);
+  if (t[0].status === 'OPEN' && action !== 'VOTE') {
+    const cl = await c.post(`/api/tasks/${t[0].id}/claim`);
+    if (cl.status !== 200) throw new Error(`claim ${stageKey}: ${JSON.stringify(cl.body)}`);
+  }
+  const r = await c.post(`/api/tasks/${t[0].id}/actions`, { action, idempotencyKey: idem(), comment: extra.comment ?? `${action} — reviewed and in order.`, ...extra });
+  return { ...r, taskId: t[0].id };
+}
+
+export function statementCsv(account: string, months: string[], baseCredit: number, opening = 5_000_000) {
+  let bal = opening;
+  const lines = [`Account Number: ${account}`, 'Trans Date,Value Date,Narration,Debit,Credit,Balance'];
+  months.forEach((m, i) => {
+    const credit = Math.round(baseCredit * (1 + (i % 3) * 0.05));
+    bal += credit;
+    lines.push(`05/${m.slice(5, 7)}/${m.slice(0, 4)},05/${m.slice(5, 7)}/${m.slice(0, 4)},NIP TRF FROM BOTTLING CUSTOMER REF 10000${i},,"${credit.toLocaleString('en-US')}.00","${bal.toLocaleString('en-US')}.00"`);
+    const debit = Math.round(credit * 0.8);
+    bal -= debit;
+    lines.push(`20/${m.slice(5, 7)}/${m.slice(0, 4)},20/${m.slice(5, 7)}/${m.slice(0, 4)},TRF TO RESIN SUPPLIER,"${debit.toLocaleString('en-US')}.00",,"${bal.toLocaleString('en-US')}.00"`);
+  });
+  return Buffer.from(lines.join('\n') + '\n');
+}
+
+export const fyLines = (rev: number, pat: number) => {
+  const N = (n: number) => Math.round(n * 100);
+  return { REVENUE: N(rev), COST_OF_SALES: N(rev * 0.68), OPERATING_EXPENSES: N(rev * 0.14), DEPRECIATION: N(rev * 0.03), FINANCE_COST: N(rev * 0.02), PROFIT_BEFORE_TAX: N(pat / 0.7), TAX: N(pat / 0.7 - pat), PROFIT_AFTER_TAX: N(pat), NON_CURRENT_ASSETS: N(rev * 0.5), INVENTORY: N(rev * 0.12), TRADE_RECEIVABLES: N(rev * 0.1), CASH: N(rev * 0.05), CURRENT_ASSETS: N(rev * 0.3), TOTAL_ASSETS: N(rev * 0.8), TRADE_PAYABLES: N(rev * 0.08), SHORT_TERM_FINANCING: N(rev * 0.06), CURRENT_LIABILITIES: N(rev * 0.2), LONG_TERM_FINANCING: N(rev * 0.1), TOTAL_LIABILITIES: N(rev * 0.35), TOTAL_EQUITY: N(rev * 0.45) };
+};
+
+/** Perform the full credit analysis for a facility through the API (as an analyst would). */
+export async function performCreditAnalysis(analyst: Client, facilityId: string, customerId: string, opts: { rate?: number } = {}) {
+  const fs = (await analyst.get(`/api/customers/${customerId}/financial-statements`)).body.data;
+  if (!fs.some((s: any) => s.statementType === 'AUDITED')) {
+    for (const [y, rev, pat] of [[2023, 2_400_000_000, 120_000_000], [2024, 2_800_000_000, 150_000_000], [2025, 3_200_000_000, 190_000_000]] as const) {
+      const r = await analyst.post(`/api/customers/${customerId}/financial-statements`, { statementType: 'AUDITED', periodStart: `${y}-01-01`, periodEnd: `${y}-12-31`, auditor: 'Demo & Co Chartered Accountants', auditOpinion: 'UNQUALIFIED', lines: fyLines(rev, pat) });
+      if (r.status !== 201) throw new Error('fs ' + JSON.stringify(r.body));
+    }
+  }
+  const must = async (p: Promise<any>, label: string) => { const r = await p; if (r.status >= 300) throw new Error(`${label}: ${JSON.stringify(r.body)}`); return r; };
+  await must(analyst.post(`/api/facilities/${facilityId}/financial-analysis`), 'financial-analysis');
+  const sts = (await analyst.get(`/api/facilities/${facilityId}/bank-statements`)).body.data;
+  if (!sts.length) {
+    const months = ['2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'];
+    await must(upload(analyst, `/api/facilities/${facilityId}/bank-statements`, 'altbank.csv', statementCsv('0100000001', months, 260_000_000), 'text/csv', { bankName: 'Alternative Bank', accountNumber: '0100000001', currency: 'NGN', periodStart: '2025-11-01', periodEnd: '2026-10-31' }), 'stmt1');
+    await must(upload(analyst, `/api/facilities/${facilityId}/bank-statements`, 'otherbank.csv', statementCsv('2200000001', months, 40_000), 'text/csv', { bankName: 'Other Commercial Bank', accountNumber: '2200000001', currency: 'USD', periodStart: '2025-11-01', periodEnd: '2026-10-31' }), 'stmt2');
+    await drain(['statement.parse']);
+  }
+  await must(analyst.post(`/api/facilities/${facilityId}/statement-analysis`), 'statement-analysis');
+  await must(analyst.post(`/api/facilities/${facilityId}/bureau-checks`, { subject: 'BUSINESS' }), 'bureau');
+  await must(analyst.post(`/api/facilities/${facilityId}/exposure`), 'exposure');
+  const cols = (await analyst.get(`/api/facilities/${facilityId}/collateral`)).body.data.items;
+  if (!cols.length) await must(analyst.post(`/api/facilities/${facilityId}/collateral`, { typeKey: 'LEGAL_MORTGAGE', ownerName: 'ABC Manufacturing Ltd', description: 'Factory and warehouse at 14 Industrial Estate Road, Ikeja (C of O)', marketValueMinor: 320_000_000_00, valuationDate: '2026-09-15', valuationSource: 'Demo Estate Surveyors & Valuers', perfectionStatus: 'IN_PROGRESS' }), 'collateral');
+  const risk = (await analyst.get(`/api/facilities/${facilityId}/risk`)).body.data;
+  for (const kind of ['ORR', 'INDUSTRY', 'COLLATERAL']) {
+    const card = risk.scorecards.find((s: any) => s.kind === kind);
+    const answers: Record<string, string> = {};
+    for (const s of card.sections) for (const qq of s.questions) answers[qq.code] = qq.code === 'COVERAGE' ? risk.suggestions.COVERAGE : qq.options[Math.max(0, qq.options.length - 2)].code;
+    await must(analyst.post(`/api/facilities/${facilityId}/risk/${kind}`, { scorecardConfigId: card.configId, answers, submit: true }), `risk ${kind}`);
+  }
+  await must(analyst.post(`/api/facilities/${facilityId}/risk-frr`), 'frr');
+  await must(analyst.post(`/api/facilities/${facilityId}/risk-combined`), 'combined');
+  const rar = await must(analyst.post(`/api/facilities/${facilityId}/rarorac`, { proposedProfitRatePct: opts.rate ?? 26, managementFeePct: 1 }), 'rarorac');
+  if (rar.body.data.exceptionRequired) await must(analyst.post(`/api/rarorac/${rar.body.data.id}/justify`, { justification: 'Strategic anchor customer with full domiciliation of contract proceeds; pricing aligned to the relationship value and collateral cover.' }), 'justify');
+  await must(analyst.post(`/api/facilities/${facilityId}/memo`, { recommendation: 'APPROVE_WITH_CONDITIONS', commentary: 'ABC Manufacturing has a 15-year operating history, growing revenue and adequate cover from domiciled receivables and a legal mortgage over its factory.', mitigants: ['Domiciliation of bottling customer receivables', 'Legal mortgage over Ikeja factory'], conditions: ['Evidence of insurance (Takaful) on mortgaged property'] }), 'memo');
+}

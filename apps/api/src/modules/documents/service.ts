@@ -25,7 +25,7 @@ export async function syncRequirements(db: Db, facilityId: string, stage: 'APPLI
     applicable.add(r.key);
     if (existing.some((d) => d.requirement_key === r.key)) continue;
     // Reuse a verified, unexpired document of the same type the customer already provided.
-    const reusable = await maybe<any>(db, `SELECT d.* FROM document d WHERE d.customer_id=$1 AND d.doc_type=$2 AND d.status='VERIFIED' AND d.deleted_at IS NULL
+    const reusable = !r.payload.reusable ? undefined : await maybe<any>(db, `SELECT d.* FROM document d WHERE d.customer_id=$1 AND d.doc_type=$2 AND d.status='VERIFIED' AND d.deleted_at IS NULL
       AND (d.expiry_date IS NULL OR d.expiry_date > current_date) ORDER BY d.reviewed_at DESC LIMIT 1`, [facility.customer_id, r.payload.docType]);
     const doc = await one<any>(db, `INSERT INTO document(customer_id, facility_id, requirement_key, doc_type, title, status, mandatory, customer_visible, current_version_id, expiry_date, reviewed_by, reviewed_at)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
