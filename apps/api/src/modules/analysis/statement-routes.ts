@@ -88,7 +88,8 @@ export async function statementRoutes(app: FastifyInstance) {
 
   app.get('/api/facilities/:id/bank-statements', async (req, reply) => {
     const f = await loadFacility(db, req, parse(z.object({ id: z.string() }), req.params).id);
-    const rows = await q(db, 'SELECT * FROM bank_statement WHERE facility_id=$1 ORDER BY bank_name, account_number, period_start', [f.id]);
+    // Statements belong to the customer and are reused across requests (never re-requested).
+    const rows = await q(db, 'SELECT * FROM bank_statement WHERE customer_id=$1 ORDER BY bank_name, account_number, period_start', [f.customer_id]);
     return ok(reply, rows.map(statementView));
   });
 

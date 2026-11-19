@@ -70,9 +70,10 @@ export async function staffLogin(a: FastifyInstance, username: string): Promise<
   const secret = r.body.data.mfa === 'ENROL'
     ? r.body.data.enrolment.secret
     : decryptField((await q<{ mfa_secret_enc: string }>(db(), 'SELECT mfa_secret_enc FROM app_user WHERE ad_username=$1', [username]))[0]!.mfa_secret_enc);
-  const last = (await q<{ mfa_last_step: number | null }>(db(), 'SELECT mfa_last_step FROM app_user WHERE ad_username=$1', [username]))[0]!.mfa_last_step;
-  // Use the next unused step so repeated logins inside one 30s window do not trip replay protection.
-  const step = last !== null && last >= totpStep() ? last + 1 : totpStep();
+  // Test-only: simulate the passage of time between sign-ins. TOTP replay protection itself is covered by
+  // dedicated tests; here many files sign the same demo users in within one 30-second window.
+  await q(db(), 'UPDATE app_user SET mfa_last_step=NULL WHERE ad_username=$1', [username]);
+  const step = totpStep();
   const m = await c.post('/api/auth/staff/mfa/verify', { code: hotp(secret, step) });
   if (m.status !== 200) throw new Error(`MFA failed for ${username}: ${JSON.stringify(m.body)}`);
   return c;

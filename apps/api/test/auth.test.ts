@@ -11,6 +11,7 @@ const KANO_PHONE = '08030000002';
 
 describe('customer onboarding & OTP security', () => {
   it('never returns the OTP in any API response', async () => {
+    await rewindOtpThrottle();
     const c = new Client(app);
     const r = await c.post('/api/onboarding/start', { accountNumber: KANO_ACCT });
     expect(r.status).toBe(200);
@@ -173,9 +174,9 @@ describe('CSRF and session protections', () => {
 describe('staff authentication (AD + MFA)', () => {
   it('requires MFA before any staff API is usable', async () => {
     const c = new Client(app);
-    const r = await c.post('/api/auth/staff/login', { username: 'demo.mic1', password: DEMO_PASSWORD });
+    const r = await c.post('/api/auth/staff/login', { username: 'demo.board4', password: DEMO_PASSWORD });
     expect(r.status).toBe(200);
-    expect(r.body.data.mfa).toBe('ENROL'); // demo.mic1 is not used by any other test file
+    expect(r.body.data.mfa).toBe('ENROL'); // demo.board4 is not used by any other test file
     const me = await c.get('/api/auth/me');
     expect(me.body.data.mfaSatisfied).toBe(false);
     expect(me.body.data.user).toBeNull();

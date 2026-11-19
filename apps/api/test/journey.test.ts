@@ -73,7 +73,9 @@ describe('Phase 77 — end-to-end Murabaha journey for ABC Manufacturing Ltd', (
     expect(sa.summary.walletSharePct).toBeCloseTo((260e6 * 3.15 / 3) / (260e6 * 3.15 / 3 + 40e3 * 3.15 / 3 * 1520.5) * 100, 0);
     const ex = (await staff.analyst!.get(`/api/facilities/${facilityId}/exposure`)).body.data;
     expect(ex.solBreached).toBe(false);
-    expect(ex.aggregateMinor).toBe(180_000_000_00 + 30_000_000_00 + 22_500_000_00 + 150_000_000_00);
+    // CBA direct + 50% CCF on the APG + related-party Ijarah + this request + any approved-but-unbooked Gazelle pipeline
+    const pipeline = ex.lines.pipeline.reduce((a: number, l: any) => a + (l.kind === 'CONTINGENT' ? l.outstandingMinor / 2 : l.outstandingMinor), 0);
+    expect(ex.aggregateMinor).toBe(180_000_000_00 + 30_000_000_00 + 22_500_000_00 + 150_000_000_00 + pipeline);
     const flags = (await staff.analyst!.get(`/api/facilities/${facilityId}/risk-flags`)).body.data;
     for (const fl of flags) expect(fl.evidence.length).toBeGreaterThan(0);
     const rar = (await staff.analyst!.get(`/api/facilities/${facilityId}/rarorac`)).body.data[0];
