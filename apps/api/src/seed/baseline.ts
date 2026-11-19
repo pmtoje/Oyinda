@@ -62,11 +62,13 @@ export async function seedDemoUsers(db: Db) {
     const bu = BUSINESS_UNITS.find((b) => b.code === u.bu)!;
     const [row] = await q<{ id: string }>(
       db,
-      `INSERT INTO app_user(ad_username, display_name, email, staff_number, directorate_code, business_unit_code, is_demo)
-       VALUES ($1,$2,$3,$4,$5,$6,true) ON CONFLICT (ad_username) DO UPDATE SET display_name=EXCLUDED.display_name RETURNING id`,
+      `INSERT INTO app_user(ad_username, display_name, email, staff_number, directorate_code, business_unit_code, is_demo, source)
+       VALUES ($1,$2,$3,$4,$5,$6,true,'SEED') ON CONFLICT (ad_username) DO UPDATE SET display_name=EXCLUDED.display_name RETURNING id`,
       [u.username, u.name, `${u.username}@altbank.demo`, u.staffNumber ?? null, bu.directorate, u.bu],
     );
     for (const r of u.roles) await q(db, 'INSERT INTO user_role(user_id, role_code) VALUES ($1,$2) ON CONFLICT DO NOTHING', [row!.id, r]);
   }
+  // DEMO reporting line: the Lagos RM reports to the Lagos Team Lead.
+  await q(db, `UPDATE app_user SET manager_id=(SELECT id FROM app_user WHERE ad_username='demo.bm') WHERE ad_username='demo.rm' AND manager_id IS NULL`);
 }
 

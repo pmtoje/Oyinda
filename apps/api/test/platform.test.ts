@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
-import { abcClient, Client, completeAbcProfile, db, draftMurabaha, getApp, performCreditAnalysis, staffLogin, uploadAllRequired } from './helpers.js';
+import { abcClient, Client, completeAbcProfile, db, draftMurabaha, getApp, performCreditAnalysis, staffLogin, upload, uploadAllRequired } from './helpers.js';
 import { q } from '../src/db/pool.js';
 import { sanitiseUntrusted, validateClaims } from '../src/modules/ai/guard.js';
 import { toCsv } from '../src/modules/reports/routes.js';
@@ -224,5 +224,84 @@ describe('customer block / unblock (PRD) and user export', () => {
     expect(r.raw.headers['content-type']).toContain('spreadsheetml');
     expect(r.raw.rawPayload.subarray(0, 2).toString()).toBe('PK');
     expect((await s.rm!.get('/api/admin/users/export.xlsx')).status).toBe(403);
+  });
+});
+
+describe('staff directory by spreadsheet (interim, until AD sync)', () => {
+  const xlsx = async (rows: Record<string, string>[], headerOverride?: string[]) => {
+    const ExcelJS = (await import('exceljs')).default;
+    const { COLUMNS } = await import('../src/modules/admin/user-import.js');
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Staff');
+    ws.addRow(headerOverride ?? COLUMNS.map((c) => c.header));
+    for (const r of rows) ws.addRow(COLUMNS.map((c) => r[c.key] ?? ''));
+    return Buffer.from(await wb.xlsx.writeBuffer());
+  };
+  const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  const tag = Math.random().toString(36).slice(2, 7);
+  const tl = { username: `imp.tl.${tag}`, name: 'Imported Team Lead', email: `imp.tl.${tag}@altbank.demo`, staffNumber: `IMP-TL-${tag}`, directorate: 'COMM', businessUnit: 'LAG-COMM-1', roles: 'BM', manager: '', limits: '', sectors: '', status: 'ACTIVE' };
+  const rm = { username: `imp.rm.${tag}`, name: 'Imported Relationship Manager', email: `imp.rm.${tag}@altbank.demo`, staffNumber: `IMP-RM-${tag}`, directorate: 'COMM', businessUnit: 'LAG-COMM-1', roles: 'RM', manager: tl.username, limits: '', sectors: '', status: 'ACTIVE' };
+  const ed = { username: `imp.ed.${tag}`, name: 'Imported Executive Director', email: `imp.ed.${tag}@altbank.demo`, staffNumber: '', directorate: 'EXEC', businessUnit: 'EXECUTIVE', roles: 'ED', manager: '', limits: 'ED=150,000,000', sectors: '', status: 'ACTIVE' };
+
+  it('provides a template with a reference sheet', async () => {
+    const r = await s.admin!.get('/api/admin/user-imports/template.xlsx');
+    expect(r.status).toBe(200);
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook(); await wb.xlsx.load(r.raw.rawPayload as any);
+    expect(wb.worksheets.map((w) => w.name)).toEqual(['Staff', 'Reference']);
+    expect((await s.rm!.get('/api/admin/user-imports/template.xlsx')).status).toBe(403);
+  });
+
+  it('rejects files with invalid rows, explaining each problem, and they cannot be approved', async () => {
+    const buf = await xlsx([
+      { ...rm, roles: 'RM, WIZARD' }, { ...rm, businessUnit: 'EXECUTIVE' }, { ...ed, limits: 'MD=1' },
+      { username: 'demo.admin', name: 'Gazelle Admin (DEMO)', email: 'demo.admin@altbank.demo', directorate: 'TECH', businessUnit: 'GAZELLE-ADMIN', roles: 'ADMIN, SUPER_ADMIN' },
+    ]);
+    const up = await upload(s.admin!, '/api/admin/user-imports', 'staff.xlsx', buf, XLSX);
+    expect(up.status).toBe(201);
+    expect(up.body.data.status).toBe('INVALID');
+    const errs = up.body.data.preview.flatMap((p: any) => p.errors).join(' | ');
+    expect(errs).toMatch(/Unknown role "WIZARD"/);
+    expect(errs).toMatch(/appears more than once/);
+    expect(errs).toMatch(/belongs to directorate/);
+    expect(errs).toMatch(/does not hold that role/);
+    expect(errs).toMatch(/your own access/);
+    expect((await s.superadmin!.post(`/api/admin/user-imports/${up.body.data.id}/decide`, { decision: 'APPROVE' })).status).toBe(409);
+    expect((await upload(s.admin!, '/api/admin/user-imports', 'bad.xlsx', await xlsx([rm], ['Name only']), XLSX)).body.error.code).toBe('NO_HEADER');
+  });
+
+  it('applies a valid file only after a second administrator approves it', async () => {
+    const up = await upload(s.admin!, '/api/admin/user-imports', 'staff.xlsx', await xlsx([rm, tl, ed]), XLSX);
+    expect(up.body.data.status).toBe('PENDING_APPROVAL');
+    expect(up.body.data.summary).toMatchObject({ rows: 3, create: 3, errors: 0 });
+    expect(await q(db(), 'SELECT 1 FROM app_user WHERE ad_username=$1', [rm.username])).toHaveLength(0); // nothing applied yet
+    expect((await s.admin!.post(`/api/admin/user-imports/${up.body.data.id}/decide`, { decision: 'APPROVE' })).status).toBe(403);
+    const ap = await s.superadmin!.post(`/api/admin/user-imports/${up.body.data.id}/decide`, { decision: 'APPROVE', note: 'Checked against HR list' });
+    expect(ap.body.data.status).toBe('APPLIED');
+    const u = (await q(db(), `SELECT u.source, u.business_unit_code, m.ad_username AS manager, (SELECT array_agg(role_code) FROM user_role WHERE user_id=u.id) AS roles FROM app_user u LEFT JOIN app_user m ON m.id=u.manager_id WHERE u.ad_username=$1`, [rm.username]))[0];
+    expect(u).toMatchObject({ source: 'SPREADSHEET', business_unit_code: 'LAG-COMM-1', manager: tl.username, roles: ['RM'] });
+    const lim = await q(db(), `SELECT limit_minor FROM user_approval_limit l JOIN app_user u ON u.id=l.user_id WHERE u.ad_username=$1 AND l.effective_to IS NULL`, [ed.username]);
+    expect(Number(lim[0].limit_minor)).toBe(150_000_000_00);
+    expect((await q(db(), `SELECT 1 FROM audit_log WHERE action='USER_CREATED_BY_IMPORT'`)).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('treats the Roles column as the complete set and previews every change (CSV accepted)', async () => {
+    const { COLUMNS } = await import('../src/modules/admin/user-import.js');
+    const row = (r: any) => COLUMNS.map((c) => `"${String(r[c.key] ?? '').replace(/"/g, '""')}"`).join(',');
+    const csv = Buffer.from([COLUMNS.map((c) => c.header).join(','), row({ ...rm, roles: 'RM, CREDIT_ANALYST', sectors: 'AGRICULTURE' }), row({ ...ed, status: 'INACTIVE', limits: 'ED=100000000' })].join('\n') + '\n');
+    const up = await upload(s.admin!, '/api/admin/user-imports', 'staff.csv', csv, 'text/csv');
+    const p = up.body.data.preview;
+    expect(p.find((x: any) => x.username === rm.username).changes).toEqual(expect.arrayContaining(['Grant roles: CREDIT_ANALYST', 'Sectors: — → AGRICULTURE']));
+    expect(p.find((x: any) => x.username === ed.username).changes).toEqual(expect.arrayContaining(['Status: ACTIVE → INACTIVE', 'Approval limit ED: ₦150,000,000 → ₦100,000,000']));
+    expect(up.body.data.summary).toMatchObject({ update: 2, errors: 0 });
+    await s.superadmin!.post(`/api/admin/user-imports/${up.body.data.id}/decide`, { decision: 'APPROVE' });
+    // Removing a role through a later file
+    const up2 = await upload(s.admin!, '/api/admin/user-imports', 'staff.xlsx', await xlsx([{ ...rm, roles: 'RM' }]), XLSX);
+    expect(up2.body.data.preview[0].changes).toContain('Remove roles: CREDIT_ANALYST');
+    await s.superadmin!.post(`/api/admin/user-imports/${up2.body.data.id}/decide`, { decision: 'APPROVE' });
+    expect((await q(db(), `SELECT array_agg(role_code) AS r FROM user_role ur JOIN app_user u ON u.id=ur.user_id WHERE u.ad_username=$1`, [rm.username]))[0].r).toEqual(['RM']);
+    expect((await q(db(), `SELECT status FROM app_user WHERE ad_username=$1`, [ed.username]))[0].status).toBe('INACTIVE');
+    const list = (await s.admin!.get('/api/admin/user-imports')).body.data;
+    expect(list[0].status).toBe('APPLIED');
   });
 });

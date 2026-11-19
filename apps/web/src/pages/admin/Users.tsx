@@ -5,6 +5,7 @@ import { useAuth } from '../../lib/auth';
 import { dateTime, money } from '../../lib/format';
 import { Alert, Button, Drawer, Empty, ErrorAlert, KV, Loading, PageHeader, Panel, SelectInput, Status, Tabs, TextArea, TextInput, useAction } from '../../components/ui';
 import { NairaField, useReference, useRoles } from './parts/common';
+import { StaffImport } from './parts/StaffImport';
 
 interface User { id: string; username: string; name: string; email: string; staffNumber: string | null; directorate: string | null; businessUnit: string | null; status: string; mfaEnrolled: boolean; lastLoginAt: string | null; isDemo: boolean; roles: string[]; limits: { role: string; limitMinor: number }[]; sectors?: string[] }
 
@@ -16,10 +17,11 @@ export default function Users() {
     <>
       <PageHeader eyebrow="Control centre" title="Users & access" sub="Staff sign in through Active Directory with multi-factor authentication. Gazelle controls roles, limits and portfolios. Every change is audited."
         actions={<a className="btn" href="/api/admin/users/export.xlsx" download>Export users (Excel)</a>} />
-      <Tabs value={tab} onChange={setTab} tabs={[{ key: 'users', label: 'Staff users' }, { key: 'requests', label: `Access requests${pending ? ` (${pending})` : ''}`, flag: pending > 0 }, { key: 'customers', label: 'Customer portfolios' }]} />
+      <Tabs value={tab} onChange={setTab} tabs={[{ key: 'users', label: 'Staff users' }, { key: 'requests', label: `Access requests${pending ? ` (${pending})` : ''}`, flag: pending > 0 }, { key: 'customers', label: 'Customer portfolios' }, { key: 'import', label: 'Import from spreadsheet' }]} />
       {tab === 'users' && <UserTable />}
       {tab === 'requests' && <AccessRequests q={reqs} />}
       {tab === 'customers' && <Portfolios />}
+      {tab === 'import' && <StaffImport />}
     </>
   );
 }

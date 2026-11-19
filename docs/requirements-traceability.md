@@ -49,7 +49,7 @@ Tests live in `apps/api/test/*.test.ts` (API, unit and journey) and `apps/web/e2
 | MBP-51 | Adapter integration architecture | `integrations/*` | all | Done |
 | MBP-52 | Environment separation, no secrets in source | `config/env.ts`, `.env.example` | — | Done |
 | MBP-53 | Demo seed data (ABC Manufacturing; Murabaha, Ijarah, APG; all roles) labelled DEMO | `seed/*` | seed run | Done |
-| MBP-54–56 | Unit, integration, E2E, negative tests, workflow matrix | `apps/api/test`, `apps/web/e2e` | 145 API tests, 6 browser journeys | Done |
+| MBP-54–56 | Unit, integration, E2E, negative tests, workflow matrix | `apps/api/test`, `apps/web/e2e` | 149 API tests, 7 browser journeys | Done |
 | MBP-78 | Final security assessment | `security.test.ts`, `pnpm audit` | 12 attack-class tests | Done (external pen test pending) |
 | MBP-57–58 | UX QA, accessibility | see `production-readiness.md` | e2e + manual review | Done (formal WCAG audit recommended) |
 | MBP-59–60 | Observability, admin system health | `metrics.ts`, `/api/admin/health` | `platform.test.ts` | Done (OTel exporter: Partial) |
@@ -68,7 +68,7 @@ Tests live in `apps/api/test/*.test.ts` (API, unit and journey) and `apps/web/e2
 | SWR-2 | Credit checks: BVN for promoters, RC and TIN for the business | bureau routes | `journey.test.ts` | Blocked on bureau APIs (mock) |
 | SWR-2 | 3 years audited + management accounts with stated period; figures with commas | financial engine, `money()` | `engines.test.ts` | Done |
 | SWR-2 | Concise credit memo; credit approval memo with CPs | `generateMemo`, CAM term sheet | `journey.test.ts` | Done |
-| SWR-2 | AD sync of roles | `DirectoryAdapter` | — | Partial: roles managed in Gazelle; AD group sync needs AD details |
+| SWR-2 | AD sync of roles and reporting lines | Interim: staff directory by spreadsheet with maker-checker (`admin/user-import*.ts`, `StaffImport.tsx`); line-manager routing of the Team Lead review | `platform.test.ts`, `journey.test.ts`, e2e | Done as interim (D-49, D-50); AD sync deferred by the product owner |
 | SWR-2 | RARORAC validation with exception justification | `rarorac_threshold`, justify route | `journey.test.ts` | Done (portal: Blocked) |
 | SWR-2 | Next-step pop-ups | E&S checklist banner, password dialog, dashboard actions | e2e | Done |
 | SWR-3 | Islamic facility types, no special characters | `product` config, schema rule | `origination.test.ts` | Done (D-36) |

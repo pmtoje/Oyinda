@@ -338,7 +338,7 @@ const assessment = { type: 'PARALLEL', key: 'ASSESSMENT', name: 'Credit analysis
   { key: 'ES_REVIEW', name: 'E&S risk review', role: 'ES_ANALYST', taskType: 'ANALYSIS', when: { fact: 'risk.esRequired', op: 'truthy' }, actions: ['COMPLETE', 'DECLINE', 'REQUEST_CLARIFICATION', 'COMMENT'], onDecline: 'CONTINUE', slaPolicyKey: 'ES_REVIEW', prerequisites: ['ES_ASSESSMENT'] },
 ] };
 const businessReview = [
-  { type: 'TASK', key: 'BM_REVIEW', name: 'Team Lead review', role: 'BM', taskType: 'REVIEW', actions: reviewActions, slaPolicyKey: 'BM_REVIEW', returnTargets: ['PREVIOUS', 'RM', 'CUSTOMER'] },
+  { type: 'TASK', key: 'BM_REVIEW', name: 'Team Lead review', role: 'BM', taskType: 'REVIEW', assignTo: 'RM_LINE_MANAGER', actions: reviewActions, slaPolicyKey: 'BM_REVIEW', returnTargets: ['PREVIOUS', 'RM', 'CUSTOMER'] },
   { type: 'TASK', key: 'RBE_REVIEW', name: 'Regional Business Executive review', role: 'RBE', taskType: 'REVIEW', actions: reviewActions, slaPolicyKey: 'RBE_REVIEW', returnTargets: ['PREVIOUS', 'RM'] },
   { type: 'TASK', key: 'DH_REVIEW', name: 'Divisional Head review', role: 'DH', taskType: 'REVIEW', actions: reviewActions, slaPolicyKey: 'DH_REVIEW', returnTargets: ['PREVIOUS', 'RM'] },
 ];
@@ -586,7 +586,7 @@ export const BASELINE: BaselineItem[] = [
 ];
 
 /** Current baseline revision. Bump when the baseline changes so existing environments are reconciled. */
-export const BASELINE_RELEASE = '2026.11-SWR';
+export const BASELINE_RELEASE = '2026.11-SWR.2';
 /** Keys removed from the baseline (SWR §4 collateral clean-up; authority matrices split by workflow type; BCC renamed BRMC). */
 export const BASELINE_RETIRED: { kind: ConfigKind; key: string }[] = [
   { kind: 'collateral_type', key: 'ISLAMIC_CIS' },

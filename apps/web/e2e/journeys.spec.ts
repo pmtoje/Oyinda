@@ -24,8 +24,7 @@ async function staffSignIn(page: Page, username: string) {
   await page.getByLabel('Password').fill(e2eEnv.MOCK_AD_DEMO_PASSWORD!);
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(otpBox(page)).toBeVisible();
-  let secret = await staffSecret(username);
-  if (!secret) secret = (await page.locator('[data-mfa-secret]').first().getAttribute('data-mfa-secret')) ?? (await page.locator('code').first().innerText()).replace(/\s/g, '');
+  const secret = await staffSecret(username);
   await otpBox(page).fill(totp(secret!));
   await page.getByRole('button', { name: /verify|sign in|continue/i }).last().click();
   await page.waitForURL(/\/work/);
@@ -132,4 +131,30 @@ test('Accessibility basics: skip link, labelled controls and keyboard focus', as
   // focus is visible (box-shadow focus ring from the design system)
   const ring = await page.evaluate(() => getComputedStyle(document.activeElement as Element).boxShadow);
   expect(ring).not.toBe('none');
+});
+
+test('Admin loads staff from a spreadsheet; a second administrator approves it', async ({ page }) => {
+  const header = ['Username (AD)', 'Full name', 'E-mail', 'Staff number', 'Directorate code', 'Business unit code', 'Roles', 'Line manager username', 'Personal approval limits (NGN)', 'Sectors', 'Status'];
+  const csv = `${header.join(',')}\ne2e.rm,E2E Imported RM,e2e.rm@altbank.demo,E2E-001,COMM,LAG-COMM-1,RM,demo.bm,,,ACTIVE\n`;
+  await staffSignIn(page, 'demo.admin');
+  await page.goto('/admin/users');
+  await page.getByRole('tab', { name: 'Import from spreadsheet' }).click();
+  await expect(page.getByRole('link', { name: 'Download template' })).toBeVisible();
+  await page.getByLabel(/Spreadsheet/).setInputFiles({ name: 'staff.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+  await page.getByRole('button', { name: 'Validate file' }).click();
+  const drawer = page.getByRole('dialog');
+  await expect(drawer).toContainText('Another administrator must review and approve this upload.');
+  await expect(drawer).toContainText('Create E2E Imported RM');
+  await expect(drawer.getByRole('button', { name: 'Approve and apply' })).toHaveCount(0);
+  expect(await sql(`SELECT 1 FROM app_user WHERE ad_username='e2e.rm'`)).toHaveLength(0);
+  await page.screenshot({ path: 'test-results/screens/staff-import-preview.png', fullPage: true });
+  await page.context().clearCookies();
+  await staffSignIn(page, 'demo.superadmin');
+  await page.goto('/admin/users');
+  await page.getByRole('tab', { name: 'Import from spreadsheet' }).click();
+  await page.getByRole('button', { name: 'Review' }).first().click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Approve and apply' }).click();
+  await expect(page.getByRole('row', { name: /staff\.csv/ }).first()).toContainText('Applied');
+  const u = await sql(`SELECT u.source, m.ad_username AS manager FROM app_user u JOIN app_user m ON m.id=u.manager_id WHERE u.ad_username='e2e.rm'`);
+  expect(u[0]).toMatchObject({ source: 'SPREADSHEET', manager: 'demo.bm' });
 });

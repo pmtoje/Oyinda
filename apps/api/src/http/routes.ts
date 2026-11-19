@@ -12,10 +12,11 @@ import { docgenRoutes } from '../modules/docgen/routes.js';
 import { offerRoutes } from '../modules/offers/routes.js';
 import { servicingRoutes } from '../modules/servicing/routes.js';
 import { adminRoutes } from '../modules/admin/routes.js';
+import { userImportRoutes } from '../modules/admin/user-import-routes.js';
 import { notificationRoutes } from '../modules/notifications/routes.js';
 import { reportRoutes } from '../modules/reports/routes.js';
 import { aiRoutes } from '../modules/ai/routes.js';
 
 export async function registerRoutes(app: FastifyInstance) {
-  for (const r of [identityRoutes, profileRoutes, facilityRoutes, documentRoutes, workflowRoutes, threadRoutes, financialRoutes, statementRoutes, creditRoutes, docgenRoutes, offerRoutes, servicingRoutes, adminRoutes, notificationRoutes, reportRoutes, aiRoutes]) await app.register(r);
+  for (const r of [identityRoutes, profileRoutes, facilityRoutes, documentRoutes, workflowRoutes, threadRoutes, financialRoutes, statementRoutes, creditRoutes, docgenRoutes, offerRoutes, servicingRoutes, adminRoutes, userImportRoutes, notificationRoutes, reportRoutes, aiRoutes]) await app.register(r);
 }

@@ -167,6 +167,11 @@ async function openStage(db: Db, instance: any, route: Route, idx: number, actor
     if (stage.assignTo === 'RELATIONSHIP_MANAGER') {
       const c = await one<any>(db, 'SELECT c.relationship_manager_id FROM facility_request f JOIN customer c ON c.id=f.customer_id WHERE f.id=$1', [instance.facility_id]);
       assigned = c.relationship_manager_id;
+    } else if (stage.assignTo === 'RM_LINE_MANAGER') {
+      // The RM's own Team Lead (reporting line from the staff directory); otherwise the business unit's role queue.
+      const m = await maybe<any>(db, `SELECT mgr.id FROM facility_request f JOIN customer c ON c.id=f.customer_id JOIN app_user rm ON rm.id=c.relationship_manager_id
+        JOIN app_user mgr ON mgr.id=rm.manager_id JOIN user_role ur ON ur.user_id=mgr.id AND ur.role_code=$2 WHERE f.id=$1 AND mgr.status='ACTIVE'`, [instance.facility_id, stage.role]);
+      assigned = m?.id ?? null;
     }
     await createTask(db, instance, stage, { name: stage.name, role: stage.role!, taskType: stage.taskType!, actions: stage.actions!, slaPolicyKey: stage.slaPolicyKey, assignedUserId: assigned });
   } else if (stage.type === 'PARALLEL') {

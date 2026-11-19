@@ -35,7 +35,8 @@ function decryptField(tok: string) {
 }
 export async function staffSecret(username: string) {
   await sql('UPDATE app_user SET mfa_last_step=NULL WHERE ad_username=$1', [username]);
-  const r = await sql('SELECT mfa_secret_enc FROM app_user WHERE ad_username=$1', [username]);
-  return r[0]?.mfa_secret_enc ? decryptField(r[0].mfa_secret_enc) : null;
+  const r = await sql('SELECT mfa_secret_enc, mfa_pending_secret_enc FROM app_user WHERE ad_username=$1', [username]);
+  const enc = r[0]?.mfa_secret_enc ?? r[0]?.mfa_pending_secret_enc; // pending = first sign-in (enrolment)
+  return enc ? decryptField(enc) : null;
 }
 export async function shot(page: Page, name: string) { await page.screenshot({ path: `test-results/screens/${name}.png`, fullPage: true }); }

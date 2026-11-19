@@ -45,7 +45,9 @@ describe('Phase 77 — end-to-end Murabaha journey for ABC Manufacturing Ltd', (
   });
 
   it('Journey 5: Team Lead → RBE → DH review (SWR route) — unauthorised users cannot act', async () => {
-    const t = (await q(db(), `SELECT id FROM workflow_task WHERE facility_id=$1 AND stage_key='BM_REVIEW' AND status='OPEN'`, [facilityId]))[0];
+    const t = (await q(db(), `SELECT id, assigned_user_id FROM workflow_task WHERE facility_id=$1 AND stage_key='BM_REVIEW' AND status='OPEN'`, [facilityId]))[0];
+    // Routed to the RM's own line manager (reporting line from the staff directory)
+    expect(t.assigned_user_id).toBe((await q(db(), `SELECT id FROM app_user WHERE ad_username='demo.bm'`))[0].id);
     expect((await staff.analyst!.post(`/api/tasks/${t.id}/claim`)).status).toBe(403);
     expect((await abc.post(`/api/tasks/${t.id}/claim`)).status).toBe(401);
     const r = await act(staff.bm!, facilityId, 'BM_REVIEW', 'RECOMMEND');
