@@ -1,4 +1,5 @@
 import { ThemeSwitch } from '../lib/theme';
+import { RestoreUnsaved, SessionTimeout } from '../lib/session-timeout';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -28,7 +29,7 @@ export function ModeBanner() {
 }
 
 function Bell({ to }: { to: string }) {
-  const n = useQuery({ queryKey: ['notifications', 'count'], queryFn: () => api.get<{ unread: number }>('/api/notifications?limit=1'), refetchInterval: 60_000 });
+  const n = useQuery({ queryKey: ['notifications', 'count'], queryFn: () => api.get<{ unread: number }>('/api/notifications?limit=1', { passive: true }), refetchInterval: 60_000 });
   const unread = n.data?.unread ?? 0;
   return <Link to={to} className="icon-btn" aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8" /><path d="M10 20a2 2 0 0 0 4 0" /></svg>{unread > 0 && <span className="count-dot">{unread > 99 ? '99+' : unread}</span>}</Link>;
 }
@@ -60,7 +61,8 @@ export function PortalShell() {
         <button className="icon-btn" onClick={async () => { await logout(); nav('/login'); }}>Sign out</button>
       </header>
       <nav className="portal-nav" aria-label="Portal"><div className="inner">{links.map(([to, l]) => <NavLink key={to} to={to} end={to === '/portal'} className={({ isActive }) => (isActive ? 'active' : '')}>{l}</NavLink>)}</div></nav>
-      <main id="main" className="portal-main"><Outlet /></main>
+      <main id="main" className="portal-main"><RestoreUnsaved /><Outlet /></main>
+      <SessionTimeout kind="CUSTOMER" />
     </>
   );
 }
@@ -76,7 +78,7 @@ export function WorkShell() {
   const loc = useLocation();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [loc.pathname]);
-  const mine = useQuery({ queryKey: ['tasks', 'mine'], queryFn: () => api.get<any[]>('/api/tasks?scope=mine'), enabled: !blocked && can('task.work'), refetchInterval: 60_000 });
+  const mine = useQuery({ queryKey: ['tasks', 'mine'], queryFn: () => api.get<any[]>('/api/tasks?scope=mine', { passive: true }), enabled: !blocked && can('task.work'), refetchInterval: 60_000 });
   if (blocked) return blocked;
   const roles: string[] = me!.user.roles;
   return (
@@ -114,7 +116,8 @@ export function WorkShell() {
             <SideLink to="/work/security">Sessions</SideLink>
           </nav>
         </aside>
-        <main id="main" className="main"><Outlet /></main>
+        <SessionTimeout kind="STAFF" />
+        <main id="main" className="main"><RestoreUnsaved /><Outlet /></main>
       </div>
     </>
   );

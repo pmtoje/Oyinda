@@ -20,7 +20,7 @@ function slaState(t: any, now = Date.now()) {
 }
 
 export const taskView = (t: any) => ({
-  id: t.id, facilityId: t.facility_id, facilityRef: t.facility_ref, customerName: t.legal_name, productName: t.product_name, amountText: t.amount_minor ? formatMoney(t.amount_minor, t.currency) : null,
+  id: t.id, facilityId: t.facility_id, facilityRef: t.facility_ref, customerName: t.legal_name, productName: t.product_name, amountText: t.amount_minor ? formatMoney(t.amount_minor, t.currency) : null, amountMinor: t.amount_minor == null ? null : Number(t.amount_minor), currency: t.currency,
   stageKey: t.stage_key, stageName: t.stage_name, branchKey: t.branch_key, taskType: t.task_type, role: t.role_code, status: t.status, outcome: t.outcome,
   assignedTo: t.assigned_name ?? null, claimedBy: t.claimed_name ?? null, claimedAt: t.claimed_at, createdAt: t.created_at, completedAt: t.completed_at, rowVersion: t.row_version, sla: slaState(t),
 });

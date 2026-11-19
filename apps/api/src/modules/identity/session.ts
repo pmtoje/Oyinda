@@ -2,6 +2,7 @@ import type { Db } from '../../db/pool.js';
 import { maybe, one, q } from '../../db/pool.js';
 import { env } from '../../config/env.js';
 import { hmac, randomToken } from '../../lib/crypto.js';
+import { getActive } from '../config/service.js';
 
 export const SESSION_COOKIE = 'gz_session';
 
@@ -27,6 +28,8 @@ export interface CustomerPrincipal {
 export interface AuthContext {
   sessionId: string;
   subjectType: 'CUSTOMER' | 'STAFF';
+  idleExpiresAt: Date;
+  absoluteExpiresAt: Date;
   subjectId: string;
   mfaSatisfied: boolean;
   csrfToken: string;
@@ -35,16 +38,35 @@ export interface AuthContext {
 }
 
 const tokenHash = (t: string) => hmac(t, 'session');
+
+export interface SessionPolicy { idleMinutes: number; absoluteHours: number; warningSeconds: number }
+const POLICY_KEY = { CUSTOMER: 'CUSTOMER_PORTAL', STAFF: 'STAFF' } as const;
+const policyCache = new Map<string, { at: number; value: SessionPolicy }>();
+
+/**
+ * The approved session policy for customers or staff (config `session_policy`, maker-checker). Falls back to the
+ * environment defaults if none is approved. Cached briefly; an approved change applies to every session within 30 s.
+ */
+export async function sessionPolicy(db: Db, subjectType: 'CUSTOMER' | 'STAFF'): Promise<SessionPolicy> {
+  const hit = policyCache.get(subjectType);
+  if (hit && Date.now() - hit.at < 30_000) return hit.value;
+  const e = env();
+  const row = await getActive(db, 'session_policy', POLICY_KEY[subjectType]).catch(() => undefined);
+  const value: SessionPolicy = { idleMinutes: e.SESSION_IDLE_MINUTES, absoluteHours: e.SESSION_ABSOLUTE_HOURS, warningSeconds: 120, ...((row?.payload as Partial<SessionPolicy>) ?? {}) };
+  policyCache.set(subjectType, { at: Date.now(), value });
+  return value;
+}
+export const clearSessionPolicyCache = () => policyCache.clear();
 export const csrfFor = (sessionToken: string) => hmac(sessionToken, 'csrf').slice(0, 48);
 
 export async function createSession(db: Db, input: { subjectType: 'CUSTOMER' | 'STAFF'; subjectId: string; mfaSatisfied: boolean; ip?: string | null; userAgent?: string | null }) {
   const token = randomToken(32);
-  const e = env();
+  const p = await sessionPolicy(db, input.subjectType);
   const row = await one<{ id: string }>(
     db,
     `INSERT INTO auth_session(token_hash, csrf_hash, subject_type, subject_id, mfa_satisfied, ip, user_agent, device_label, idle_expires_at, absolute_expires_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now() + make_interval(mins => $9), now() + make_interval(hours => $10)) RETURNING id`,
-    [tokenHash(token), hmac(csrfFor(token), 'csrf-store'), input.subjectType, input.subjectId, input.mfaSatisfied, input.ip ?? null, input.userAgent?.slice(0, 400) ?? null, deviceLabel(input.userAgent), e.SESSION_IDLE_MINUTES, e.SESSION_ABSOLUTE_HOURS],
+    [tokenHash(token), hmac(csrfFor(token), 'csrf-store'), input.subjectType, input.subjectId, input.mfaSatisfied, input.ip ?? null, input.userAgent?.slice(0, 400) ?? null, deviceLabel(input.userAgent), p.idleMinutes, p.absoluteHours],
   );
   return { id: row.id, token, csrfToken: csrfFor(token) };
 }
@@ -66,17 +88,26 @@ export async function enforceSingleSession(db: Db, subjectType: 'CUSTOMER' | 'ST
   return r.length;
 }
 
-/** Resolve a session token; enforces revocation, idle and absolute timeouts and slides the idle window. */
-export async function resolveSession(db: Db, token: string): Promise<AuthContext | null> {
+/**
+ * Resolve a session token; enforces revocation, idle and absolute timeouts. Activity slides the idle window;
+ * a passive request (background refresh, session-status check) is authenticated but does not extend the session.
+ */
+export async function resolveSession(db: Db, token: string, opts: { passive?: boolean } = {}): Promise<AuthContext | null> {
   if (!token || token.length > 100) return null;
-  const s = await maybe<any>(
-    db,
-    `UPDATE auth_session SET last_seen_at=now(), idle_expires_at = LEAST(absolute_expires_at, now() + make_interval(mins => $2))
-     WHERE token_hash=$1 AND revoked_at IS NULL AND idle_expires_at > now() AND absolute_expires_at > now() RETURNING *`,
-    [tokenHash(token), env().SESSION_IDLE_MINUTES],
-  );
+  const live = await maybe<any>(db, `SELECT * FROM auth_session WHERE token_hash=$1 AND revoked_at IS NULL AND idle_expires_at > now() AND absolute_expires_at > now()`, [tokenHash(token)]);
+  if (!live) return null;
+  let s = live;
+  if (!opts.passive) {
+    const p = await sessionPolicy(db, live.subject_type);
+    s = (await maybe<any>(
+      db,
+      `UPDATE auth_session SET last_seen_at=now(), idle_expires_at = LEAST(absolute_expires_at, now() + make_interval(mins => $2))
+       WHERE id=$1 AND revoked_at IS NULL AND idle_expires_at > now() RETURNING *`,
+      [live.id, p.idleMinutes],
+    )) ?? null;
+  }
   if (!s) return null;
-  const ctx: AuthContext = { sessionId: s.id, subjectType: s.subject_type, subjectId: s.subject_id, mfaSatisfied: s.mfa_satisfied, csrfToken: csrfFor(token) };
+  const ctx: AuthContext = { sessionId: s.id, subjectType: s.subject_type, idleExpiresAt: s.idle_expires_at, absoluteExpiresAt: s.absolute_expires_at, subjectId: s.subject_id, mfaSatisfied: s.mfa_satisfied, csrfToken: csrfFor(token) };
   if (s.subject_type === 'STAFF') {
     const u = await maybe<any>(db, `SELECT * FROM app_user WHERE id=$1 AND status='ACTIVE'`, [s.subject_id]);
     if (!u) return null;

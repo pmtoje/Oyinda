@@ -504,6 +504,9 @@ const policies: BaselineItem[] = [
   // Interim staff sign-in (Gazelle password + authenticator) until AD authentication; DEFAULT pending the InfoSec standard (OQ-21).
   { kind: 'password_policy', key: 'STAFF_INTERIM', title: 'Staff password policy (interim, until Active Directory)', payload: { minLength: 14, maxLength: 128, requireUpper: true, requireLower: true, requireDigit: true, requireSymbol: true, disallowPersonalInfo: true, maxFailedAttempts: 5, lockMinutes: 30, maxAgeDays: 90, historyCount: 5 } },
   { kind: 'password_policy', key: 'CUSTOMER_PORTAL', title: 'Customer portal password policy', payload: { minLength: 12, maxLength: 128, requireUpper: true, requireLower: true, requireDigit: true, requireSymbol: true, disallowPersonalInfo: true, maxFailedAttempts: 5, lockMinutes: 30 } },
+  // Session timeout — DEFAULT pending the Bank's Information Security standard (OQ-21); administrators change it with maker-checker.
+  { kind: 'session_policy', key: 'CUSTOMER_PORTAL', title: 'Customer portal session timeout', payload: { idleMinutes: 15, absoluteHours: 8, warningSeconds: 120 } },
+  { kind: 'session_policy', key: 'STAFF', title: 'Staff session timeout', payload: { idleMinutes: 15, absoluteHours: 10, warningSeconds: 120 } },
   { kind: 'rarorac_threshold', key: 'STANDARD', title: 'RARORAC pricing threshold', payload: { hurdlePct: 15, minProfitRatePct: 18, minFeePct: 1, exceptionApproverRole: 'GH_CREDIT_RISK', justificationMinLength: 50 } },
   { kind: 'legal_terms', key: 'CUSTOMER_PORTAL', title: 'Customer portal terms & privacy notice', payload: {
     version: '2026.1',
@@ -588,7 +591,7 @@ export const BASELINE: BaselineItem[] = [
 ];
 
 /** Current baseline revision. Bump when the baseline changes so existing environments are reconciled. */
-export const BASELINE_RELEASE = '2026.11-SWR.3';
+export const BASELINE_RELEASE = '2026.11-SWR.4';
 /** Keys removed from the baseline (SWR §4 collateral clean-up; authority matrices split by workflow type; BCC renamed BRMC). */
 export const BASELINE_RETIRED: { kind: ConfigKind; key: string }[] = [
   { kind: 'collateral_type', key: 'ISLAMIC_CIS' },

@@ -20,6 +20,10 @@ const schema = z.object({
   /** One live session per user (SWR control 22; PRD single admin session). */
   SINGLE_SESSION: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
   AUTH_RATE_LIMIT_PER_15MIN: z.coerce.number().int().positive().default(10),
+  /** Ceiling per client IP. Generous: branch and head-office staff often share one egress IP. */
+  IP_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(3000),
+  /** Per signed-in user (staff or customer user), independent of IP. */
+  USER_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(600),
   OTP_TTL_SECONDS: z.coerce.number().int().positive().default(300),
   OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
   MAX_UPLOAD_MB: z.coerce.number().positive().default(20),

@@ -127,7 +127,7 @@ function StatementForm({ customerId, lines, onDone, onCancel }: { customerId: st
 }
 
 export function BankStatementsStep({ facilityId }: { facilityId: string }) {
-  const list = useQuery({ queryKey: ['bank-statements', facilityId], queryFn: () => api.get<any[]>(`/api/facilities/${facilityId}/bank-statements`), refetchInterval: (q) => ((q.state.data ?? []).some((s: any) => s.status === 'QUEUED' || s.status === 'PROCESSING') ? 4000 : false) });
+  const list = useQuery({ queryKey: ['bank-statements', facilityId], queryFn: () => api.get<any[]>(`/api/facilities/${facilityId}/bank-statements`, { passive: true }), refetchInterval: (q) => ((q.state.data ?? []).some((s: any) => s.status === 'QUEUED' || s.status === 'PROCESSING') ? 4000 : false) });
   const [m, setM] = useState({ bankName: '', accountNumber: '', currency: 'NGN', periodStart: '', periodEnd: '' });
   const [file, setFile] = useState<File | null>(null);
   const up = useAction(async () => { await api.upload(`/api/facilities/${facilityId}/bank-statements`, file!, m); setFile(null); setM({ ...m, accountNumber: '', periodStart: '', periodEnd: '' }); await list.refetch(); });

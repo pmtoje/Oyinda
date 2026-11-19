@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, setCsrf } from './api';
+import { ApiError, api, setCsrf } from './api';
 
 export interface StaffUser { id: string; name: string; email: string; roles: string[]; permissions: string[]; businessUnit: string | null }
 export interface Me {
@@ -14,8 +14,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const meta = useQuery({ queryKey: ['meta'], queryFn: () => api.get<Meta>('/api/meta'), staleTime: Infinity });
+  // Only a definite answer changes who is signed in: "no session" or 401. A busy server (429), an outage (5xx)
+  // or a dropped connection must never sign anyone out — keep what we know and retry with backoff.
   const refresh = useCallback(async () => {
-    try { const m = await api.get<Me | null>('/api/auth/session'); if (m) setCsrf(m.csrfToken); setMe(m); } catch { setMe(null); }
+    for (let attempt = 0; ; attempt++) {
+      try { const m = await api.get<Me | null>('/api/auth/session'); if (m) setCsrf(m.csrfToken); setMe(m); return; }
+      catch (e) {
+        if (e instanceof ApiError && e.status === 401) { setMe(null); return; }
+        if (attempt >= 5) { setMe((cur) => (cur === undefined ? null : cur)); return; }
+        await new Promise((r) => setTimeout(r, Math.min(8000, 500 * 2 ** attempt)));
+      }
+    }
   }, []);
   const logout = useCallback(async () => {
     try { await api.post('/api/auth/logout'); } catch { /* already signed out */ }

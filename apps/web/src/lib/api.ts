@@ -6,8 +6,10 @@ export class ApiError extends Error {
 let csrf: string | undefined;
 export const setCsrf = (t?: string) => { csrf = t; };
 
-async function request<T>(method: string, url: string, body?: unknown, opts: { form?: FormData } = {}): Promise<T> {
+async function request<T>(method: string, url: string, body?: unknown, opts: { form?: FormData; passive?: boolean } = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
+  // Passive = background refresh: authenticated, but does not count as user activity for the inactivity timeout.
+  if (opts.passive) headers['x-gz-passive'] = '1';
   if (method !== 'GET' && csrf) headers['x-csrf-token'] = csrf;
   let payload: BodyInit | undefined;
   if (opts.form) payload = opts.form;
@@ -22,11 +24,12 @@ async function request<T>(method: string, url: string, body?: unknown, opts: { f
     throw new ApiError(res.status, e.code ?? 'ERROR', e.message ?? 'The request could not be completed.', e.details, e.requestId);
   }
   if (json?.data?.csrfToken) csrf = json.data.csrfToken;
+  if (!opts.passive && !url.startsWith('/api/auth/session/')) window.dispatchEvent(new CustomEvent('gz:activity'));
   return json.data as T;
 }
 
 export const api = {
-  get: <T = any>(url: string) => request<T>('GET', url),
+  get: <T = any>(url: string, opts: { passive?: boolean } = {}) => request<T>('GET', url, undefined, opts),
   post: <T = any>(url: string, body: unknown = {}) => request<T>('POST', url, body),
   put: <T = any>(url: string, body: unknown = {}) => request<T>('PUT', url, body),
   patch: <T = any>(url: string, body: unknown = {}) => request<T>('PATCH', url, body),

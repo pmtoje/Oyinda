@@ -17,7 +17,11 @@ Gazelle is treated as a banking system of record: security controls live in the 
 * **Single session (SWR TC-22, PRD):** a new fully authenticated sign-in (staff: after MFA) ends the user's other live sessions (`SINGLE_SESSION`, default on). Blocking a customer ends all of its sessions at once.
 
 * Opaque 256-bit tokens; only an HMAC of the token is stored. Cookies are `HttpOnly; Secure; SameSite=Strict`.
-* Idle timeout 15 minutes (sliding), absolute 8 hours (configurable). Sessions are revocable per device. Deactivation and role changes revoke all of a user's sessions.
+* **Session timeout is configuration, not code** (`session_policy`, maker-checker; keys `CUSTOMER_PORTAL` and `STAFF`): inactivity limit (5–120 min, baseline 15), warning lead time (30–600 s, baseline 120) and maximum session length (1–24 h; baseline 8 customer, 10 staff). An approved change applies to every session within 30 seconds; the environment values are only a fallback.
+* **What counts as activity:** a user request, or real use of the page (typing, clicking, scrolling — sent at most once a minute as an explicit keep-alive). Background refreshes (notification count, queue polling, status checks) carry `x-gz-passive: 1` and are authenticated without extending the session, so an unattended screen always times out.
+* **Warning:** before the session ends the browser shows an accessible dialog (`role="alertdialog"`, focus on **Stay signed in**) with a countdown. Near the maximum length there is no "stay" option. Open tabs coordinate (an extension or sign-out in one applies to all). The server remains the authority: the browser re-checks before acting, so a session extended elsewhere is not ended.
+* **Nothing typed is lost:** when a session ends on its own, values typed on the current page (never passwords, one-time codes, hidden or file fields) are kept in that browser tab only (sessionStorage, 12-hour limit, never sent to the server) and offered for restore after the user signs back in. Draft facility requests are also saved server-side per step.
+* Sessions are revocable per device. Deactivation and role changes revoke all of a user's sessions.
 * CSRF: a synchroniser token derived from the session (HMAC) must accompany every state-changing request, plus an Origin check. Pre-authentication endpoints rely on Origin + SameSite.
 
 ## 3. Authorisation
@@ -54,7 +58,7 @@ HSTS (1 year, preload), strict CSP (`script-src 'self'`, `frame-ancestors 'none'
 
 ## 7. Abuse resistance
 
-Global rate limit plus stricter identity-endpoint limits (configurable), per-account lockouts, idempotency keys on facility creation, workflow actions and disbursements (double-click and replay safe), optimistic locking on facilities, tasks and offers, and atomic task claiming.
+Layered rate limits: a generous per-IP ceiling (`IP_RATE_LIMIT_PER_MIN`, default 3000 — branch and head-office staff share egress IPs, so a low per-IP limit would lock out a whole office), a per-signed-in-user limit (`USER_RATE_LIMIT_PER_MIN`, default 600 per API instance, with `Retry-After`; counters are in memory, so N replicas allow up to N× — use the gateway for a hard cluster-wide cap), and strict identity-endpoint limits (`AUTH_RATE_LIMIT_PER_15MIN`). The web app never treats a 429 or 5xx as "signed out": it keeps the user's state and retries with backoff. Also per-account lockouts, idempotency keys on facility creation, workflow actions and disbursements (double-click and replay safe), optimistic locking on facilities, tasks and offers, and atomic task claiming.
 
 ## 8. AI security
 

@@ -5,7 +5,7 @@ import { Alert, Button, Empty, ErrorAlert, KV, Loading, PageHeader, Panel, Statu
 
 export default function Health() {
   const qc = useQueryClient();
-  const h = useQuery({ queryKey: ['admin', 'health'], queryFn: () => api.get<any>('/api/admin/health'), refetchInterval: 30_000 });
+  const h = useQuery({ queryKey: ['admin', 'health'], queryFn: () => api.get<any>('/api/admin/health', { passive: true }), refetchInterval: 30_000 });
   const retry = useAction(async (id: string) => { await api.post(`/api/admin/jobs/${id}/retry`); await qc.invalidateQueries({ queryKey: ['admin', 'health'] }); });
   if (h.isLoading) return <Loading rows={8} />;
   if (h.error) return <ErrorAlert error={h.error} />;

@@ -83,7 +83,7 @@ Tests live in `apps/api/test/*.test.ts` (API, unit and journey) and `apps/web/e2
 | SWR TC-2, 5, 6 | Generic identity responses; rate limiting; statement owner check | onboarding start, `AUTH_LIMIT`, spool route | `auth.test.ts`, `security.test.ts` | Done |
 | SWR TC-11, 12 | 6-digit OTP never returned; AD + MFA for admins | `otp.ts`, staff login | `auth.test.ts` | Done |
 | SWR TC-13 | Requests within authorised limits | aggregate-exposure authority amount | `committee.test.ts` | Done (D-33) |
-| SWR TC-17, 22 | Session timeout; restrict concurrent logins | `SESSION_IDLE_MINUTES`, `enforceSingleSession` | `auth.test.ts` | Done (D-38, D-39) |
+| SWR TC-17, 22; master prompt (session timeout) | Configurable session timeout with advance warning, stay-signed-in, passive polling, unsaved-entry restore; restrict concurrent logins | `session_policy` config, `identity/session.ts`, `lib/session-timeout.tsx`, `lib/unsaved.ts`, `enforceSingleSession` | `session-policy.test.ts`, `auth.test.ts`, `e2e/session-timeout.spec.ts` | Done (D-38, D-39, D-54) |
 | PRD | Approval grid by workflow type; combination and concurrence; insider / PEP to Board; aggregate exposure | `approval_authority` ×4, `resolveChain` | `engines.test.ts`, `journey.test.ts`, `committee.test.ts` | Done (D-27–D-30, D-33) |
 | PRD | Committee signatures (MIC 3 NED + 2 ED incl. MD; BRMC chair + 2 NED; Board chairman); single access to record decision | `committee` config, `requiredRoleCounts`, `RECORD_DECISION` | `engines.test.ts`, `committee.test.ts` | Done (D-31) |
 | PRD | Decline behaviour per stage | `onDecline` | `journey.test.ts` | Done (D-32) |

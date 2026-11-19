@@ -11,7 +11,7 @@ import { integrations } from '../../integrations/index.js';
 import { audit } from '../audit/audit.js';
 import { getActive } from '../config/service.js';
 import { issueOtp, verifyOtp, OTP_MESSAGES } from './otp.js';
-import { createSession, enforceSingleSession, revokeAllFor, revokeSession, SESSION_COOKIE } from './session.js';
+import { createSession, enforceSingleSession, revokeAllFor, revokeSession, SESSION_COOKIE, sessionPolicy, type AuthContext } from './session.js';
 import { checkPassword, hashPassword, verifyPassword, type PasswordPolicy } from './password.js';
 import { changePassword, issueStaffLink, localStaffAuth, passwordExpired, setPasswordWithToken, staffPolicy, tokenInfo } from './staff-credentials.js';
 import { newTotpSecret, otpauthUri, verifyTotp } from './totp.js';
@@ -502,6 +502,21 @@ export async function identityRoutes(app: FastifyInstance) {
     }
     reply.clearCookie(SESSION_COOKIE, { path: '/' });
     return ok(reply, { signedOut: true });
+  });
+
+  /** Session timing for the browser's inactivity warning. Passive: checking does not extend the session. */
+  const sessionStatus = async (a: AuthContext) => {
+    const p = await sessionPolicy(db, a.subjectType);
+    return { idleExpiresAt: a.idleExpiresAt, absoluteExpiresAt: a.absoluteExpiresAt, serverTime: new Date(), idleMinutes: p.idleMinutes, warningSeconds: p.warningSeconds };
+  };
+  app.get('/api/auth/session/status', async (req, reply) => {
+    if (!req.auth) throw unauthorized();
+    return ok(reply, await sessionStatus(req.auth));
+  });
+  /** "Stay signed in": an explicit activity that slides the idle window (never past the maximum session length). */
+  app.post('/api/auth/session/keep-alive', async (req, reply) => {
+    if (!req.auth) throw unauthorized();
+    return ok(reply, await sessionStatus(req.auth));
   });
 
   app.get('/api/auth/sessions', async (req, reply) => {

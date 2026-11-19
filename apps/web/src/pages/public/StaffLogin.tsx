@@ -4,11 +4,12 @@ import { AuthLayout } from '../../components/Shells';
 import { Alert, Button, ErrorAlert, TextInput, useAction } from '../../components/ui';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
+import { SignedOutNotice } from '../../lib/session-timeout';
 import { OtpField } from './parts/OtpField';
 
 export default function StaffLogin() {
   const nav = useNavigate();
-  const loc = useLocation() as { state?: { from?: string } };
+  const loc = useLocation() as { state?: { from?: string; reason?: string } };
   const { refresh, meta } = useAuth();
   const local = meta?.staffAuthMode === 'local';
   const [username, setUsername] = useState('');
@@ -27,6 +28,7 @@ export default function StaffLogin() {
       {!mfa ? (
         <form className="stack" onSubmit={(e) => { e.preventDefault(); void login.run(); }}>
           <div><h2>Staff sign-in</h2><p className="muted">Restricted to authorised Alternative Bank staff. Activity is logged.</p></div>
+          <SignedOutNotice reason={loc.state?.reason} />
           <ErrorAlert error={login.error} />
           {local && <Alert tone="info">Interim sign-in until Active Directory is connected: use the Gazelle password you set from your activation e-mail.</Alert>}
           <TextInput label={local ? 'Username' : 'Network username'} autoComplete="username" required value={username} onChange={(e) => setUsername(e.target.value)} />

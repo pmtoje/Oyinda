@@ -10,7 +10,7 @@ import App from './App';
 import { watchScrollRegions } from './lib/scroll-regions';
 import './styles/app.css';
 
-const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 15_000, refetchOnWindowFocus: false, retry: (n, e) => !(e instanceof ApiError && e.status < 500) && n < 2 } } });
+const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 15_000, refetchOnWindowFocus: false, retry: (n, e) => !(e instanceof ApiError && e.status < 500 && e.status !== 429) && n < 3, retryDelay: (n) => Math.min(8000, 750 * 2 ** n) } } });
 
 const saveTheme = (theme: ThemePref) => { api.put('/api/me/preferences', { theme }).catch(() => { /* signed out: kept on this device */ }); };
 function ThemedApp() {

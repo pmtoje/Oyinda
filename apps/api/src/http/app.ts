@@ -55,13 +55,33 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
     return payload;
   });
   await app.register(cookie);
-  await app.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute', keyGenerator: (r) => r.ip });
+  // Two layers: a generous per-IP ceiling (shared office egress IPs must not lock out a branch) and, once the
+  // session is known, a per-user limit (below). Sign-in and OTP routes add their own strict limits.
+  await app.register(rateLimit, { global: true, max: e.IP_RATE_LIMIT_PER_MIN, timeWindow: '1 minute', keyGenerator: (r) => r.ip });
   await app.register(multipart, { limits: { fileSize: e.MAX_UPLOAD_MB * 1024 * 1024, files: 1, fields: 20, fieldSize: 10_000 } });
 
   // Authentication: resolve the session cookie on every request.
   app.addHook('onRequest', async (req) => {
     const token = req.cookies[SESSION_COOKIE];
-    if (token) req.auth = (await resolveSession(getPool(), token)) ?? undefined;
+    // Background refreshes mark themselves passive so polling never keeps an idle session alive.
+    if (token) req.auth = (await resolveSession(getPool(), token, { passive: req.headers['x-gz-passive'] === '1' || req.url.startsWith('/api/auth/session/status') })) ?? undefined;
+  });
+
+  // Per-user limit (fixed one-minute window, per instance).
+  const perUser = new Map<string, { window: number; n: number }>();
+  app.addHook('onRequest', async (req, reply) => {
+    if (!req.auth) return;
+    const key = `${req.auth.subjectType}:${req.auth.subjectId}`;
+    const window = Math.floor(Date.now() / 60_000);
+    const cur = perUser.get(key);
+    const entry = cur && cur.window === window ? cur : { window, n: 0 };
+    entry.n++;
+    perUser.set(key, entry);
+    if (perUser.size > 20_000) for (const [k, v] of perUser) if (v.window !== window) perUser.delete(k);
+    if (entry.n > e.USER_RATE_LIMIT_PER_MIN) {
+      reply.header('Retry-After', String(60 - Math.floor((Date.now() / 1000) % 60)));
+      throw new AppError(429, 'RATE_LIMITED', 'Too many requests. Please wait a moment and try again.');
+    }
   });
 
   // CSRF: Origin check + synchroniser token for all state-changing requests.

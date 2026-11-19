@@ -326,6 +326,20 @@ export const schemas = {
     historyCount: z.number().int().min(0).max(24).default(0),
   }),
 
+  /**
+   * Session timeout (master prompt §: configurable by authorised administrators). Inactivity ends a session after
+   * idleMinutes; a warning with "Stay signed in" appears warningSeconds before; no session outlives absoluteHours.
+   * Background refreshes (notification counts, queue polling) never count as activity.
+   */
+  session_policy: z.object({
+    idleMinutes: z.number().int().min(5).max(120),
+    absoluteHours: z.number().int().min(1).max(24),
+    warningSeconds: z.number().int().min(30).max(600),
+  }).superRefine((v, ctx) => {
+    if (v.warningSeconds >= v.idleMinutes * 60) ctx.addIssue({ code: 'custom', path: ['warningSeconds'], message: 'The warning must appear before the inactivity timeout.' });
+    if (v.idleMinutes > v.absoluteHours * 60) ctx.addIssue({ code: 'custom', path: ['idleMinutes'], message: 'The inactivity timeout cannot be longer than the maximum session length.' });
+  }),
+
   committee: z.object({
     code,
     name: z.string(),
@@ -400,7 +414,8 @@ export const KIND_LABEL: Record<ConfigKind, string> = {
   workflow_definition: 'Workflow definitions',
   approval_authority: 'Approval authority matrix',
   committee: 'Committees',
-  password_policy: 'Customer password policy',
+  password_policy: 'Password policies',
+  session_policy: 'Session timeout',
   offer_signoff: 'Offer letter sign-off',
   facility_efficiency_ratio: 'Facility efficiency ratio',
   sla_policy: 'SLA policies',

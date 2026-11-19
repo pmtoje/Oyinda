@@ -262,6 +262,28 @@ export function EfficiencyRatioEditor({ value, onChange }: P) {
   );
 }
 
+/** Session timeout: inactivity limit, warning lead time and maximum session length (validated on the server too). */
+export function SessionPolicyEditor({ value, onChange }: P) {
+  const v = { idleMinutes: 15, absoluteHours: 8, warningSeconds: 120, ...(value ?? {}) };
+  const set = (patch: any) => onChange({ ...v, ...patch });
+  const problems = [
+    v.warningSeconds >= v.idleMinutes * 60 && 'The warning must appear before the inactivity timeout.',
+    v.idleMinutes > v.absoluteHours * 60 && 'The inactivity timeout cannot be longer than the maximum session length.',
+  ].filter(Boolean) as string[];
+  return (
+    <Section title="Timeout" intro="Applies to every session of this audience within 30 seconds of approval. Background refreshes never count as activity; typing, clicking or scrolling does.">
+      <div className="grid cols-3">
+        <NumberField label="Sign out after inactivity (minutes)" min={5} max={120} required value={v.idleMinutes} onChange={(x) => set({ idleMinutes: x })} hint="5 – 120 minutes" />
+        <NumberField label="Warn before sign-out (seconds)" min={30} max={600} required value={v.warningSeconds} onChange={(x) => set({ warningSeconds: x })} hint="30 – 600 seconds; the user can choose to stay signed in" />
+        <NumberField label="Maximum session length (hours)" min={1} max={24} required value={v.absoluteHours} onChange={(x) => set({ absoluteHours: x })} hint="1 – 24 hours, regardless of activity" />
+      </div>
+      {problems.length > 0 && <div className="alert danger" role="alert"><div><ul style={{ margin: 0 }}>{problems.map((p) => <li key={p}>{p}</li>)}</ul></div></div>}
+      <p className="small muted">A user idle for {v.idleMinutes} minutes sees a {Math.round(v.warningSeconds / 6) / 10}-minute warning at minute {Math.round((v.idleMinutes - v.warningSeconds / 60) * 10) / 10}. No session lasts longer than {v.absoluteHours} hours.</p>
+    </Section>
+  );
+}
+
 export const STRUCTURED: Partial<Record<string, (p: P) => ReactElement>> = {
+  session_policy: SessionPolicyEditor,
   approval_authority: AuthorityEditor, sla_policy: SlaEditor, fipg_rule: FipgEditor, ratio: RatioEditor, committee: CommitteeEditor, es_trigger: EsTriggerEditor, facility_efficiency_ratio: EfficiencyRatioEditor,
 };

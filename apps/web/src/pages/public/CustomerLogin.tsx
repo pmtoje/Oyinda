@@ -4,11 +4,12 @@ import { AuthLayout } from '../../components/Shells';
 import { Alert, Button, ErrorAlert, TextInput, useAction } from '../../components/ui';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
+import { SignedOutNotice } from '../../lib/session-timeout';
 import { OtpField, ResendButton, otpErrorMessage } from './parts/OtpField';
 
 export default function CustomerLogin() {
   const nav = useNavigate();
-  const loc = useLocation() as { state?: { from?: string } };
+  const loc = useLocation() as { state?: { from?: string; reason?: string } };
   const { refresh } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,6 +27,7 @@ export default function CustomerLogin() {
       {!challenge ? (
         <form className="stack" onSubmit={(e) => { e.preventDefault(); void start.run(); }}>
           <div><h2>Sign in</h2><p className="muted">Customer portal</p></div>
+          <SignedOutNotice reason={loc.state?.reason} />
           <ErrorAlert error={start.error} />
           <TextInput label="Company e-mail address" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
           <TextInput label="Password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
