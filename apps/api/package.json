@@ -1,0 +1,36 @@
+{
+  "name": "@gazelle/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "worker": "tsx src/worker.ts",
+    "migrate": "tsx src/db/migrate.ts",
+    "seed": "tsx src/seed/seed.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.5",
+    "@fastify/cors": "^11.4.3",
+    "@fastify/helmet": "^13.2.0",
+    "@fastify/multipart": "^10.1.9",
+    "@fastify/rate-limit": "^11.2.2",
+    "@gazelle/shared": "workspace:*",
+    "docx": "^9.16.0",
+    "exceljs": "^4.4.0",
+    "fastify": "^5.12.8",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  }
+}

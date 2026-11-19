@@ -1,0 +1,20 @@
+# Requirements Decisions & Conflicts
+
+Each entry records a source requirement, any conflict or gap, and the decision taken. `MBP-§n` refers to a section of the master build prompt. The PRD/BRD and the 27-Oct-2026 SWR were not supplied (see `architecture-assessment.md`), so decisions are made against the MBP and recorded here for confirmation.
+
+| ID | Source | Issue | Decision |
+|---|---|---|---|
+| D-01 | MBP §2, PRD/BRD, SWR | Source documents not supplied; ~25 MBP sections were images that did not arrive. | MBP text is the working source. Values from missing images are **configurable defaults**, each listed in `open-questions.md`. |
+| D-02 | MBP Phase 2 "secure password where applicable" | Existing account holders are verified against the core banking record with OTP to the CBA-registered phone. A portal password would add a weaker, phishable factor. | Customer sign-in is passwordless: email + OTP to the CBA-registered mobile number. Email ownership is verified separately by OTP. A password factor can be added if policy requires it (OQ-02). |
+| D-03 | MBP Phase 2 "never trust client-supplied identity" | — | Business name, RC, TIN, address, accounts, phone and RM come only from the CBA adapter. The client supplies only contact name, email and designation. Email is verified by OTP. |
+| D-04 | MBP Phase 18 | Exact customer- and RM-initiated routes were images. | Defaults: Customer → RM → BM → (Credit ∥ E&S) → CTL → GH CR → authority chain. RM-initiated: BM → RBE → DH → (Credit ∥ E&S) → CTL → GH CR → authority chain. Both are configuration (`workflow_definition`). |
+| D-05 | MBP Phase 23 | Default SLA values were an image. | 16 SLA policies seeded with business-hour durations (e.g. RM review 16 business hours, credit analysis 40). Escalation: +24h breach → CRO, +72h → EXCO (MD, ED). All configurable. |
+| D-06 | MBP Phase 19 | What happens when a non-final approver declines. | `declineBehaviour: TERMINATE` (decline ends the workflow) by default; `CONTINUE_TO_FINAL` is supported for policies where only the final authority may decline. |
+| D-07 | MBP Phase 16 | "HEART" sector group is not defined in the text received. | E&S trigger default: ≥ ₦100m in Oil & Gas, Mining, Aviation, Healthcare, Education, Agriculture, Real Estate, Transport, Manufacturing, Power. Includes Manufacturing so the Phase 77 scenario exercises the concurrent E&S path. Configurable (OQ-05). |
+| D-08 | MBP Phase 12 | SOL value depends on the Bank's shareholders' funds. | SOL is configuration (`sol_limit`) with a ₦5bn placeholder clearly labelled DEFAULT. Breach triggers a warning and routes to Board via the authority override. |
+| D-09 | MBP Phase 15 | RARORAC portal integration details not available. | `RaroracAdapter` interface. The mock (`MOCK-RAPP`) is labelled MOCK in the API response, database, UI and memo. Production refuses to start in mock mode. |
+| D-10 | MBP Phase 27 | Term sheet "Word format". | Generated as .docx with the `docx` library, stored as an immutable document version. Edits create a new version. |
+| D-11 | MBP Phase 66 | Terminology | "Facility", "financing", "profit rate", "payment" used throughout. "Interest" and "loan" appear only in Shariah exclusion screening labels. |
+| D-12 | MBP Phase 21 PEP | "Route according to approved PEP workflow regardless of obligor rating." | Authority override `PEP`: minimum final approver MD regardless of amount or grade. Configurable. |
+| D-13 | MBP Phase 8 | Malware scanning | ClamAV `clamd` INSTREAM adapter implemented for production. Dev mock detects EICAR only and labels itself `mock-eicar-only`. Files stay unavailable until scanned CLEAN. |
+| D-14 | MBP Phase 46 | BVN storage | BVN is AES-256-GCM encrypted at field level, with a keyed hash for de-duplication and the last 4 digits for display. The full BVN is never returned by any API. |

@@ -1,0 +1,17 @@
+{
+  "name": "gazelle",
+  "private": true,
+  "description": "Gazelle by Alternative Bank — corporate credit origination, assessment, approval and monitoring platform",
+  "packageManager": "pnpm@10.28.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev:api": "pnpm --filter @gazelle/api dev",
+    "dev:web": "pnpm --filter @gazelle/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "migrate": "pnpm --filter @gazelle/api migrate",
+    "seed": "pnpm --filter @gazelle/api seed",
+    "e2e": "pnpm --filter @gazelle/web e2e"
+  }
+}
