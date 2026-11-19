@@ -45,7 +45,7 @@ export function PortalShell() {
   const { me, logout } = useAuth();
   const nav = useNavigate();
   if (blocked) return blocked;
-  const links: [string, string][] = [['/portal', 'Overview'], ['/portal/facilities/new', 'New facility request'], ['/portal/profile', 'Business profile'], ['/portal/notifications', 'Notifications'], ['/portal/security', 'Security']];
+  const links: [string, string][] = [['/portal', 'Overview'], ['/portal/facilities/new', 'New facility request'], ['/portal/profile', 'Business profile'], ['/portal/users', 'Users'], ['/portal/notifications', 'Notifications'], ['/portal/security', 'Security']];
   return (
     <>
       <a href="#main" className="skip-link">Skip to content</a>

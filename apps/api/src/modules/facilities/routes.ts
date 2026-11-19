@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { APPLICATION_STEPS, FACILITY_STATUS_LABEL } from '@gazelle/shared';
 import { getPool, maybe, one, q, tx } from '../../db/pool.js';
-import { actorOf, ok, parse, requireStaff } from '../../http/context.js';
+import { actorOf, ok, parse, requireStaff , requireCustomerRight } from '../../http/context.js';
 import { conflict, notFound, unauthorized, unprocessable } from '../../lib/errors.js';
 import { nextRef } from '../../lib/ids.js';
 import { formatMoney } from '../../lib/money.js';
@@ -216,6 +216,7 @@ export async function facilityRoutes(app: FastifyInstance) {
     const body = parse(z.object({ rowVersion: z.number().int(), declaration: z.literal(true, { error: 'Confirm the declaration to submit.' }) }), req.body);
     const actor = actorOf(req);
     if (req.auth?.subjectType === 'CUSTOMER' && !req.auth.customer!.emailVerified) throw unprocessable('EMAIL_UNVERIFIED', 'Verify your email address before submitting a request.');
+    if (req.auth?.subjectType === 'CUSTOMER') requireCustomerRight(req, 'SUBMIT_REQUESTS');
     if (req.auth?.subjectType === 'STAFF') requireStaff(req, 'facility.initiate');
     const result = await tx(async (c) => {
       const f = await loadFacility(c, req, id, { forUpdate: true });

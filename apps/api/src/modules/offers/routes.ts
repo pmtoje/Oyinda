@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { getPool, maybe, one, q, tx } from '../../db/pool.js';
-import { actorOf, ok, parse, requireCustomer, requireStaff } from '../../http/context.js';
+import { actorOf, ok, parse, requireCustomer, requireCustomerRight, requireStaff } from '../../http/context.js';
 import { conflict, forbidden, notFound } from '../../lib/errors.js';
 import { formatMoney } from '../../lib/money.js';
 import { audit } from '../audit/audit.js';
@@ -57,7 +57,7 @@ export async function offerRoutes(app: FastifyInstance) {
   });
 
   app.post('/api/offers/:offerId/respond', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
-    const cu = requireCustomer(req);
+    const cu = requireCustomerRight(req, 'RESPOND_TO_OFFERS');
     const { offerId } = parse(z.object({ offerId: z.uuid() }), req.params);
     const b = parse(z.object({
       decision: z.enum(['ACCEPT', 'REJECT', 'NEGOTIATE']), note: z.string().trim().max(2000).optional(), rowVersion: z.number().int(),

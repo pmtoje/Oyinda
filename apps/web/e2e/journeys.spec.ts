@@ -159,3 +159,36 @@ test('Admin loads staff from a spreadsheet; a second administrator approves it',
   const u = await sql(`SELECT u.source, m.ad_username AS manager FROM app_user u JOIN app_user m ON m.id=u.manager_id WHERE u.ad_username='e2e.rm'`);
   expect(u[0]).toMatchObject({ source: 'SPREADSHEET', manager: 'demo.bm' });
 });
+
+test('A customer user invites a colleague, who joins with their own mobile and limited rights', async ({ page }) => {
+  await customerSignIn(page, 'treasury@abc-manufacturing.demo', '08030000001');
+  await page.getByRole('link', { name: 'Users' }).click();
+  await page.getByRole('button', { name: 'Invite a colleague' }).click();
+  const d = page.getByRole('dialog');
+  await d.getByLabel('Full name').fill('Chinedu Okeke');
+  await d.getByLabel('Work e-mail').fill('chinedu.e2e@abc-manufacturing.demo');
+  await d.getByLabel('Role in the company').fill('Finance Officer');
+  await d.getByLabel(/Your password/).fill(CUSTOMER_PASSWORD);
+  await d.getByRole('button', { name: 'Send invitation' }).click();
+  await expect(d.getByText('Invitation sent')).toBeVisible();
+  await d.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByText('chinedu.e2e@abc-manufacturing.demo')).toBeVisible();
+  await page.context().clearCookies();
+
+  const mail = await sql(`SELECT body FROM mock_outbox WHERE destination='chinedu.e2e@abc-manufacturing.demo' ORDER BY id DESC LIMIT 1`);
+  await page.goto(/\/invite\?token=[A-Za-z0-9_-]+/.exec(mail[0].body)![0]);
+  await expect(page.getByRole('heading', { name: 'ABC Manufacturing Ltd' })).toBeVisible();
+  await page.getByLabel('Your mobile number').fill('08035550123');
+  await page.getByRole('button', { name: 'Send verification code' }).click();
+  await otpBox(page).fill(await lastOtp('08035550123'));
+  await page.getByRole('textbox', { name: 'Password', exact: true }).fill(CUSTOMER_PASSWORD);
+  await page.getByLabel(/^Confirm password/).fill(CUSTOMER_PASSWORD);
+  await page.getByLabel(/I have read and accept the terms/).check();
+  await page.getByLabel(/I accept the data privacy terms/).check();
+  await page.getByRole('button', { name: 'Join ABC Manufacturing Ltd' }).click();
+  await page.waitForURL(/\/portal$/);
+  await page.getByRole('link', { name: 'Users' }).click();
+  await expect(page.getByText('Only colleagues with the “Manage users” right')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Invite a colleague' })).toHaveCount(0);
+  await page.screenshot({ path: 'test-results/screens/portal-users-delegate.png', fullPage: true });
+});

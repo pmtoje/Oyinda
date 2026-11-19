@@ -36,6 +36,13 @@ export function requireAnyPerm(req: FastifyRequest, perms: string[]): StaffPrinc
   return s;
 }
 
+/** A customer user holding a portal right (SUBMIT_REQUESTS, RESPOND_TO_OFFERS, MANAGE_USERS). */
+export function requireCustomerRight(req: FastifyRequest, right: 'SUBMIT_REQUESTS' | 'RESPOND_TO_OFFERS' | 'MANAGE_USERS'): CustomerPrincipal {
+  const c = requireCustomer(req);
+  if (!c.permissions.includes(right)) throw forbidden(right === 'SUBMIT_REQUESTS' ? 'Your portal access does not include submitting requests. Ask a colleague with that right, or your user administrator.' : right === 'RESPOND_TO_OFFERS' ? 'Your portal access does not include responding to offers on behalf of the business.' : 'Your portal access does not include managing users.');
+  return c;
+}
+
 export function requireCustomer(req: FastifyRequest): CustomerPrincipal {
   const a = req.auth;
   if (!a || a.subjectType !== 'CUSTOMER' || !a.customer) throw unauthorized();

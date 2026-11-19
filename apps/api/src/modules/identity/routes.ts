@@ -189,6 +189,11 @@ export async function identityRoutes(app: FastifyInstance) {
     const cba = j.cba_snapshot;
     if (!cba.registeredEmail) throw unprocessable('NO_REGISTERED_EMAIL', 'The Bank does not hold a company e-mail address for this account. Please update it with your relationship manager or branch, then try again.');
     const email = String(cba.registeredEmail).toLowerCase();
+    // Tell a second person straight away that the business is already registered (they need an invitation).
+    const existingBiz = await maybe<{ id: string }>(db, 'SELECT id FROM customer WHERE cba_customer_id=$1', [cba.cbaCustomerId]);
+    if ((existingBiz && (await maybe(db, 'SELECT 1 FROM customer_user WHERE customer_id=$1', [existingBiz.id]))) || (await maybe(db, 'SELECT 1 FROM customer_user WHERE lower(email)=$1', [email]))) {
+      throw conflict('ALREADY_REGISTERED', 'This business is already registered on Gazelle. Sign in, or ask a colleague who manages your business’s Gazelle users to invite you.');
+    }
     const policy = (await getActive(db, 'password_policy', 'CUSTOMER_PORTAL'))?.payload as PasswordPolicy | undefined;
     if (!policy) throw conflict('NO_PASSWORD_POLICY', 'Sign-up is temporarily unavailable. Please try again later.');
     const issues = checkPassword(policy, body.password, [j.applicant_name ?? '', email, cba.businessName ?? '']);
@@ -196,8 +201,8 @@ export async function identityRoutes(app: FastifyInstance) {
     const passwordHash = await hashPassword(body.password);
     const result = await tx(async (c) => {
       let customer = await maybe<any>(c, 'SELECT * FROM customer WHERE cba_customer_id=$1 FOR UPDATE', [cba.cbaCustomerId]);
-      if (customer && (await maybe(c, 'SELECT 1 FROM customer_user WHERE customer_id=$1', [customer.id]))) throw conflict('ALREADY_REGISTERED', 'This business is already registered on Gazelle. Sign in with the company e-mail address, or reset your password.');
-      if (await maybe(c, 'SELECT 1 FROM customer_user WHERE lower(email)=$1', [email])) throw conflict('ALREADY_REGISTERED', 'This business is already registered on Gazelle. Sign in with the company e-mail address, or reset your password.');
+      if (customer && (await maybe(c, 'SELECT 1 FROM customer_user WHERE customer_id=$1', [customer.id]))) throw conflict('ALREADY_REGISTERED', 'This business is already registered on Gazelle. Sign in, or ask a colleague who manages your business’s Gazelle users to invite you.');
+      if (await maybe(c, 'SELECT 1 FROM customer_user WHERE lower(email)=$1', [email])) throw conflict('ALREADY_REGISTERED', 'This business is already registered on Gazelle. Sign in, or ask a colleague who manages your business’s Gazelle users to invite you.');
       const actor = actorOf(req);
       if (!customer) {
         const rm = cba.relationshipManagerStaffNumber ? await maybe<{ id: string }>(c, `SELECT id FROM app_user WHERE staff_number=$1 AND status='ACTIVE'`, [cba.relationshipManagerStaffNumber]) : undefined;
@@ -476,7 +481,7 @@ export async function identityRoutes(app: FastifyInstance) {
     }
     const c = a.customer!;
     const customer = await one<any>(db, 'SELECT id, customer_ref, legal_name FROM customer WHERE id=$1', [c.customerId]);
-    return ok(reply, { type: 'CUSTOMER', csrfToken: a.csrfToken, user: { id: c.userId, name: c.fullName, email: maskEmail(c.email), emailVerified: c.emailVerified }, customer: { id: customer.id, ref: customer.customer_ref, name: customer.legal_name } });
+    return ok(reply, { type: 'CUSTOMER', csrfToken: a.csrfToken, user: { id: c.userId, name: c.fullName, email: maskEmail(c.email), emailVerified: c.emailVerified, permissions: c.permissions, primary: c.portalRole === 'PRIMARY' }, customer: { id: customer.id, ref: customer.customer_ref, name: customer.legal_name } });
   });
 
   app.post('/api/auth/logout', async (req, reply) => {

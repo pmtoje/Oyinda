@@ -13,6 +13,7 @@ export default function App() {
       <Route path="/onboarding" element={L(() => import('./pages/public/Onboarding'))} />
       <Route path="/login" element={L(() => import('./pages/public/CustomerLogin'))} />
       <Route path="/verify-email" element={L(() => import('./pages/public/VerifyEmail'))} />
+      <Route path="/invite" element={L(() => import('./pages/public/AcceptInvite'))} />
       <Route path="/staff/login" element={L(() => import('./pages/public/StaffLogin'))} />
       <Route path="/staff/forgot-password" element={L(() => import('./pages/public/StaffForgotPassword'))} />
       <Route path="/staff/set-password" element={L(() => import('./pages/public/StaffSetPassword'))} />
@@ -20,6 +21,7 @@ export default function App() {
       <Route path="/portal" element={<PortalShell />}>
         <Route index element={L(() => import('./pages/portal/Dashboard'))} />
         <Route path="profile" element={L(() => import('./pages/portal/Profile'))} />
+        <Route path="users" element={L(() => import('./pages/portal/Users'))} />
         <Route path="facilities/new" element={L(() => import('./pages/portal/NewFacility'))} />
         <Route path="facilities/:id/apply" element={L(() => import('./pages/portal/Application'))} />
         <Route path="facilities/:id/*" element={L(() => import('./pages/portal/FacilityDetail'))} />

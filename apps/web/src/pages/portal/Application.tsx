@@ -158,6 +158,8 @@ export default function Application() {
 }
 
 function Review({ d, v, emailVerified, rowVersion, flush, onSubmitted, reload }: { d: any; v: any; emailVerified: boolean; rowVersion: React.MutableRefObject<number>; flush: () => Promise<unknown>; onSubmitted: () => void; reload: () => void }) {
+  const { me } = useAuth();
+  const canSubmit = (me?.user?.permissions ?? []).includes('SUBMIT_REQUESTS');
   const [declared, setDeclared] = useState(false);
   const [responses, setResponses] = useState<Record<string, string>>({});
   const [elig, setElig] = useState<any>(d.eligibility);
@@ -209,7 +211,8 @@ function Review({ d, v, emailVerified, rowVersion, flush, onSubmitted, reload }:
       {err && err.code === 'INELIGIBLE' && <Alert tone="danger" title={err.message}><ul>{(err.details?.points ?? []).map((p: string, i: number) => <li key={i}>{p}</li>)}</ul><p className="small">Contact your relationship manager to discuss alternatives.</p></Alert>}
       {err && !['INCOMPLETE', 'INELIGIBLE'].includes(err.code) && <ErrorAlert error={err} />}
       <Check label="I confirm that the information in this request is true and complete, that I am authorised to make it on behalf of the business, and that the Bank may verify it, including through credit bureau enquiries." checked={declared} onChange={(e) => setDeclared(e.target.checked)} />
-      <div className="row end"><Button variant="primary" size="lg" disabled={!declared || !emailVerified} loading={submit.loading} onClick={() => submit.run()}>{d.facility.status === 'RETURNED' ? 'Resubmit request' : 'Submit request'}</Button></div>
+      {!canSubmit && <Alert tone="info" title="Ready for a colleague to submit">Your access lets you prepare this request but not submit it. A colleague with the right to submit requests can review and submit it.</Alert>}
+      <div className="row end"><Button variant="primary" size="lg" disabled={!declared || !emailVerified || !canSubmit} loading={submit.loading} onClick={() => submit.run()}>{d.facility.status === 'RETURNED' ? 'Resubmit request' : 'Submit request'}</Button></div>
     </div>
   );
 }

@@ -3,9 +3,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, Check, Empty, ErrorAlert, KV, Loading, MoneyInput, Status, TextArea, TextInput, useAction } from '../../../components/ui';
 import { api, openDocument } from '../../../lib/api';
 import { date, dateTime, humanize, toMinor } from '../../../lib/format';
+import { useAuth } from '../../../lib/auth';
 
 export function OfferTab({ facilityId }: { facilityId: string }) {
   const qc = useQueryClient();
+  const { me } = useAuth();
+  const canRespond = (me?.user?.permissions ?? []).includes('RESPOND_TO_OFFERS');
   const q = useQuery({ queryKey: ['offer', facilityId], queryFn: () => api.get<any>(`/api/facilities/${facilityId}/offer`) });
   const [mode, setMode] = useState<null | 'ACCEPT' | 'REJECT' | 'NEGOTIATE'>(null);
   const [ack, setAck] = useState(false);
@@ -40,7 +43,8 @@ export function OfferTab({ facilityId }: { facilityId: string }) {
         {current.sections.map((s: any) => <section key={s.heading}><h4>{s.heading}</h4>{s.paragraphs.map((p: string, i: number) => <p key={i} style={{ whiteSpace: 'pre-wrap' }}>{p}</p>)}</section>)}
       </div></article>
 
-      {current.status === 'ISSUED' && (
+      {current.status === 'ISSUED' && !canRespond && <Alert tone="info" title="Awaiting an authorised signatory">Your access does not include responding to offers on behalf of the business. A colleague with that right can accept, reject or request changes.</Alert>}
+      {current.status === 'ISSUED' && canRespond && (
         <div className="panel"><div className="panel-head"><h3>Your response</h3></div><div className="panel-body stack">
           <div className="row">
             <Button variant={mode === 'ACCEPT' ? 'primary' : undefined} aria-pressed={mode === 'ACCEPT'} onClick={() => setMode('ACCEPT')}>Accept offer</Button>

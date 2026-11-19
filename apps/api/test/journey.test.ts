@@ -299,7 +299,7 @@ describe('workflow controls', () => {
   });
 
   it('clarification thread keeps the conversation inside Gazelle', async () => {
-    const f = (await q(db(), `SELECT facility_id FROM workflow_task WHERE stage_key='RM_REVIEW' AND status='OPEN' LIMIT 1`))[0].facility_id;
+    const f = (await q(db(), `SELECT t.facility_id FROM workflow_task t JOIN facility_request fr ON fr.id=t.facility_id WHERE t.stage_key='RM_REVIEW' AND t.status='OPEN' AND fr.customer_id=$1 LIMIT 1`, [customerId]))[0].facility_id;
     const r = await act(staff.rm!, f, 'RM_REVIEW', 'REQUEST_CLARIFICATION', { comment: 'Please confirm the supplier delivery timeline.', clarification: { toCustomer: true, subject: 'Supplier delivery timeline' } });
     expect(r.status).toBe(200);
     const threads = (await abc.get(`/api/facilities/${f}/threads`)).body.data;

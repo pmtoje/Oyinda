@@ -20,6 +20,9 @@ export interface CustomerPrincipal {
   fullName: string;
   email: string;
   emailVerified: boolean;
+  /** Portal rights within the business: SUBMIT_REQUESTS, RESPOND_TO_OFFERS, MANAGE_USERS. */
+  permissions: string[];
+  portalRole: 'PRIMARY' | 'DELEGATE';
 }
 export interface AuthContext {
   sessionId: string;
@@ -83,7 +86,7 @@ export async function resolveSession(db: Db, token: string): Promise<AuthContext
   } else {
     const u = await maybe<any>(db, `SELECT cu.*, c.status AS customer_status FROM customer_user cu JOIN customer c ON c.id=cu.customer_id WHERE cu.id=$1 AND cu.status='ACTIVE'`, [s.subject_id]);
     if (!u || u.customer_status === 'SUSPENDED' || u.customer_status === 'EXITED') return null;
-    ctx.customer = { userId: u.id, customerId: u.customer_id, fullName: u.full_name, email: u.email, emailVerified: !!u.email_verified_at };
+    ctx.customer = { userId: u.id, customerId: u.customer_id, fullName: u.full_name, email: u.email, emailVerified: !!u.email_verified_at, permissions: u.permissions ?? [], portalRole: u.portal_role };
   }
   return ctx;
 }

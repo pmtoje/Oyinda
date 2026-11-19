@@ -49,7 +49,7 @@ Tests live in `apps/api/test/*.test.ts` (API, unit and journey) and `apps/web/e2
 | MBP-51 | Adapter integration architecture | `integrations/*` | all | Done |
 | MBP-52 | Environment separation, no secrets in source | `config/env.ts`, `.env.example` | — | Done |
 | MBP-53 | Demo seed data (ABC Manufacturing; Murabaha, Ijarah, APG; all roles) labelled DEMO | `seed/*` | seed run | Done |
-| MBP-54–56 | Unit, integration, E2E, negative tests, workflow matrix | `apps/api/test`, `apps/web/e2e` | 159 API tests, 9 browser journeys | Done |
+| MBP-54–56 | Unit, integration, E2E, negative tests, workflow matrix | `apps/api/test`, `apps/web/e2e` | 168 API tests, 10 browser journeys | Done |
 | MBP-78 | Final security assessment | `security.test.ts`, `pnpm audit` | 12 attack-class tests | Done (external pen test pending) |
 | MBP-57–58 | UX QA, accessibility | see `production-readiness.md` | e2e + manual review | Done (formal WCAG audit recommended) |
 | MBP-59–60 | Observability, admin system health | `metrics.ts`, `/api/admin/health` | `platform.test.ts` | Done (OTel exporter: Partial) |
@@ -93,3 +93,5 @@ Tests live in `apps/api/test/*.test.ts` (API, unit and journey) and `apps/web/e2
 | PRD | Block / unblock customers (checker to unblock); export users to Excel; single admin session | admin routes, `Users.tsx` | `platform.test.ts`, `auth.test.ts` | Done (D-47, D-39) |
 | PRD | Product paper workflows | — | — | Open (OQ-28) |
 | SWR TC-12 (interim) | Staff sign-in without AD: Gazelle password + MFA | `identity/staff-credentials.ts`, staff login, `StaffSetPassword.tsx`, `StaffForgotPassword.tsx`, `staff:activation-link` | `staff-local-auth.test.ts`, `e2e/local-auth.spec.ts` | Done as an approved interim (D-51) |
+| PO 19-Nov | More than one portal user per business, per-user rights | `profile/portal-users.ts`, `requireCustomerRight`, `portal/Users.tsx`, `AcceptInvite.tsx` | `portal-users.test.ts`, e2e | Done (D-52) |
+| PO 19-Nov | Facility efficiency ratio set on management / Board direction | `facility_efficiency_ratio` config, `analysis/efficiency.ts`, CAM §25, `EfficiencyRatioEditor` | `platform.test.ts` | Done (D-53) |
