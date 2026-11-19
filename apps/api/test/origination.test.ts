@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { abcClient, Client, completeAbcProfile, db, draftMurabaha, getApp, onboardCustomer, pdf, rewindOtpThrottle, staffLogin, upload, uploadAllRequired } from './helpers.js';
+import { abcClient, Client, completeAbcProfile, db, draftMurabaha, getApp, kanoClient, pdf, rewindOtpThrottle, staffLogin, upload, uploadAllRequired } from './helpers.js';
 import { q } from '../src/db/pool.js';
 
 let app: Awaited<ReturnType<typeof getApp>>;
@@ -140,8 +140,7 @@ describe('facility origination', () => {
 
   it('prevents a customer reading another customer\'s facility or editing after submission', async () => {
     await rewindOtpThrottle();
-    const kanoUser = await q(db(), `SELECT 1 FROM customer_user WHERE email='kano.ops@kano-agro.demo'`);
-    const kano = kanoUser.length ? null : await onboardCustomer(app, '0100000003', 'kano.ops@kano-agro.demo', '08030000002').catch(() => null);
+    const kano = await kanoClient(app);
     const abcFac = await q(db(), `SELECT f.id FROM facility_request f JOIN customer c ON c.id=f.customer_id WHERE c.legal_name='ABC Manufacturing Ltd' LIMIT 1`);
     if (kano) {
       expect((await kano.get(`/api/facilities/${abcFac[0].id}`)).status).toBe(404);

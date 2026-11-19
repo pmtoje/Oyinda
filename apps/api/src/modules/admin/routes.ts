@@ -220,6 +220,86 @@ export async function adminRoutes(app: FastifyInstance) {
     return ok(reply, await q(db, `SELECT c.id, c.customer_ref AS ref, c.legal_name AS name, c.status, c.is_demo AS "isDemo", u.display_name AS rm, c.business_unit_code AS "businessUnit", (SELECT count(*)::int FROM facility_request f WHERE f.customer_id=c.id) AS facilities FROM customer c LEFT JOIN app_user u ON u.id=c.relationship_manager_id ORDER BY c.legal_name`));
   });
 
+  // ---------------------------------------------------------------------------
+  // PRD: block / unblock customers. Blocking applies at once (and ends live sessions); unblocking needs a checker.
+  // ---------------------------------------------------------------------------
+  app.post('/api/admin/customers/:cid/block', async (req, reply) => {
+    const s = requireStaff(req, 'customer.block');
+    const { cid } = parse(z.object({ cid: z.uuid() }), req.params);
+    const b = parse(z.object({ reason: z.string().trim().min(10).max(500) }), req.body);
+    const out = await tx(async (c) => {
+      const cu = await maybe<any>(c, 'SELECT id, status FROM customer WHERE id=$1 FOR UPDATE', [cid]);
+      if (!cu) throw notFound('Customer');
+      if (cu.status === 'SUSPENDED') throw conflict('ALREADY_BLOCKED', 'This customer is already blocked.');
+      await q(c, `UPDATE customer SET status='SUSPENDED' WHERE id=$1`, [cid]);
+      const r = await one<any>(c, `INSERT INTO customer_block_request(customer_id, action, reason, status, requested_by) VALUES ($1,'BLOCK',$2,'APPLIED',$3) RETURNING id`, [cid, b.reason, s.id]);
+      for (const u of await q<{ id: string }>(c, 'SELECT id FROM customer_user WHERE customer_id=$1', [cid])) await revokeAllFor(c, 'CUSTOMER', u.id, 'customer_blocked');
+      await audit(c, actorOf(req), { action: 'CUSTOMER_BLOCKED', entityType: 'customer', entityId: cid, customerId: cid, metadata: { reason: b.reason, requestId: r.id } });
+      return r;
+    });
+    return ok(reply, { blocked: true, requestId: out.id });
+  });
+
+  app.post('/api/admin/customers/:cid/unblock', async (req, reply) => {
+    const s = requireStaff(req, 'customer.block');
+    const { cid } = parse(z.object({ cid: z.uuid() }), req.params);
+    const b = parse(z.object({ reason: z.string().trim().min(10).max(500) }), req.body);
+    const cu = await maybe<any>(db, 'SELECT status FROM customer WHERE id=$1', [cid]);
+    if (!cu) throw notFound('Customer');
+    if (cu.status !== 'SUSPENDED') throw conflict('NOT_BLOCKED', 'This customer is not blocked.');
+    const r = await one<any>(db, `INSERT INTO customer_block_request(customer_id, action, reason, status, requested_by) VALUES ($1,'UNBLOCK',$2,'PENDING',$3) RETURNING id`, [cid, b.reason, s.id]);
+    await audit(db, actorOf(req), { action: 'CUSTOMER_UNBLOCK_REQUESTED', entityType: 'customer', entityId: cid, customerId: cid, metadata: { reason: b.reason, requestId: r.id } });
+    return ok(reply, { requestId: r.id, status: 'PENDING' }, 201);
+  });
+
+  app.get('/api/admin/customer-block-requests', async (req, reply) => {
+    requireStaff(req, 'customer.block');
+    return ok(reply, await q(db, `SELECT r.id, r.customer_id AS "customerId", c.legal_name AS "customerName", r.action, r.reason, r.status, r.created_at AS "createdAt", u.display_name AS "requestedBy", d.display_name AS "decidedBy", r.decided_at AS "decidedAt"
+      FROM customer_block_request r JOIN customer c ON c.id=r.customer_id JOIN app_user u ON u.id=r.requested_by LEFT JOIN app_user d ON d.id=r.decided_by ORDER BY r.created_at DESC LIMIT 200`));
+  });
+
+  app.post('/api/admin/customer-block-requests/:rid/decide', async (req, reply) => {
+    const s = requireStaff(req, 'customer.block');
+    const { rid } = parse(z.object({ rid: z.uuid() }), req.params);
+    const b = parse(z.object({ decision: z.enum(['APPROVE', 'REJECT']), note: z.string().trim().max(500).optional() }), req.body);
+    await tx(async (c) => {
+      const r = await maybe<any>(c, `SELECT * FROM customer_block_request WHERE id=$1 FOR UPDATE`, [rid]);
+      if (!r || r.status !== 'PENDING') throw notFound('Pending request');
+      if (r.requested_by === s.id) throw forbidden('Maker-checker: you cannot approve your own unblock request.');
+      await q(c, `UPDATE customer_block_request SET status=$2, decided_by=$3, decided_at=now() WHERE id=$1`, [rid, b.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED', s.id]);
+      if (b.decision === 'APPROVE') await q(c, `UPDATE customer SET status='ACTIVE' WHERE id=$1`, [r.customer_id]);
+      await audit(c, actorOf(req), { action: b.decision === 'APPROVE' ? 'CUSTOMER_UNBLOCKED' : 'CUSTOMER_UNBLOCK_REJECTED', entityType: 'customer', entityId: r.customer_id, customerId: r.customer_id, metadata: { requestId: rid, note: b.note } });
+    });
+    return ok(reply, { decided: true });
+  });
+
+  /** PRD: export the list of users in Excel format for access review. */
+  app.get('/api/admin/users/export.xlsx', async (req, reply) => {
+    requireStaff(req, 'user.manage');
+    const rows = await q<any>(db, `SELECT u.ad_username, u.display_name, u.email, u.staff_number, u.directorate_code, u.business_unit_code, u.status, u.mfa_enrolled_at IS NOT NULL AS mfa, u.last_login_at, u.is_demo,
+      COALESCE((SELECT string_agg(role_code, ', ' ORDER BY role_code) FROM user_role WHERE user_id=u.id), '') AS roles,
+      COALESCE((SELECT string_agg(role_code || ': ' || limit_minor/100, '; ') FROM user_approval_limit l WHERE l.user_id=u.id AND (effective_to IS NULL OR effective_to > now())), '') AS limits
+      FROM app_user u ORDER BY u.display_name`);
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Gazelle by Alternative Bank';
+    const ws = wb.addWorksheet('Users');
+    ws.columns = [
+      { header: 'Username (AD)', key: 'ad_username', width: 22 }, { header: 'Name', key: 'display_name', width: 32 }, { header: 'E-mail', key: 'email', width: 30 },
+      { header: 'Staff number', key: 'staff_number', width: 14 }, { header: 'Directorate', key: 'directorate_code', width: 12 }, { header: 'Business unit', key: 'business_unit_code', width: 16 },
+      { header: 'Roles', key: 'roles', width: 36 }, { header: 'Personal approval limits (₦)', key: 'limits', width: 30 }, { header: 'Status', key: 'status', width: 10 },
+      { header: 'MFA enrolled', key: 'mfa', width: 12 }, { header: 'Last sign-in', key: 'last_login_at', width: 20 }, { header: 'DEMO user', key: 'is_demo', width: 10 },
+    ];
+    ws.getRow(1).font = { bold: true };
+    // Cells are written as values, never formulas; text that looks like a formula is prefixed (CSV/Excel injection defence).
+    const safe = (v: unknown) => (typeof v === 'string' && /^[=+\-@\t\r]/.test(v) ? `'${v}` : v);
+    for (const r of rows) ws.addRow(Object.fromEntries(Object.entries(r).map(([k, v]) => [k, safe(v)])));
+    await audit(db, actorOf(req), { action: 'USERS_EXPORTED', entityType: 'app_user', metadata: { rows: rows.length } });
+    const buf = Buffer.from(await wb.xlsx.writeBuffer());
+    reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').header('Content-Disposition', `attachment; filename="gazelle-users-${new Date().toISOString().slice(0, 10)}.xlsx"`).header('Cache-Control', 'no-store');
+    return reply.send(buf);
+  });
+
   /** Read-only staff directory for choosing colleagues (clarifications, delegations). No contact or access data. */
   app.get('/api/staff/directory', async (req, reply) => {
     requireAnyPerm(req, ['task.work', 'thread.participate']);

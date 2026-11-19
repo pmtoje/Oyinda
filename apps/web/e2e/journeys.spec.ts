@@ -4,11 +4,14 @@ import { e2eEnv } from './env';
 
 const otpBox = (p: Page) => p.locator('input[inputmode="numeric"]').first();
 
+const CUSTOMER_PASSWORD = 'Gazelle#Portal2026';
+
 async function customerSignIn(page: Page, email: string, phone: string) {
   await sql(`UPDATE otp_challenge SET created_at = created_at - interval '1 hour'`);
   await page.goto('/login');
-  await page.getByLabel('Email address').fill(email);
-  await page.getByRole('button', { name: 'Send sign-in code' }).click();
+  await page.getByLabel('Company e-mail address').fill(email);
+  await page.getByLabel(/^Password/).fill(CUSTOMER_PASSWORD);
+  await page.getByRole('button', { name: 'Continue' }).click();
   await expect(otpBox(page)).toBeVisible();
   await otpBox(page).fill(await lastOtp(phone));
   await page.getByRole('button', { name: 'Sign in' }).click();
@@ -34,26 +37,41 @@ test('Journey 1: a new corporate customer onboards with their Alternative Bank a
   await page.goto('/');
   await expect(page.getByText('Do you have an Alternative Bank account?')).toBeVisible();
   await page.getByText('Yes, I have an account').click();
-  await page.getByLabel('Account number').fill('0100000003');
+  await page.getByLabel('Company account number').fill('0100000003');
+  await page.getByLabel('Your full name').fill('Hauwa Sule');
+  await page.getByLabel('Your role in the company').fill('Chief Financial Officer');
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByText(/0803•••••02/)).toBeVisible();
+  await expect(page.getByText('KANO AGRO-ALLIED PROCESSING LTD')).toHaveCount(0); // name shown only after the OTP
   await otpBox(page).fill('000000');
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText(/incorrect/i);
-  await otpBox(page).fill(await lastOtp('08030000002'));
+  await otpBox(page).fill(await lastOtp('finance@kano-agro.demo'));
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
-  await expect(page.getByText('Kano Agro-Allied Processing Ltd')).toBeVisible();
-  await page.getByLabel('Full name').fill('Hauwa Sule');
-  await page.getByLabel('Work email').fill('hauwa.e2e@kano-agro.demo');
-  await page.getByLabel('Designation').fill('Chief Financial Officer');
+  await expect(page.getByRole('heading', { name: 'KANO AGRO-ALLIED PROCESSING LTD' })).toBeVisible();
+  await expect(page.getByLabel(/Username/)).toHaveValue('finance@kano-agro.demo');
+  await page.getByRole('textbox', { name: 'Password', exact: true }).fill('weak');
+  await page.getByLabel('Confirm password').fill('weak');
   await page.getByLabel(/I have read and accept the terms/).check();
-  await page.getByLabel(/I consent to the processing/).check();
-  await page.getByRole('button', { name: 'Create access' }).click();
-  await expect(otpBox(page)).toBeVisible();
-  await otpBox(page).fill(await lastOtp('hauwa.e2e@kano-agro.demo'));
-  await page.getByRole('button', { name: 'Verify email' }).click();
+  await page.getByLabel(/I accept the data privacy terms/).check();
+  await page.getByRole('button', { name: 'Create account' }).click();
+  const popup = page.getByRole('dialog', { name: 'Your password needs attention' });
+  await expect(popup).toBeVisible();
+  await expect(popup).toContainText(/At least 12 characters/);
+  await popup.getByRole('button', { name: 'Update password' }).click();
+  await page.getByRole('textbox', { name: 'Password', exact: true }).fill(CUSTOMER_PASSWORD);
+  await page.getByLabel('Confirm password').fill(CUSTOMER_PASSWORD);
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByText('Your account is ready')).toBeVisible();
+  const mail = await sql(`SELECT body FROM mock_outbox WHERE destination='finance@kano-agro.demo' ORDER BY id DESC LIMIT 1`);
+  const link = /verify-email\?token=[A-Za-z0-9_-]+/.exec(mail[0].body)![0];
+  await page.goto('/' + link);
+  await expect(page.getByText('E-mail address confirmed')).toBeVisible();
+  await page.getByRole('link', { name: 'Go to your dashboard' }).click();
   await page.waitForURL(/\/portal$/);
   await expect(page.getByRole('heading', { name: 'Kano Agro-Allied Processing Ltd' })).toBeVisible();
+  await expect(page.getByText("Your business on the Bank's records")).toBeVisible();
+  await expect(page.getByText('RC7654321')).toBeVisible();
   await expect(page.getByRole('button', { name: /start new facility request/i }).or(page.getByRole('link', { name: /start new facility request/i })).first()).toBeVisible();
   await page.screenshot({ path: 'test-results/screens/onboarded-dashboard.png', fullPage: true });
 });
@@ -82,7 +100,7 @@ test('Journey 6: the credit analyst claims the Murabaha and sees what remains be
   await expect(page.getByRole('button', { name: 'Complete' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Approve' })).toHaveCount(0);
   await page.getByRole('tab', { name: /workflow/i }).click();
-  await expect(page.getByText(/E&S review/).first()).toBeVisible();
+  await expect(page.getByText(/E&S risk review not required/).first()).toBeVisible();
   await page.screenshot({ path: 'test-results/screens/analyst-workspace.png', fullPage: true });
 });
 
@@ -105,7 +123,7 @@ test('Access control in the browser: customers cannot reach staff screens', asyn
 
 test('Accessibility basics: skip link, labelled controls and keyboard focus', async ({ page }) => {
   await page.goto('/login');
-  await expect(page.getByLabel('Email address')).toBeVisible();
+  await expect(page.getByLabel('Company e-mail address')).toBeVisible();
   const unlabelled = await page.locator('input:not([type=hidden])').evaluateAll((els) => els.filter((e) => !e.id || !document.querySelector(`label[for="${e.id}"]`)).length);
   expect(unlabelled).toBe(0);
   await page.keyboard.press('Tab');

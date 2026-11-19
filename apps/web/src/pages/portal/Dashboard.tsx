@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { Button, Empty, ErrorAlert, Loading, PageHeader, Panel, Status } from '../../components/ui';
+import { Button, Empty, ErrorAlert, KV, Loading, PageHeader, Panel, Status } from '../../components/ui';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { dateTime } from '../../lib/format';
@@ -40,6 +40,15 @@ export default function Dashboard() {
       <PageHeader eyebrow={me!.customer!.ref} title={me!.customer!.name} sub={profile.data?.customer.relationshipManager ? <>Relationship Manager: <strong>{profile.data.customer.relationshipManager.name}</strong> · <a href={`mailto:${profile.data.customer.relationshipManager.email}`}>{profile.data.customer.relationshipManager.email}</a></> : 'A relationship manager will be assigned to your business.'}
         actions={<Button variant="primary" size="lg" onClick={() => nav('/portal/facilities/new')}>Start new facility request</Button>} />
       {!me!.user.emailVerified && <EmailVerifyCard />}
+      {profile.data?.banking && (
+        <Panel title="Your business on the Bank's records">
+          <div className="grid cols-3">
+            <KV items={[['Account name', profile.data.banking.accountName], ['Account number', <span className="mono" key="a">{profile.data.banking.accountNumber ?? '—'}</span>]]} />
+            <KV items={[['Sector', profile.data.banking.sector ?? <span className="muted" key="s">Add in your business profile</span>], ['Branch', profile.data.banking.branch ?? '—']]} />
+            <KV items={[['TIN', <span className="mono" key="t">{profile.data.banking.tin ?? '—'}</span>], ['RC number', <span className="mono" key="r">{profile.data.banking.rcNumber ?? '—'}</span>]]} />
+          </div>
+        </Panel>
+      )}
 
       <div className="grid cols-3">
         <div className="metric"><div className="label">Active requests</div><div className="value">{facilities.isLoading ? '…' : active.length}</div><div className="sub">{past.length} completed or closed</div></div>

@@ -93,9 +93,12 @@ const partyView = (r: any) => ({ id: r.id, partyType: r.party_type, entityKind: 
 export async function profileView(db: Db, customerId: string) {
   const p = await maybe<any>(db, 'SELECT bp.*, s.name AS sector_name FROM business_profile bp LEFT JOIN sector s ON s.code=bp.sector_code WHERE bp.customer_id=$1', [customerId]);
   if (!p) throw notFound('Business profile');
-  const c = await one<any>(db, `SELECT c.*, u.display_name AS rm_name, u.email AS rm_email FROM customer c LEFT JOIN app_user u ON u.id=c.relationship_manager_id WHERE c.id=$1`, [customerId]);
+  const c = await one<any>(db, `SELECT c.*, u.display_name AS rm_name, u.email AS rm_email, bu.name AS branch_name FROM customer c LEFT JOIN app_user u ON u.id=c.relationship_manager_id LEFT JOIN business_unit bu ON bu.code=c.business_unit_code WHERE c.id=$1`, [customerId]);
+  const primary = await maybe<any>(db, `SELECT account_number, account_name FROM customer_account WHERE customer_id=$1 ORDER BY is_primary DESC, account_number LIMIT 1`, [customerId]);
   return {
-    customer: { id: c.id, ref: c.customer_ref, name: c.legal_name, category: c.customer_category, relationshipManager: c.rm_name ? { name: c.rm_name, email: c.rm_email } : null, isDemo: c.is_demo },
+    customer: { id: c.id, ref: c.customer_ref, name: c.legal_name, category: c.customer_category, relationshipManager: c.rm_name ? { name: c.rm_name, email: c.rm_email } : null, isDemo: c.is_demo, status: c.status },
+    // SWR §1: basic details spooled from the core banking record for the customer dashboard.
+    banking: { accountName: primary?.account_name ?? c.legal_name, accountNumber: primary?.account_number ?? null, sector: p.sector_name ?? null, branch: c.branch_name ?? null, tin: p.tin ?? null, rcNumber: p.rc_number ?? null },
     profile: {
       registeredName: p.registered_name, rcNumber: p.rc_number, incorporationDate: p.incorporation_date, lockedFromCoreBanking: ['registeredName', 'rcNumber', 'incorporationDate'],
       ...Object.fromEntries(Object.entries(COLS).map(([k, col]) => [k, p[col]])), sectorName: p.sector_name, version: p.version, updatedAt: p.updated_at,

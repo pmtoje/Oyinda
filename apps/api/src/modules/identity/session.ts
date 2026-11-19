@@ -53,6 +53,16 @@ function deviceLabel(ua?: string | null): string {
   return `${browser} on ${os}`;
 }
 
+/**
+ * SWR technology control 22 / PRD: restrict concurrent logins. When enabled, a new fully-authenticated
+ * session ends every other live session of the same user. Returns how many were ended.
+ */
+export async function enforceSingleSession(db: Db, subjectType: 'CUSTOMER' | 'STAFF', subjectId: string, keepSessionId: string) {
+  if (!env().SINGLE_SESSION) return 0;
+  const r = await q(db, `UPDATE auth_session SET revoked_at=now(), revoked_reason='superseded_by_new_sign_in' WHERE subject_type=$1 AND subject_id=$2 AND id<>$3 AND revoked_at IS NULL RETURNING id`, [subjectType, subjectId, keepSessionId]);
+  return r.length;
+}
+
 /** Resolve a session token; enforces revocation, idle and absolute timeouts and slides the idle window. */
 export async function resolveSession(db: Db, token: string): Promise<AuthContext | null> {
   if (!token || token.length > 100) return null;

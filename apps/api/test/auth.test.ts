@@ -1,43 +1,50 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { Client, DEMO_PASSWORD, db, getApp, lastOtp, rewindOtpThrottle, staffLogin } from './helpers.js';
+import { Client, CUSTOMER_PASSWORD, customerLogin, DEMO_PASSWORD, db, getApp, lastLinkToken, lastOtp, rewindOtpThrottle, staffLogin } from './helpers.js';
 import { q } from '../src/db/pool.js';
 import { verifyAuditChain } from '../src/modules/audit/audit.js';
 
 let app: Awaited<ReturnType<typeof getApp>>;
 beforeAll(async () => { app = await getApp(); });
 
-const KANO_ACCT = '0100000003';
-const KANO_PHONE = '08030000002';
+// Dedicated DEMO customer for onboarding tests (no other test file signs it up).
+const ACCT = '0100000005';
+const PHONE = '08030000004';
+const EMAIL = 'admin@lagos-health.demo';
+const start = (c: Client, extra: Record<string, unknown> = {}) => c.post('/api/onboarding/start', { accountNumber: ACCT, fullName: 'Folake Bello', roleInCompany: 'Chief Financial Officer', ...extra });
 
-describe('customer onboarding & OTP security', () => {
-  it('never returns the OTP in any API response', async () => {
+describe('customer onboarding & OTP security (SWR §1)', () => {
+  it('sends one OTP to both the phone and the e-mail registered on the CBA, never in any API response, and does not reveal the account name before the OTP', async () => {
     await rewindOtpThrottle();
     const c = new Client(app);
-    const r = await c.post('/api/onboarding/start', { accountNumber: KANO_ACCT });
+    const r = await start(c);
     expect(r.status).toBe(200);
-    const code = await lastOtp(KANO_PHONE);
+    const code = await lastOtp(PHONE);
+    expect(await lastOtp(EMAIL)).toBe(code);
     expect(JSON.stringify(r.body)).not.toContain(code);
-    expect(r.body.data.otpSentTo).toBe('0803•••••02');
+    expect(r.body.data.otpSentTo).toEqual({ phone: '0803•••••04', email: expect.stringMatching(/^a.*@lagos-health\.demo$/) });
+    expect(JSON.stringify(r.body)).not.toMatch(/LAGOS HEALTH/i);
     const rows = await q(db(), 'SELECT code_hash FROM otp_challenge ORDER BY created_at DESC LIMIT 1');
     expect(rows[0].code_hash).not.toContain(code);
   });
 
-  it('rejects unknown and non-corporate accounts without revealing data', async () => {
+  it('requires the applicant name and role; rejects unknown and non-corporate accounts without revealing data', async () => {
     const c = new Client(app);
-    const r = await c.post('/api/onboarding/start', { accountNumber: '0999999999' });
+    expect((await c.post('/api/onboarding/start', { accountNumber: ACCT })).status).toBe(400);
+    const r = await start(c, { accountNumber: '0999999999' });
     expect(r.status).toBe(422);
     expect(r.body.error.code).toBe('ACCOUNT_NOT_VERIFIED');
-    const ind = await c.post('/api/onboarding/start', { accountNumber: '0100000004' });
+    const ind = await start(c, { accountNumber: '0100000004' });
     expect(ind.body.error.code).toBe('NOT_CORPORATE');
-    const bad = await c.post('/api/onboarding/start', { accountNumber: "0100' OR 1=1" });
+    expect(ind.body.error.message).toMatch(/business account/);
+    const bad = await start(c, { accountNumber: "0100' OR 1=1" });
     expect(bad.status).toBe(400);
   });
 
   it('rejects wrong, then locks after max attempts, and refuses reuse', async () => {
     await rewindOtpThrottle();
     const c = new Client(app);
-    await c.post('/api/onboarding/start', { accountNumber: KANO_ACCT });
-    const right = await lastOtp(KANO_PHONE);
+    await start(c);
+    const right = await lastOtp(PHONE);
     const wrong = right === '000000' ? '111111' : '000000';
     const w1 = await c.post('/api/onboarding/verify-otp', { code: wrong });
     expect(w1.status).toBe(422);
@@ -51,8 +58,8 @@ describe('customer onboarding & OTP security', () => {
   it('rejects an expired OTP', async () => {
     await rewindOtpThrottle();
     const c = new Client(app);
-    await c.post('/api/onboarding/start', { accountNumber: KANO_ACCT });
-    const code = await lastOtp(KANO_PHONE);
+    await start(c);
+    const code = await lastOtp(PHONE);
     await q(db(), `UPDATE otp_challenge SET expires_at = now() - interval '1 second' WHERE consumed_at IS NULL AND invalidated_at IS NULL`);
     const r = await c.post('/api/onboarding/verify-otp', { code });
     expect(r.body.error.code).toBe('OTP_EXPIRED');
@@ -61,67 +68,90 @@ describe('customer onboarding & OTP security', () => {
   it('cannot skip the OTP step (no bypass)', async () => {
     await rewindOtpThrottle();
     const c = new Client(app);
-    await c.post('/api/onboarding/start', { accountNumber: KANO_ACCT });
-    const r = await c.post('/api/onboarding/complete', { fullName: 'Attacker', email: 'x@evil.demo', designation: 'Director', acceptTerms: true, privacyConsent: true, termsVersion: '2026.1' });
+    await start(c);
+    const r = await c.post('/api/onboarding/complete', { password: CUSTOMER_PASSWORD, acceptTerms: true, privacyConsent: true, termsVersion: '2026.1' });
     expect(r.status).toBe(409);
     expect(r.body.error.code).toBe('STEP');
     const noJourney = await new Client(app).post('/api/onboarding/verify-otp', { code: '123456' });
     expect(noJourney.status).toBe(401);
   });
 
-  it('completes onboarding, verifies email, and refuses OTP reuse', async () => {
+  it('shows the account name after the OTP, enforces the password policy, uses the CBA e-mail as username, and sends a welcome link', async () => {
     await rewindOtpThrottle();
     const c = new Client(app);
-    await c.post('/api/onboarding/start', { accountNumber: KANO_ACCT });
-    const code = await lastOtp(KANO_PHONE);
+    await start(c);
+    const code = await lastOtp(PHONE);
     const v = await c.post('/api/onboarding/verify-otp', { code });
     expect(v.status).toBe(200);
-    expect(v.body.data.business.name).toBe('Kano Agro-Allied Processing Ltd');
+    expect(v.body.data.business.accountName).toBe('LAGOS HEALTH SERVICES LTD');
     expect(v.body.data.business.tin).toMatch(/^•+0001$/);
-    const reuse = await c.post('/api/onboarding/verify-otp', { code });
-    expect(reuse.status).toBe(409);
-    const done = await c.post('/api/onboarding/complete', { fullName: 'Hauwa Sule', email: 'hauwa@kano-agro.demo', designation: 'CFO', acceptTerms: true, privacyConsent: true, termsVersion: '2026.1' });
+    expect(v.body.data.username).toBe(EMAIL);
+    expect(v.body.data.passwordPolicy.minLength).toBeGreaterThanOrEqual(8);
+    expect((await c.post('/api/onboarding/verify-otp', { code })).status).toBe(409);
+    const weak = await c.post('/api/onboarding/complete', { password: 'short', acceptTerms: true, privacyConsent: true, termsVersion: '2026.1' });
+    expect(weak.body.error.code).toBe('PASSWORD_POLICY');
+    expect(weak.body.error.details.unmet.length).toBeGreaterThan(1);
+    const personal = await c.post('/api/onboarding/complete', { password: 'Folake#Health2026', acceptTerms: true, privacyConsent: true, termsVersion: '2026.1' });
+    expect(personal.body.error.details.unmet).toContain('Must not contain your name or e-mail address');
+    const noTerms = await c.post('/api/onboarding/complete', { password: CUSTOMER_PASSWORD, acceptTerms: false, privacyConsent: true, termsVersion: '2026.1' });
+    expect(noTerms.status).toBe(400);
+    const done = await c.post('/api/onboarding/complete', { password: CUSTOMER_PASSWORD, acceptTerms: true, privacyConsent: true, termsVersion: '2026.1' });
     expect(done.status).toBe(201);
+    expect(done.body.data.username).toBe(EMAIL);
+    const stored = await q(db(), `SELECT password_hash, full_name, role_in_company FROM customer_user WHERE email=$1`, [EMAIL]);
+    expect(stored[0].password_hash).toMatch(/^scrypt\$/);
+    expect(stored[0].password_hash).not.toContain(CUSTOMER_PASSWORD);
+    expect([stored[0].full_name, stored[0].role_in_company]).toEqual(['Folake Bello', 'Chief Financial Officer']);
     const me = await c.get('/api/auth/me');
-    expect(me.body.data.customer.name).toBe('Kano Agro-Allied Processing Ltd');
+    expect(me.body.data.customer.name).toBe('Lagos Health Services Ltd');
     expect(me.body.data.user.emailVerified).toBe(false);
-    const ev = await c.post('/api/auth/customer/email/verify', { challengeId: done.body.data.emailVerificationChallengeId, code: await lastOtp('hauwa@kano-agro.demo') });
-    expect(ev.status).toBe(200);
+    const token = await lastLinkToken(EMAIL);
+    expect((await new Client(app).post('/api/auth/customer/email/verify-link', { token })).status).toBe(200);
+    expect((await new Client(app).post('/api/auth/customer/email/verify-link', { token })).body.error.code).toBe('LINK_INVALID'); // single use
+    expect((await c.get('/api/auth/me')).body.data.user.emailVerified).toBe(true);
     // Profile was pre-populated from the core banking record, not from client input
-    const prof = await q(db(), `SELECT bp.rc_number FROM business_profile bp JOIN customer c ON c.id=bp.customer_id WHERE c.legal_name=$1`, ['Kano Agro-Allied Processing Ltd']);
-    expect(prof[0].rc_number).toBe('RC7654321');
+    const prof = await q(db(), `SELECT bp.rc_number FROM business_profile bp JOIN customer c ON c.id=bp.customer_id WHERE c.legal_name=$1`, ['Lagos Health Services Ltd']);
+    expect(prof[0].rc_number).toBe('RC2468024');
   });
 
-  it('customer login: enumeration-resistant start, lockout after repeated failures', async () => {
+  it('a business can register only once (username is the company e-mail)', async () => {
     await rewindOtpThrottle();
     const c = new Client(app);
-    const unknown = await c.post('/api/auth/customer/login/start', { email: 'nobody@nowhere.demo' });
-    const known = await c.post('/api/auth/customer/login/start', { email: 'hauwa@kano-agro.demo' });
-    expect(unknown.status).toBe(200);
-    expect(unknown.body.data.message).toBe(known.body.data.message);
-    const challengeId = known.body.data.challengeId;
-    const right = await lastOtp(KANO_PHONE);
-    const wrong = right === '000000' ? '111111' : '000000';
-    for (let i = 0; i < 4; i++) {
-      const r = await c.post('/api/auth/customer/login/verify', { email: 'hauwa@kano-agro.demo', challengeId, code: wrong });
-      expect(r.status).toBe(422);
-    }
+    await start(c, { fullName: 'Second Person', roleInCompany: 'Accountant' });
+    const v = await c.post('/api/onboarding/verify-otp', { code: await lastOtp(PHONE) });
+    expect(v.body.data.alreadyOnGazelle).toBe(true);
+    const r = await c.post('/api/onboarding/complete', { password: 'Another#Secure2026', acceptTerms: true, privacyConsent: true, termsVersion: '2026.1' });
+    expect(r.body.error.code).toBe('ALREADY_REGISTERED');
+  });
+
+  it('customer login: password then OTP; identical errors for unknown users and wrong passwords; lockout', async () => {
     await rewindOtpThrottle();
-    const again = await c.post('/api/auth/customer/login/start', { email: 'hauwa@kano-agro.demo' });
-    const r5 = await c.post('/api/auth/customer/login/verify', { email: 'hauwa@kano-agro.demo', challengeId: again.body.data.challengeId, code: wrong });
+    const c = new Client(app);
+    const unknown = await c.post('/api/auth/customer/login/start', { email: 'nobody@nowhere.demo', password: CUSTOMER_PASSWORD });
+    const wrongPw = await c.post('/api/auth/customer/login/start', { email: EMAIL, password: 'Wrong#Password1' });
+    expect(unknown.status).toBe(401);
+    expect(wrongPw.status).toBe(401);
+    expect(unknown.body.error.message).toBe(wrongPw.body.error.message);
+    const known = await c.post('/api/auth/customer/login/start', { email: EMAIL, password: CUSTOMER_PASSWORD });
+    expect(known.status).toBe(200);
+    expect(JSON.stringify(known.body)).not.toContain(await lastOtp(PHONE));
+    const challengeId = known.body.data.challengeId;
+    const right = await lastOtp(PHONE);
+    const wrong = right === '000000' ? '111111' : '000000';
+    for (let i = 0; i < 4; i++) expect((await c.post('/api/auth/customer/login/verify', { email: EMAIL, challengeId, code: wrong })).status).toBe(422);
+    await rewindOtpThrottle();
+    const again = await c.post('/api/auth/customer/login/start', { email: EMAIL, password: CUSTOMER_PASSWORD });
+    const r5 = await c.post('/api/auth/customer/login/verify', { email: EMAIL, challengeId: again.body.data.challengeId, code: wrong });
     expect(r5.status).toBe(423);
-    await q(db(), `UPDATE customer_user SET locked_until=NULL, failed_otp_count=0 WHERE email='hauwa@kano-agro.demo'`);
+    await q(db(), `UPDATE customer_user SET locked_until=NULL, failed_otp_count=0, failed_password_count=0 WHERE email=$1`, [EMAIL]);
+    for (let i = 0; i < 4; i++) await c.post('/api/auth/customer/login/start', { email: EMAIL, password: 'Wrong#Password1' });
+    expect((await c.post('/api/auth/customer/login/start', { email: EMAIL, password: 'Wrong#Password1' })).status).toBe(423);
+    expect((await c.post('/api/auth/customer/login/start', { email: EMAIL, password: CUSTOMER_PASSWORD })).status).toBe(423);
+    await q(db(), `UPDATE customer_user SET locked_until=NULL, failed_otp_count=0, failed_password_count=0 WHERE email=$1`, [EMAIL]);
   });
 
   it('customer login success creates an HttpOnly session; logout revokes it', async () => {
-    await rewindOtpThrottle();
-    const c = new Client(app);
-    const s = await c.post('/api/auth/customer/login/start', { email: 'hauwa@kano-agro.demo' });
-    const r = await c.post('/api/auth/customer/login/verify', { email: 'hauwa@kano-agro.demo', challengeId: s.body.data.challengeId, code: await lastOtp(KANO_PHONE) });
-    expect(r.status).toBe(200);
-    const setCookie = String(r.raw.headers['set-cookie']);
-    expect(setCookie).toMatch(/HttpOnly/i);
-    expect(setCookie).toMatch(/SameSite=Strict/i);
+    const c = await customerLogin(app, EMAIL, PHONE);
     const sessions = await c.get('/api/auth/sessions');
     expect(sessions.body.data.some((x: any) => x.current)).toBe(true);
     const out = await c.post('/api/auth/logout');
@@ -129,14 +159,36 @@ describe('customer onboarding & OTP security', () => {
     // replaying the old cookie no longer works (stolen-token replay after logout)
     expect((await c.get('/api/auth/me')).status).toBe(401);
   });
+
+  it('restricts concurrent logins: a new sign-in ends the earlier session (SWR control 22)', async () => {
+    const { env } = await import('../src/config/env.js');
+    (env() as any).SINGLE_SESSION = true;
+    try {
+      const first = await customerLogin(app, EMAIL, PHONE);
+      expect((await first.get('/api/auth/me')).status).toBe(200);
+      const second = await customerLogin(app, EMAIL, PHONE);
+      expect((await second.get('/api/auth/me')).status).toBe(200);
+      expect((await first.get('/api/auth/me')).status).toBe(401);
+      const reason = await q(db(), `SELECT revoked_reason FROM auth_session WHERE revoked_reason='superseded_by_new_sign_in' LIMIT 1`);
+      expect(reason).toHaveLength(1);
+    } finally { (env() as any).SINGLE_SESSION = false; }
+  });
+
+  it('sets HttpOnly, SameSite=Strict session cookies', async () => {
+    await rewindOtpThrottle();
+    const c = new Client(app);
+    const s = await c.post('/api/auth/customer/login/start', { email: EMAIL, password: CUSTOMER_PASSWORD });
+    const r = await c.post('/api/auth/customer/login/verify', { email: EMAIL, challengeId: s.body.data.challengeId, code: await lastOtp(PHONE) });
+    const setCookie = String(r.raw.headers['set-cookie']);
+    expect(setCookie).toMatch(/HttpOnly/i);
+    expect(setCookie).toMatch(/SameSite=Strict/i);
+  });
 });
 
 describe('CSRF and session protections', () => {
   it('rejects state-changing requests without a valid CSRF token or from a foreign origin', async () => {
     await rewindOtpThrottle();
-    const c = new Client(app);
-    const s = await c.post('/api/auth/customer/login/start', { email: 'hauwa@kano-agro.demo' });
-    await c.post('/api/auth/customer/login/verify', { email: 'hauwa@kano-agro.demo', challengeId: s.body.data.challengeId, code: await lastOtp(KANO_PHONE) });
+    const c = await customerLogin(app, EMAIL, PHONE);
     const token = c.csrf;
     c.csrf = undefined;
     expect((await c.post('/api/auth/sessions/revoke-others')).status).toBe(403);
@@ -149,9 +201,7 @@ describe('CSRF and session protections', () => {
 
   it('expires idle sessions server-side', async () => {
     await rewindOtpThrottle();
-    const c = new Client(app);
-    const s = await c.post('/api/auth/customer/login/start', { email: 'hauwa@kano-agro.demo' });
-    await c.post('/api/auth/customer/login/verify', { email: 'hauwa@kano-agro.demo', challengeId: s.body.data.challengeId, code: await lastOtp(KANO_PHONE) });
+    const c = await customerLogin(app, EMAIL, PHONE);
     await q(db(), `UPDATE auth_session SET idle_expires_at = now() - interval '1 minute' WHERE revoked_at IS NULL`);
     expect((await c.get('/api/auth/me')).status).toBe(401);
   });

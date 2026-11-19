@@ -79,16 +79,31 @@ export async function staffLogin(a: FastifyInstance, username: string): Promise<
   return c;
 }
 
-/** Onboard a demo customer account through the real onboarding journey. */
+/** Test-only customer password (meets the default portal password policy). */
+export const CUSTOMER_PASSWORD = 'Gazelle#Portal2026';
+
+/** Reads the verification link from the latest welcome e-mail in the MOCK outbox. */
+export async function lastLinkToken(email: string): Promise<string> {
+  const rows = await q<{ body: string }>(db(), 'SELECT body FROM mock_outbox WHERE destination=$1 ORDER BY id DESC LIMIT 1', [email]);
+  const m = /verify-email\?token=([A-Za-z0-9_-]+)/.exec(rows[0]?.body ?? '');
+  if (!m) throw new Error(`No verification link found for ${email}`);
+  return m[1]!;
+}
+
+/**
+ * Onboard a demo customer through the real SWR journey: account number + name + role → OTP to the CBA phone and e-mail →
+ * password (username = CBA e-mail) → terms → welcome e-mail link. `email` must be the e-mail registered on the CBA.
+ */
 export async function onboardCustomer(a: FastifyInstance, accountNumber: string, email: string, phone: string): Promise<Client> {
   const c = new Client(a);
-  const s = await c.post('/api/onboarding/start', { accountNumber });
+  const s = await c.post('/api/onboarding/start', { accountNumber, fullName: 'Demo Treasurer', roleInCompany: 'Group Treasurer' });
   if (s.status !== 200) throw new Error(`onboarding start failed: ${JSON.stringify(s.body)}`);
   const v = await c.post('/api/onboarding/verify-otp', { code: await lastOtp(phone) });
   if (v.status !== 200) throw new Error(`onboarding verify failed: ${JSON.stringify(v.body)}`);
-  const done = await c.post('/api/onboarding/complete', { fullName: 'Demo Treasurer', email, designation: 'Group Treasurer', acceptTerms: true, privacyConsent: true, termsVersion: v.body.data.terms.version });
+  if (v.body.data.username !== email) throw new Error(`expected username ${email}, got ${v.body.data.username}`);
+  const done = await c.post('/api/onboarding/complete', { password: CUSTOMER_PASSWORD, acceptTerms: true, privacyConsent: true, termsVersion: v.body.data.terms.version });
   if (done.status !== 201) throw new Error(`onboarding complete failed: ${JSON.stringify(done.body)}`);
-  const ev = await c.post('/api/auth/customer/email/verify', { challengeId: done.body.data.emailVerificationChallengeId, code: await lastOtp(email) });
+  const ev = await c.post('/api/auth/customer/email/verify-link', { token: await lastLinkToken(email) });
   if (ev.status !== 200) throw new Error(`email verify failed: ${JSON.stringify(ev.body)}`);
   return c;
 }
@@ -123,18 +138,20 @@ export async function customerClient(a: FastifyInstance, account: string, email:
 export async function customerLogin(a: FastifyInstance, email: string, phone: string): Promise<Client> {
   await rewindOtpThrottle();
   const c = new Client(a);
-  const s = await c.post('/api/auth/customer/login/start', { email });
+  const s = await c.post('/api/auth/customer/login/start', { email, password: CUSTOMER_PASSWORD });
+  if (s.status !== 200) throw new Error(`login start failed for ${email}: ${JSON.stringify(s.body)}`);
   const r = await c.post('/api/auth/customer/login/verify', { email, challengeId: s.body.data.challengeId, code: await lastOtp(phone) });
   if (r.status !== 200) throw new Error(`login failed for ${email}: ${JSON.stringify(r.body)}`);
   return c;
 }
 
 /** Onboard ABC (once) and return a signed-in client. */
-export const abcClient = (a: FastifyInstance) => customerClient(a, ABC.account, 'treasury.lead@abc-manufacturing.demo', ABC.phone);
+export const ABC_EMAIL = 'treasury@abc-manufacturing.demo';
+export const abcClient = (a: FastifyInstance) => customerClient(a, ABC.account, ABC_EMAIL, ABC.phone);
 
-export const KANO = { account: '0100000003', phone: '08030000002' };
+export const KANO = { account: '0100000003', phone: '08030000002', email: 'finance@kano-agro.demo' };
 /** Kano Agro-Allied (Agriculture — a HEART sector) for E&S and committee scenarios. */
-export const kanoClient = (a: FastifyInstance) => customerClient(a, KANO.account, 'credit.desk@kano-agro.demo', KANO.phone);
+export const kanoClient = (a: FastifyInstance) => customerClient(a, KANO.account, KANO.email, KANO.phone);
 
 export async function completeKanoProfile(c: Client, customerId: string) {
   await c.put(`/api/customers/${customerId}/profile`, { businessType: 'LIMITED_LIABILITY', sectorCode: 'AGRICULTURE', industry: 'Grain processing', businessDescription: 'Processor of maize and sorghum into flour and animal feed for northern Nigeria.', productsServices: 'Maize flour, sorghum flour, poultry feed', valueChain: 'Buys grain from out-growers; sells to distributors', geographicFootprint: 'Kano, Kaduna, Jigawa', employeeCount: 260, hasLitigation: false, hasRegulatoryMatters: false });

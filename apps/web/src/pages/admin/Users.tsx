@@ -14,7 +14,8 @@ export default function Users() {
   const pending = reqs.data?.filter((r) => r.status === 'PENDING').length ?? 0;
   return (
     <>
-      <PageHeader eyebrow="Control centre" title="Users & access" sub="Staff sign in through Active Directory with multi-factor authentication. Gazelle controls roles, limits and portfolios. Every change is audited." />
+      <PageHeader eyebrow="Control centre" title="Users & access" sub="Staff sign in through Active Directory with multi-factor authentication. Gazelle controls roles, limits and portfolios. Every change is audited."
+        actions={<a className="btn" href="/api/admin/users/export.xlsx" download>Export users (Excel)</a>} />
       <Tabs value={tab} onChange={setTab} tabs={[{ key: 'users', label: 'Staff users' }, { key: 'requests', label: `Access requests${pending ? ` (${pending})` : ''}`, flag: pending > 0 }, { key: 'customers', label: 'Customer portfolios' }]} />
       {tab === 'users' && <UserTable />}
       {tab === 'requests' && <AccessRequests q={reqs} />}
@@ -181,6 +182,13 @@ function Portfolios() {
   const rms = (users.data ?? []).filter((u) => u.roles.includes('RM') && u.status === 'ACTIVE');
   const [target, setTarget] = useState<any>(null);
   const [form, setForm] = useState({ userId: '', reason: '' });
+  const blocks = useQuery({ queryKey: ['admin', 'block-requests'], queryFn: () => api.get<any[]>('/api/admin/customer-block-requests'), retry: false });
+  const [blockTarget, setBlockTarget] = useState<any>(null);
+  const [blockReason, setBlockReason] = useState('');
+  const refreshAll = () => Promise.all([qc.invalidateQueries({ queryKey: ['admin', 'customers'] }), qc.invalidateQueries({ queryKey: ['admin', 'block-requests'] })]);
+  const block = useAction(async () => { await api.post(`/api/admin/customers/${blockTarget.id}/${blockTarget.status === 'SUSPENDED' ? 'unblock' : 'block'}`, { reason: blockReason }); setBlockTarget(null); await refreshAll(); });
+  const decide = useAction(async (id: string, decision: 'APPROVE' | 'REJECT') => { await api.post(`/api/admin/customer-block-requests/${id}/decide`, { decision }); await refreshAll(); });
+  const pendingUnblocks = (blocks.data ?? []).filter((r) => r.status === 'PENDING');
   const assign = useAction(async () => { await api.post(`/api/admin/customers/${target.id}/relationship-manager`, form); setTarget(null); await qc.invalidateQueries({ queryKey: ['admin', 'customers'] }); });
   return (
     <Panel title="Customer portfolios" flush>
@@ -188,7 +196,27 @@ function Portfolios() {
         <div className="table-wrap"><table className="data"><thead><tr><th>Customer</th><th>Reference</th><th>Relationship Manager</th><th>Business unit</th><th className="num">Requests</th><th>Status</th><th /></tr></thead>
           <tbody>{customers.data.map((c) => (
             <tr key={c.id}><td className="primary-cell">{c.name}{c.isDemo && <span className="xs muted"> · DEMO</span>}</td><td className="mono small">{c.ref}</td><td>{c.rm ?? <span className="muted">Unassigned</span>}</td><td className="small">{c.businessUnit ?? '—'}</td><td className="num">{c.facilities}</td><td><Status value={c.status} /></td>
-              <td className="num"><Button size="sm" onClick={() => { setTarget(c); setForm({ userId: '', reason: '' }); }}>Reassign</Button></td></tr>))}</tbody></table></div>
+              <td className="num"><div className="row end"><Button size="sm" onClick={() => { setTarget(c); setForm({ userId: '', reason: '' }); }}>Reassign</Button>
+                <Button size="sm" variant={c.status === 'SUSPENDED' ? undefined : 'danger'} disabled={pendingUnblocks.some((r) => r.customerId === c.id)} onClick={() => { setBlockTarget(c); setBlockReason(''); }}>{c.status === 'SUSPENDED' ? 'Request unblock' : 'Block'}</Button></div></td></tr>))}</tbody></table></div>
+      )}
+      {pendingUnblocks.length > 0 && (
+        <div className="panel-body">
+          <h4>Unblock requests awaiting a second administrator</h4>
+          <ErrorAlert error={decide.error} />
+          <table className="data"><thead><tr><th>Customer</th><th>Reason</th><th>Requested by</th><th /></tr></thead>
+            <tbody>{pendingUnblocks.map((r) => <tr key={r.id}><td>{r.customerName}</td><td className="small">{r.reason}</td><td className="small">{r.requestedBy} · {dateTime(r.createdAt)}</td>
+              <td className="num"><div className="row end"><Button size="sm" onClick={() => decide.run(r.id, 'REJECT')}>Reject</Button><Button size="sm" variant="primary" onClick={() => decide.run(r.id, 'APPROVE')}>Approve unblock</Button></div></td></tr>)}</tbody></table>
+        </div>
+      )}
+      {blockTarget && (
+        <Drawer center title={`${blockTarget.status === 'SUSPENDED' ? 'Request unblock' : 'Block'} — ${blockTarget.name}`} onClose={() => setBlockTarget(null)}
+          footer={<><Button onClick={() => setBlockTarget(null)}>Cancel</Button><Button variant={blockTarget.status === 'SUSPENDED' ? 'primary' : 'danger'} loading={block.loading} disabled={blockReason.trim().length < 10} onClick={() => block.run()}>{blockTarget.status === 'SUSPENDED' ? 'Submit for approval' : 'Block access now'}</Button></>}>
+          <div className="stack">
+            <p className="small muted">{blockTarget.status === 'SUSPENDED' ? 'Unblocking takes effect only after a second administrator approves.' : 'Blocking takes effect immediately and signs the customer out of every device.'}</p>
+            <TextArea label="Reason" rows={3} value={blockReason} onChange={(e) => setBlockReason(e.target.value)} hint="At least 10 characters. Recorded in the audit log." />
+            <ErrorAlert error={block.error} />
+          </div>
+        </Drawer>
       )}
       {target && (
         <Drawer center title={`Relationship Manager — ${target.name}`} onClose={() => setTarget(null)} footer={<><Button onClick={() => setTarget(null)}>Cancel</Button><Button variant="primary" loading={assign.loading} disabled={!form.userId || form.reason.trim().length < 5} onClick={() => assign.run()}>Assign</Button></>}>

@@ -17,6 +17,8 @@ const schema = z.object({
   COOKIE_SECURE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
   SESSION_IDLE_MINUTES: z.coerce.number().int().positive().default(15),
   SESSION_ABSOLUTE_HOURS: z.coerce.number().int().positive().default(8),
+  /** One live session per user (SWR control 22; PRD single admin session). */
+  SINGLE_SESSION: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
   AUTH_RATE_LIMIT_PER_15MIN: z.coerce.number().int().positive().default(10),
   OTP_TTL_SECONDS: z.coerce.number().int().positive().default(300),
   OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),

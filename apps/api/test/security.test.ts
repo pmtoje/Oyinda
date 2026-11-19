@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { abcClient, act, Client, completeAbcProfile, db, draftMurabaha, getApp, idem, onboardCustomer, pdf, rewindOtpThrottle, staffLogin, upload, uploadAllRequired } from './helpers.js';
+import { abcClient, act, Client, completeAbcProfile, db, draftMurabaha, getApp, idem, kanoClient, pdf, rewindOtpThrottle, staffLogin, upload, uploadAllRequired } from './helpers.js';
 import { q } from '../src/db/pool.js';
 import { PrivateEndpointProvider } from '../src/modules/ai/providers.js';
 
@@ -13,9 +13,7 @@ beforeAll(async () => {
   abcCustomer = (await abc.get('/api/auth/me')).body.data.customer.id;
   await completeAbcProfile(abc, abcCustomer);
   await rewindOtpThrottle();
-  const exists = await q(db(), `SELECT 1 FROM customer_user WHERE email='attacker@kano-agro.demo'`);
-  other = exists.length ? await (async () => { const c = new Client(app); await rewindOtpThrottle(); const st = await c.post('/api/auth/customer/login/start', { email: 'attacker@kano-agro.demo' }); const { lastOtp } = await import('./helpers.js'); await c.post('/api/auth/customer/login/verify', { email: 'attacker@kano-agro.demo', challengeId: st.body.data.challengeId, code: await lastOtp('08030000002') }); return c; })()
-    : await onboardCustomer(app, '0100000003', 'attacker@kano-agro.demo', '08030000002');
+  other = await kanoClient(app);
   for (const u of ['rm', 'bm', 'analyst', 'creditops', 'creditops2']) s[u] = await staffLogin(app, `demo.${u}`);
   const f = await draftMurabaha(abc);
   facilityId = f.id;

@@ -494,6 +494,8 @@ const policies: BaselineItem[] = [
     ],
     categoryThresholds: { A: 12, B: 5 },
   } },
+  // DEFAULT pending the Bank's Information Security password standard (OQ-21).
+  { kind: 'password_policy', key: 'CUSTOMER_PORTAL', title: 'Customer portal password policy', payload: { minLength: 12, maxLength: 128, requireUpper: true, requireLower: true, requireDigit: true, requireSymbol: true, disallowPersonalInfo: true, maxFailedAttempts: 5, lockMinutes: 30 } },
   { kind: 'rarorac_threshold', key: 'STANDARD', title: 'RARORAC pricing threshold', payload: { hurdlePct: 15, minProfitRatePct: 18, minFeePct: 1, exceptionApproverRole: 'GH_CREDIT_RISK', justificationMinLength: 50 } },
   { kind: 'legal_terms', key: 'CUSTOMER_PORTAL', title: 'Customer portal terms & privacy notice', payload: {
     version: '2026.1',

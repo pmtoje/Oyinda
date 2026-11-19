@@ -12,6 +12,7 @@ export default function App() {
       <Route path="/" element={L(() => import('./pages/public/Welcome'))} />
       <Route path="/onboarding" element={L(() => import('./pages/public/Onboarding'))} />
       <Route path="/login" element={L(() => import('./pages/public/CustomerLogin'))} />
+      <Route path="/verify-email" element={L(() => import('./pages/public/VerifyEmail'))} />
       <Route path="/staff/login" element={L(() => import('./pages/public/StaffLogin'))} />
 
       <Route path="/portal" element={<PortalShell />}>

@@ -269,3 +269,10 @@ table.data .primary-cell { font-weight: 500; color: var(--ink-900); }
 
 .readonly-config .input, .readonly-config .select, .readonly-config .textarea { background: var(--canvas); color: var(--ink-900); border-color: var(--line); }
 .readonly-config .btn { display: none; }
+
+/* Password rule checklist (onboarding) */
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.checklist li { padding-left: 18px; position: relative; color: var(--ink-500); }
+.checklist li::before { content: '○'; position: absolute; left: 0; }
+.checklist li.ok { color: var(--ok-700); }
+.checklist li.ok::before { content: '✓'; }

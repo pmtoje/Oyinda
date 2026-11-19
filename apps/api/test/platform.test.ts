@@ -198,3 +198,31 @@ describe('baseline release reconciliation', () => {
     expect(await reconcileBaseline(pool, SYSTEM, `TEST-${tag}`, items, [])).toBeNull();
   });
 });
+
+describe('customer block / unblock (PRD) and user export', () => {
+  it('blocks at once and ends sessions; unblocking needs a different approver', async () => {
+    const { kanoClient, KANO, customerLogin } = await import('./helpers.js');
+    const kano = await kanoClient(app);
+    const cid = (await kano.get('/api/auth/me')).body.data.customer.id;
+    const admin = await staffLogin(app, 'demo.admin');
+    const sup = await staffLogin(app, 'demo.superadmin');
+    expect((await s.rm!.post(`/api/admin/customers/${cid}/block`, { reason: 'Suspected compromise of the portal account.' })).status).toBe(403);
+    expect((await admin.post(`/api/admin/customers/${cid}/block`, { reason: 'Suspected compromise of the portal account.' })).status).toBe(200);
+    expect((await kano.get('/api/auth/me')).status).toBe(401);
+    await expect(customerLogin(app, KANO.email, KANO.phone)).rejects.toThrow(/suspended/);
+    const req = await admin.post(`/api/admin/customers/${cid}/unblock`, { reason: 'Customer identity re-confirmed by the RM in branch.' });
+    expect(req.status).toBe(201);
+    expect((await admin.post(`/api/admin/customer-block-requests/${req.body.data.requestId}/decide`, { decision: 'APPROVE' })).status).toBe(403);
+    expect((await sup.post(`/api/admin/customer-block-requests/${req.body.data.requestId}/decide`, { decision: 'APPROVE' })).status).toBe(200);
+    expect((await (await customerLogin(app, KANO.email, KANO.phone)).get('/api/auth/me')).status).toBe(200);
+  });
+
+  it('exports users to Excel for access review', async () => {
+    const admin = await staffLogin(app, 'demo.admin');
+    const r = await admin.get('/api/admin/users/export.xlsx');
+    expect(r.status).toBe(200);
+    expect(r.raw.headers['content-type']).toContain('spreadsheetml');
+    expect(r.raw.rawPayload.subarray(0, 2).toString()).toBe('PK');
+    expect((await s.rm!.get('/api/admin/users/export.xlsx')).status).toBe(403);
+  });
+});

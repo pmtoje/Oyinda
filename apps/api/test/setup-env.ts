@@ -12,3 +12,4 @@ process.env.MOCK_AD_DEMO_PASSWORD = 'test-demo-password-1234';
 process.env.LOG_LEVEL = 'error';
 process.env.WEB_ORIGIN = 'http://localhost:5173';
 process.env.AUTH_RATE_LIMIT_PER_15MIN = '100000';
+process.env.SINGLE_SESSION = 'false'; // enabled explicitly in the single-session test

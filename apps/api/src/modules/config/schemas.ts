@@ -257,6 +257,19 @@ export const schemas = {
     })).default([]),
   }),
 
+  /** Customer portal password rules (SWR: the Bank's minimum character and length requirements). */
+  password_policy: z.object({
+    minLength: z.number().int().min(8).max(64),
+    maxLength: z.number().int().min(16).max(256),
+    requireUpper: z.boolean(),
+    requireLower: z.boolean(),
+    requireDigit: z.boolean(),
+    requireSymbol: z.boolean(),
+    disallowPersonalInfo: z.boolean().default(true),
+    maxFailedAttempts: z.number().int().min(3).max(10).default(5),
+    lockMinutes: z.number().int().min(5).max(1440).default(30),
+  }),
+
   committee: z.object({
     code,
     name: z.string(),
@@ -331,6 +344,7 @@ export const KIND_LABEL: Record<ConfigKind, string> = {
   workflow_definition: 'Workflow definitions',
   approval_authority: 'Approval authority matrix',
   committee: 'Committees',
+  password_policy: 'Customer password policy',
   sla_policy: 'SLA policies',
   business_calendar: 'Business calendar',
   notification_rule: 'Notification rules',

@@ -16,8 +16,8 @@ export default function Welcome() {
           <div className="desc">Verify your business account number and set up access to Gazelle. Takes about 3 minutes.</div>
         </Link>
         <a href={OPEN_ACCOUNT} className="choice" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-          <div className="title">No, open an account</div>
-          <div className="desc">Opens the Alternative Bank account-opening journey on altbank.ng (external site). Return here once your business account is active.</div>
+          <div className="title">No, open a business account</div>
+          <div className="desc">You must have an Alternative Bank business account to sign up. Opens the account-opening journey on altbank.ng (external site); return here once your account is active.</div>
         </a>
         <hr className="divider" />
         <div className="row between small">
