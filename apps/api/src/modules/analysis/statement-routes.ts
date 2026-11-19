@@ -13,6 +13,7 @@ import { getObject } from '../documents/storage.js';
 import { MIME } from '../documents/mime.js';
 import { parseStatementFile } from './statement-parser.js';
 import { analyseStatements } from './statement-analysis.js';
+import { integrations } from '../../integrations/index.js';
 
 const meta = z.object({
   bankName: z.string().trim().min(2).max(120),
@@ -68,22 +69,53 @@ export async function statementRoutes(app: FastifyInstance) {
     const buffer = await part.toBuffer();
     const fields = Object.fromEntries(Object.entries(part.fields).filter(([, v]: any) => v && typeof v.value === 'string').map(([k, v]: any) => [k, v.value]));
     const m = parse(meta, fields);
+    const res = await receiveStatement(req, f, m, buffer, part.filename, part.mimetype);
+    return ok(reply, { ...statementView(res), message: 'Statement received. Analysis is running; this page updates when it completes.' }, 202);
+  });
+
+  /**
+   * SWR §2: spool an Alternative Bank statement directly from the core banking system. Only accounts that the
+   * Bank holds for this facility's customer can be requested (SWR technology control 6) — the account is never
+   * taken on trust from the client, and another customer's account is indistinguishable from a non-existent one.
+   */
+  app.post('/api/facilities/:id/bank-statements/spool', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const f = await loadFacility(db, req, parse(z.object({ id: z.string() }), req.params).id);
+    if (req.auth!.subjectType === 'STAFF') requireStaff(req, 'financials.edit');
+    const b = parse(z.object({ accountNumber: z.string().regex(/^[0-9]{10}$/), periodStart: z.iso.date(), periodEnd: z.iso.date() }).refine((x) => x.periodEnd >= x.periodStart, 'The period end must be after the start.'), req.body);
+    const own = await maybe<any>(db, 'SELECT account_number, currency FROM customer_account WHERE account_number=$1 AND customer_id=$2', [b.accountNumber, f.customer_id]);
+    if (!own) {
+      await audit(db, actorOf(req), { action: 'STATEMENT_SPOOL_REFUSED', entityType: 'facility_request', entityId: f.id, facilityId: f.id, customerId: f.customer_id, outcome: 'FAILURE', metadata: { account: maskAccount(b.accountNumber) } });
+      throw notFound('Account');
+    }
+    const months = (new Date(b.periodEnd).getTime() - new Date(b.periodStart).getTime()) / (30.44 * 86400_000);
+    if (months > 13) throw unprocessable('PERIOD_TOO_LONG', 'Request at most 12 months per statement.');
+    const st = await integrations().cba.getStatement({ accountNumber: b.accountNumber, from: b.periodStart, to: b.periodEnd });
+    const res = await receiveStatement(req, f, { bankName: 'Alternative Bank', accountNumber: b.accountNumber, currency: st.currency, periodStart: b.periodStart, periodEnd: b.periodEnd }, st.csv, `altbank-${b.accountNumber.slice(-4)}-${b.periodStart}-${b.periodEnd}.csv`, 'text/csv', integrations().cba.mode);
+    return ok(reply, { ...statementView(res), message: `Statement retrieved from core banking${integrations().cba.mode === 'MOCK' ? ' (MOCK data)' : ''}. Analysis is running.` }, 202);
+  });
+
+  async function receiveStatement(req: any, f: any, m: { bankName: string; accountNumber: string; currency: string; periodStart: string; periodEnd: string }, buffer: Buffer, filename: string, mimetype: string, spooledFrom?: string) {
     const actor = actorOf(req);
     const sha = sha256Hex(buffer);
     const altBank = !!(await maybe(db, 'SELECT 1 FROM customer_account WHERE account_number=$1 AND customer_id=$2', [m.accountNumber, f.customer_id]));
-    const res = await tx(async (c) => {
+    return tx(async (c) => {
       const dup = await maybe<any>(c, `SELECT id FROM bank_statement WHERE customer_id=$1 AND file_sha256=$2 AND status <> 'REJECTED'`, [f.customer_id, sha]);
       if (dup) throw conflict('DUPLICATE_STATEMENT', 'This exact statement file has already been uploaded.');
       const doc = await one<any>(c, `INSERT INTO document(customer_id, facility_id, doc_type, title, status, mandatory) VALUES ($1,$2,'BANK_STATEMENT',$3,'UPLOADED',false) RETURNING *`, [f.customer_id, f.id, `${m.bankName} statement ${maskAccount(m.accountNumber)} (${m.periodStart} – ${m.periodEnd})`]);
-      const { version } = await storeVersion(c, actor, { documentId: doc.id, buffer, filename: part.filename, declaredMime: part.mimetype, acceptedMime: [MIME.CSV, MIME.XLSX, MIME.PDF], maxSizeMb: 20, metadata: m, facilityId: f.id, customerId: f.customer_id });
+      const { version } = await storeVersion(c, actor, { documentId: doc.id, buffer, filename, declaredMime: mimetype, acceptedMime: [MIME.CSV, MIME.XLSX, MIME.PDF], maxSizeMb: 20, metadata: { ...m, ...(spooledFrom ? { source: `CBA_${spooledFrom}` } : {}) }, facilityId: f.id, customerId: f.customer_id });
       await q(c, 'UPDATE document SET current_version_id=$2 WHERE id=$1', [doc.id, version.id]);
       const s = await one<any>(c, `INSERT INTO bank_statement(customer_id, facility_id, document_version_id, bank_name, is_alternative_bank, account_number, currency, period_start, period_end, file_sha256, uploaded_by_type, uploaded_by_id)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`, [f.customer_id, f.id, version.id, m.bankName, altBank, m.accountNumber, m.currency, m.periodStart, m.periodEnd, sha, actor.type, actor.id]);
       await enqueue(c, 'statement.parse', { statementId: s.id }, { idempotencyKey: `parse:${s.id}` });
-      await audit(c, actor, { action: 'STATEMENT_UPLOADED', entityType: 'bank_statement', entityId: s.id, facilityId: f.id, customerId: f.customer_id, metadata: { bank: m.bankName, account: maskAccount(m.accountNumber), currency: m.currency } });
+      await audit(c, actor, { action: spooledFrom ? 'STATEMENT_SPOOLED' : 'STATEMENT_UPLOADED', entityType: 'bank_statement', entityId: s.id, facilityId: f.id, customerId: f.customer_id, metadata: { bank: m.bankName, account: maskAccount(m.accountNumber), currency: m.currency, ...(spooledFrom ? { source: spooledFrom } : {}) } });
       return s;
     });
-    return ok(reply, { ...statementView(res), message: 'Statement received. Analysis is running; this page updates when it completes.' }, 202);
+  }
+
+  /** The customer's own Alternative Bank accounts, for choosing a statement to spool. */
+  app.get('/api/facilities/:id/altbank-accounts', async (req, reply) => {
+    const f = await loadFacility(db, req, parse(z.object({ id: z.string() }), req.params).id);
+    return ok(reply, await q(db, 'SELECT account_number AS "accountNumber", account_name AS "accountName", currency, product_name AS product FROM customer_account WHERE customer_id=$1 ORDER BY is_primary DESC, account_number', [f.customer_id]));
   });
 
   app.get('/api/facilities/:id/bank-statements', async (req, reply) => {

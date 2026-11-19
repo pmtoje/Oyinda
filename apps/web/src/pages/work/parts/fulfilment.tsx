@@ -11,15 +11,16 @@ export function OfferTab({ id, status }: { id: string; status: string }) {
   const refresh = useRefresh(id);
   const prepare = useAction(async () => { await api.post(`/api/facilities/${id}/offer`); await refresh(); });
   const check = useAction(async (oid: string, decision: string, note?: string) => { await api.post(`/api/offers/${oid}/check`, { decision, note }); await refresh(); });
+  const sign = useAction(async (oid: string, kind: 'SIGN' | 'COUNTERSIGN') => { await api.post(`/api/offers/${oid}/sign`, { kind }); await refresh(); });
   const [neg, setNeg] = useState<any>(null);
   return (
     <QueryState q={q}>{() => {
       const { offers, negotiations, termsVersions } = q.data;
-      const live = offers.find((o: any) => ['PENDING_CHECK', 'ISSUED', 'NEGOTIATING'].includes(o.status));
+      const live = offers.find((o: any) => ['PENDING_CHECK', 'PENDING_SIGNOFF', 'ISSUED', 'NEGOTIATING'].includes(o.status));
       return (
         <div className="stack">
           {status === 'APPROVED' && !live && can('offer.make') && <Alert tone="info" title="Offer letter needed">The facility is approved. Prepare the offer letter from the approved template; a second officer must check it before it is issued. <div style={{ marginTop: 8 }}><Button variant="primary" onClick={() => prepare.run()} loading={prepare.loading}>Prepare offer letter</Button></div></Alert>}
-          <ErrorAlert error={prepare.error ?? check.error} />
+          <ErrorAlert error={prepare.error ?? check.error ?? sign.error} />
           {negotiations.filter((n: any) => n.status === 'OPEN').map((n: any) => (
             <Alert key={n.id} tone="warn" title="Customer negotiation request">
               <KV items={[['Requested amount', n.requestedAmount], ['Requested tenor', n.requestedTenorMonths ? `${n.requestedTenorMonths} months` : null], ['Requested rate', n.requestedProfitRatePct !== null ? pct(n.requestedProfitRatePct, 2) : null], ['Other', n.requestedOther], ['Justification', n.justification], ['Received', dateTime(n.createdAt)]]} />
@@ -27,12 +28,27 @@ export function OfferTab({ id, status }: { id: string; status: string }) {
             </Alert>))}
           {!offers.length ? <Panel><Empty title="No offer letter yet" /></Panel> : offers.map((o: any) => (
             <Panel key={o.id} title={`${o.title} — terms v${o.termsVersion}`} actions={<><Status value={o.status} /><Button size="sm" onClick={() => openDocument(o.documentId, 'attachment')}>Download</Button></>}
-              footer={o.status === 'PENDING_CHECK' && can('offer.check') && <div className="row end"><Button variant="danger" onClick={() => check.run(o.id, 'RETURN', 'Returned to maker for correction')}>Return to maker</Button><Button variant="primary" onClick={() => check.run(o.id, 'ISSUE')} loading={check.loading}>Check and issue to customer</Button></div>}>
+              footer={o.status === 'PENDING_CHECK' && can('offer.check') && <div className="row end"><Button variant="danger" onClick={() => check.run(o.id, 'RETURN', 'Returned to maker for correction')}>Return to maker</Button><Button variant="primary" onClick={() => check.run(o.id, 'ISSUE')} loading={check.loading}>Check and send for sign-off</Button></div>}>
               <div className="grid cols-2">
                 <KV items={[['Amount', o.amount], ['Tenor', `${o.tenorMonths} months`], ['Profit rate', pct(o.profitRatePct, 2)], ['Payment', humanize(o.paymentFrequency)]]} />
                 <KV items={[['Maker', o.maker], ['Checker', o.checker], ['Issued', dateTime(o.issuedAt)], ['Expires', date(o.expiresAt)], ['Customer response', o.respondedAt ? `${dateTime(o.respondedAt)}${o.responseNote ? ` — ${o.responseNote}` : ''}` : null]]} />
               </div>
-              {o.status === 'PENDING_CHECK' && <p className="xs muted" style={{ marginTop: 8 }}>Maker-checker: the officer who prepared the offer cannot issue it.</p>}
+              {o.status === 'PENDING_CHECK' && <p className="xs muted" style={{ marginTop: 8 }}>Maker-checker: the officer who prepared the offer cannot check it. After the check, the offer goes for business sign-off before it is issued.</p>}
+              {o.signoff && (
+                <div className="panel" style={{ marginTop: 12, padding: 12 }}>
+                  <div className="row between"><strong className="small">Sign-off — {o.signoff.rule}</strong>{o.status === 'PENDING_SIGNOFF' && <Status value="PENDING" label="Awaiting signatures" />}</div>
+                  <KV items={[
+                    [`Signed (${o.signoff.signRoles.join(' / ')})`, o.signoff.signedBy ? `${o.signoff.signedBy} · ${dateTime(o.signoff.signedAt)}` : null],
+                    [`Countersigned (${o.signoff.countersignRoles.join(' / ')})`, o.signoff.countersignedBy ? `${o.signoff.countersignedBy} · ${dateTime(o.signoff.countersignedAt)}` : null],
+                  ]} />
+                  {o.status === 'PENDING_SIGNOFF' && can('offer.sign') && (
+                    <div className="row end" style={{ marginTop: 8 }}>
+                      {!o.signoff.signedBy && <Button size="sm" variant="primary" loading={sign.loading} onClick={() => sign.run(o.id, 'SIGN')}>Sign offer</Button>}
+                      {!o.signoff.countersignedBy && <Button size="sm" loading={sign.loading} onClick={() => sign.run(o.id, 'COUNTERSIGN')}>Countersign</Button>}
+                    </div>
+                  )}
+                </div>
+              )}
             </Panel>))}
           {termsVersions.length > 0 && <Panel title="Approved terms versions" flush><table className="data"><thead><tr><th>Version</th><th>Source</th><th className="num">Amount</th><th className="num">Tenor</th><th className="num">Rate</th><th>Approved by</th><th>Date</th></tr></thead><tbody>{termsVersions.map((t: any) => <tr key={t.id}><td>v{t.version}</td><td>{humanize(t.source)}</td><td className="num">{money(t.amountMinor)}</td><td className="num">{t.tenorMonths}m</td><td className="num">{pct(t.profitRatePct, 2)}</td><td className="small">{t.approvedBy.join(', ')}</td><td className="small">{dateTime(t.createdAt)}</td></tr>)}</tbody></table></Panel>}
           {neg && <NegotiationDrawer n={neg} onClose={() => setNeg(null)} onDone={async () => { setNeg(null); await refresh(); }} />}

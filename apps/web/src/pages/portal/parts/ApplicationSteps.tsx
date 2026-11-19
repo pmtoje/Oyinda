@@ -1,3 +1,4 @@
+import { SpoolStatementButton } from '../../../components/SpoolStatement';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Check, Empty, ErrorAlert, Loading, MoneyInput, SelectInput, Status, TextArea, TextInput, fieldError, useAction } from '../../../components/ui';
@@ -127,12 +128,13 @@ function StatementForm({ customerId, lines, onDone, onCancel }: { customerId: st
 
 export function BankStatementsStep({ facilityId }: { facilityId: string }) {
   const list = useQuery({ queryKey: ['bank-statements', facilityId], queryFn: () => api.get<any[]>(`/api/facilities/${facilityId}/bank-statements`), refetchInterval: (q) => ((q.state.data ?? []).some((s: any) => s.status === 'QUEUED' || s.status === 'PROCESSING') ? 4000 : false) });
-  const [m, setM] = useState({ bankName: 'Alternative Bank', accountNumber: '', currency: 'NGN', periodStart: '', periodEnd: '' });
+  const [m, setM] = useState({ bankName: '', accountNumber: '', currency: 'NGN', periodStart: '', periodEnd: '' });
   const [file, setFile] = useState<File | null>(null);
   const up = useAction(async () => { await api.upload(`/api/facilities/${facilityId}/bank-statements`, file!, m); setFile(null); setM({ ...m, accountNumber: '', periodStart: '', periodEnd: '' }); await list.refetch(); });
   return (
     <div className="stack">
-      <p className="small muted">Upload 12 months of statements for each account you use for the business, at Alternative Bank and other banks. CSV or Excel exports from internet banking are analysed automatically; PDF statements are reviewed by the credit team.</p>
+      <p className="small muted">Provide 12 months of statements for each account you use for the business. Retrieve your Alternative Bank statements directly from the Bank's records; upload statements from other banks (CSV or Excel exports are analysed automatically; PDF statements are reviewed by the credit team).</p>
+      <div><SpoolStatementButton facilityId={facilityId} onDone={async () => { await list.refetch(); }} /></div>
       <form className="panel" onSubmit={(e) => { e.preventDefault(); void up.run(); }}>
         <div className="panel-body stack">
           <ErrorAlert error={up.error} />

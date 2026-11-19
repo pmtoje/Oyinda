@@ -125,10 +125,32 @@ describe('Phase 77 — end-to-end Murabaha journey for ABC Manufacturing Ltd', (
     const v = (await staff.md!.get(`/api/facilities/${facilityId}/decision-view`)).body.data;
     expect(v.summary.requestedAmount).toMatch(/150,000,000/);
     expect(v.recommendations.map((r: any) => r.action)).toEqual(expect.arrayContaining(['RECOMMEND', 'APPROVE', 'COMPLETE']));
+    // PRD: the combined term sheet is generated at submission and refreshed at every decision (background job).
+    const { drain } = await import('./helpers.js');
+    await drain(['termsheet.refresh']);
+    const auto = await q(db(), `SELECT version_no, content, edit_reason FROM generated_document WHERE facility_id=$1 AND kind='TERM_SHEET' ORDER BY version_no`, [facilityId]);
+    expect(auto.length).toBeGreaterThanOrEqual(8); // submit, RM, TL, RBE, DH, TL credit, HCR, CRO, ED, ED, MD
+    expect(auto[0].edit_reason).toBeNull();
+    expect(auto.at(-1).edit_reason).toBe('approval recorded');
+    const latest = auto.at(-1).content;
+    expect(latest.format).toBe('CAM');
+    const headings = latest.sections.map((x: any) => x.heading);
+    for (const h of ['1. Executive summary', '2. Group facility summary', '9. Historical financial analysis & outlook', '12. Summary of transactions with Alternative Bank — last twelve months', '14. Consolidated transaction history — last twelve months', '21. Assigned collateral', '27. Approval recommendations and conditions — for Credit Risk', 'Officers who commented or decided']) expect(headings).toContain(h);
+    const wf = latest.sections.find((x: any) => x.heading === 'Approval workflow — comments and decisions');
+    expect(wf.table.rows.some((r: any) => /DEMO MD/.test(r[1]) && r[3] === 'APPROVE' && /\d{4}/.test(r[0]))).toBe(true);
+    const signers = latest.sections.find((x: any) => x.heading === 'Officers who commented or decided').table.rows.map((r: any) => r[0]);
+    expect(signers).toEqual(expect.arrayContaining([expect.stringMatching(/DEMO RM/), expect.stringMatching(/DEMO MD/), expect.stringMatching(/Credit Analyst/)]));
+    const n = auto.length;
     const ts = await staff.analyst!.post(`/api/facilities/${facilityId}/term-sheet`, {});
     expect(ts.status).toBe(201);
-    const ts2 = await staff.analyst!.post(`/api/facilities/${facilityId}/term-sheet`, { overrides: { decisionNote: 'Approved subject to Takaful cover.' }, reason: 'Added decision note' });
-    expect(ts2.body.data.version).toBe(2);
+    const ts2 = await staff.analyst!.post(`/api/facilities/${facilityId}/term-sheet`, { overrides: { decisionNote: 'Approved subject to Takaful cover.', swot: 'Strength: 15-year operating history.' }, reason: 'Added decision note' });
+    expect(ts2.body.data.version).toBe(n + 2);
+    // Narrative edits are carried forward into later automatic refreshes.
+    const { generateTermSheet } = await import('../src/modules/docgen/service.js');
+    const { SYSTEM } = await import('../src/modules/audit/audit.js');
+    const { tx } = await import('../src/db/pool.js');
+    const again = await tx((c) => generateTermSheet(c, SYSTEM, facilityId, undefined, { automatic: 'test refresh' }));
+    expect(again.content.overrides.swot).toMatch(/15-year/);
     const g = await staff.analyst!.post(`/api/documents/${ts2.body.data.documentId}/grant`, { disposition: 'attachment' });
     const file = await staff.analyst!.get(g.body.data.url);
     expect(file.raw.headers['content-type']).toBe('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
@@ -145,6 +167,15 @@ describe('Phase 77 — end-to-end Murabaha journey for ABC Manufacturing Ltd', (
     expect((await abc.get(`/api/facilities/${facilityId}/offer`)).body.data.offers).toHaveLength(0); // not visible before issue
     expect((await staff.creditops!.post(`/api/offers/${off.id}/check`, { decision: 'ISSUE' })).status).toBe(403);
     expect((await staff.creditops2!.post(`/api/offers/${off.id}/check`, { decision: 'ISSUE' })).status).toBe(200);
+    // PRD sign-off: above ₦2m the account officer signs and the RBE / Group Head countersigns before issue.
+    const pending = (await staff.rm!.get(`/api/facilities/${facilityId}/offer`)).body.data.offers[0];
+    expect(pending.status).toBe('PENDING_SIGNOFF');
+    expect(pending.signoff.rule).toMatch(/RBE or Group Head/);
+    expect((await abc.get(`/api/facilities/${facilityId}/offer`)).body.data.offers).toHaveLength(0);
+    expect((await staff.analyst!.post(`/api/offers/${off.id}/sign`, { kind: 'SIGN' })).status).toBe(403);
+    expect((await staff.rm!.post(`/api/offers/${off.id}/sign`, { kind: 'COUNTERSIGN' })).status).toBe(403);
+    expect((await staff.rm!.post(`/api/offers/${off.id}/sign`, { kind: 'SIGN' })).body.data.issued).toBe(false);
+    expect((await staff.rbe!.post(`/api/offers/${off.id}/sign`, { kind: 'COUNTERSIGN' })).body.data.issued).toBe(true);
     const cOff = (await abc.get(`/api/facilities/${facilityId}/offer`)).body.data.offers[0];
     expect(cOff.maker).toBeUndefined();
     const noAck = await abc.post(`/api/offers/${cOff.id}/respond`, { decision: 'ACCEPT', rowVersion: cOff.rowVersion });

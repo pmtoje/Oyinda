@@ -257,6 +257,18 @@ export const schemas = {
     })).default([]),
   }),
 
+  /** PRD offer-letter sign-off bands: who signs and who countersigns, by facility amount (NGN). */
+  offer_signoff: z.object({
+    bands: z.array(z.object({
+      maxAmountMinor: minor,
+      label: z.string(),
+      signRoles: z.array(roleCode).min(1),
+      countersignRoles: z.array(roleCode).min(1),
+      /** The signatory must be the customer's assigned Relationship Manager when signing as RM. */
+      signerMustBeAssignedRm: z.boolean().default(true),
+    })).min(1),
+  }),
+
   /** Customer portal password rules (SWR: the Bank's minimum character and length requirements). */
   password_policy: z.object({
     minLength: z.number().int().min(8).max(64),
@@ -345,6 +357,7 @@ export const KIND_LABEL: Record<ConfigKind, string> = {
   approval_authority: 'Approval authority matrix',
   committee: 'Committees',
   password_policy: 'Customer password policy',
+  offer_signoff: 'Offer letter sign-off',
   sla_policy: 'SLA policies',
   business_calendar: 'Business calendar',
   notification_rule: 'Notification rules',

@@ -89,6 +89,8 @@ describe('HEART-sector request: concurrent E&S review and MIC approval (PRD grid
     await s.creditops!.post(`/api/facilities/${fid}/offer`);
     const off = (await s.creditops!.get(`/api/facilities/${fid}/offer`)).body.data.offers[0];
     await s.creditops2!.post(`/api/offers/${off.id}/check`, { decision: 'ISSUE' });
+    expect((await s.rm!.post(`/api/offers/${off.id}/sign`, { kind: 'SIGN' })).status).toBe(200);
+    expect((await s.rbe!.post(`/api/offers/${off.id}/sign`, { kind: 'COUNTERSIGN' })).body.data.issued).toBe(true);
     const co = (await kano.get(`/api/facilities/${fid}/offer`)).body.data.offers[0];
     const neg = await kano.post(`/api/offers/${co.id}/respond`, { decision: 'NEGOTIATE', rowVersion: co.rowVersion, negotiation: { amountMinor: 500_000_000_00, tenorMonths: 48, justification: 'We will phase the grain purchase over a longer period to match harvest inflows.' } });
     expect(neg.status).toBe(200);

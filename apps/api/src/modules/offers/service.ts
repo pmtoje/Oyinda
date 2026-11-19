@@ -5,6 +5,7 @@ import { audit, type Actor } from '../audit/audit.js';
 import { getById, listActive } from '../config/service.js';
 import { buildFacts, collateralSummary } from '../facilities/facts.js';
 import { formatMoney } from '../../lib/money.js';
+import { toNgn } from '../fx/service.js';
 
 /** Build security summary text from recorded collateral. */
 export async function securityText(db: Db, facilityId: string, amountMinor: number, ccy: string) {
@@ -111,7 +112,43 @@ export async function checkOffer(db: Db, actor: Actor, offerId: string, decision
     await audit(db, actor, { action: 'OFFER_RETURNED_TO_MAKER', entityType: 'offer_letter', entityId: offerId, facilityId: o.facility_id, metadata: { note } });
     return;
   }
-  await q(db, `UPDATE offer_letter SET status='ISSUED', checker_id=$2, checked_at=now(), issued_at=now(), expires_at=now() + interval '30 days', row_version=row_version+1 WHERE id=$1`, [offerId, actor.id]);
+  // PRD: after the maker-checker review, the business signs and countersigns according to the amount band.
+  const t = await one<any>(db, 'SELECT amount_minor, currency FROM approved_terms WHERE id=$1', [o.terms_id]);
+  const amountNgn = (await toNgn(db, t.amount_minor, t.currency)).minor;
+  const policy = await _requireActive(db, 'offer_signoff', 'STANDARD');
+  const band = (policy.payload as any).bands.find((x: any) => amountNgn <= x.maxAmountMinor) ?? (policy.payload as any).bands.at(-1);
+  await q(db, `UPDATE offer_letter SET status='PENDING_SIGNOFF', checker_id=$2, checked_at=now(), signoff_rule=$3, row_version=row_version+1 WHERE id=$1`, [offerId, actor.id, JSON.stringify({ ...band, policyVersion: policy.version, amountNgnMinor: amountNgn })]);
+  await audit(db, actor, { action: 'OFFER_CHECKED', entityType: 'offer_letter', entityId: offerId, facilityId: o.facility_id, metadata: { signoff: band.label } });
+  await emit(db, 'OFFER_SIGNOFF_REQUIRED', { facilityId: o.facility_id, vars: { rule: band.label } });
+}
+
+/** Sign or countersign an offer letter (PRD sign-off rules). The two signatories must differ; the offer issues when both have signed. */
+export async function signOffer(db: Db, actor: Actor, user: { id: string; roles: string[] }, offerId: string, kind: 'SIGN' | 'COUNTERSIGN') {
+  const o = await maybe<any>(db, 'SELECT o.*, c.relationship_manager_id, c.business_unit_code FROM offer_letter o JOIN facility_request f ON f.id=o.facility_id JOIN customer c ON c.id=f.customer_id WHERE o.id=$1 FOR UPDATE OF o', [offerId]);
+  if (!o || o.status !== 'PENDING_SIGNOFF') throw _conflict('STATE', 'This offer is not awaiting sign-off.');
+  const rule = o.signoff_rule;
+  const roles: string[] = kind === 'SIGN' ? rule.signRoles : rule.countersignRoles;
+  const role = roles.find((r) => user.roles.includes(r));
+  if (!role) throw _forbidden(`${kind === 'SIGN' ? 'Signing' : 'Countersigning'} this offer requires one of: ${roles.join(', ')} (${rule.label}).`);
+  if (role === 'RM' && rule.signerMustBeAssignedRm && o.relationship_manager_id !== user.id) throw _forbidden('Only the customer’s assigned Relationship Manager can sign as Relationship Officer.');
+  if (['BM', 'RBE', 'DH'].includes(role) && o.business_unit_code) {
+    const sameBu = await maybe(db, 'SELECT 1 FROM app_user WHERE id=$1 AND business_unit_code=$2', [user.id, o.business_unit_code]);
+    if (!sameBu) throw _forbidden('Only a signatory in the customer’s business unit can sign this offer.');
+  }
+  if (kind === 'SIGN' && o.signed_by) throw _conflict('SIGNED', 'This offer has already been signed.');
+  if (kind === 'COUNTERSIGN' && o.countersigned_by) throw _conflict('SIGNED', 'This offer has already been countersigned.');
+  if ((kind === 'SIGN' && o.countersigned_by === user.id) || (kind === 'COUNTERSIGN' && o.signed_by === user.id)) throw _forbidden('The signatory and the countersignatory must be different officers.');
+  if (kind === 'SIGN') await q(db, `UPDATE offer_letter SET signed_by=$2, signed_role=$3, signed_at=now(), row_version=row_version+1 WHERE id=$1`, [offerId, user.id, role]);
+  else await q(db, `UPDATE offer_letter SET countersigned_by=$2, countersigned_role=$3, countersigned_at=now(), row_version=row_version+1 WHERE id=$1`, [offerId, user.id, role]);
+  await audit(db, actor, { action: kind === 'SIGN' ? 'OFFER_SIGNED' : 'OFFER_COUNTERSIGNED', entityType: 'offer_letter', entityId: offerId, facilityId: o.facility_id, metadata: { role, rule: rule.label } });
+  const now = await one<any>(db, 'SELECT signed_by, countersigned_by FROM offer_letter WHERE id=$1', [offerId]);
+  if (now.signed_by && now.countersigned_by) await issueOffer(db, actor, o);
+  return { issued: !!(now.signed_by && now.countersigned_by) };
+}
+
+async function issueOffer(db: Db, actor: Actor, o: any) {
+  const offerId = o.id;
+  await q(db, `UPDATE offer_letter SET status='ISSUED', issued_at=now(), expires_at=now() + interval '30 days', row_version=row_version+1 WHERE id=$1`, [offerId]);
   const g = await one<any>(db, 'SELECT rendered_document_id FROM generated_document WHERE id=$1', [o.generated_document_id]);
   await q(db, 'UPDATE document SET customer_visible=true WHERE id=$1', [g.rendered_document_id]);
   await setFacilityStatus(db, o.facility_id, 'OFFER_ISSUED', actor, { customerNote: 'Offer letter issued' });

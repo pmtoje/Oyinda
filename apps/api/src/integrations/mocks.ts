@@ -28,6 +28,25 @@ export class MockCoreBanking implements CoreBankingAdapter {
   async postDisbursement(input: { idempotencyKey: string }) {
     return { reference: `MOCK-CBA-DSB-${createHash('sha256').update(input.idempotencyKey).digest('hex').slice(0, 10).toUpperCase()}` };
   }
+  /** MOCK statement: deterministic monthly inflows and outflows per account. Clearly fictitious. */
+  async getStatement(input: { accountNumber: string; from: string; to: string }) {
+    const acct = DEMO_CBA_CUSTOMERS.flatMap((c) => c.accounts).find((a) => a.accountNumber === input.accountNumber);
+    if (!acct) throw new Error('Unknown account');
+    const fmt = (n: number) => `"${(n / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}"`;
+    const base = acct.currency === 'NGN' ? 150_000_000_00 : 30_000_00;
+    let bal = Math.round(base * 0.2);
+    const lines = [`Account Number: ${input.accountNumber}`, 'MOCK CBA STATEMENT - DEMO / NON-PRODUCTION', 'Trans Date,Value Date,Narration,Debit,Credit,Balance'];
+    const start = new Date(`${input.from.slice(0, 7)}-01T00:00:00Z`);
+    const end = new Date(`${input.to}T00:00:00Z`);
+    for (let d = new Date(start), i = 0; d <= end; d.setUTCMonth(d.getUTCMonth() + 1), i++) {
+      const mm = String(d.getUTCMonth() + 1).padStart(2, '0'), yy = d.getUTCFullYear();
+      const credit = Math.round(base * (0.85 + seeded(`${input.accountNumber}:${yy}-${mm}:c`) * 0.3));
+      const debit = Math.round(credit * (0.75 + seeded(`${input.accountNumber}:${yy}-${mm}:d`) * 0.2));
+      bal += credit; lines.push(`06/${mm}/${yy},06/${mm}/${yy},MOCK INWARD TRANSFER ${i + 1},,${fmt(credit)},${fmt(bal)}`);
+      bal -= debit; lines.push(`22/${mm}/${yy},22/${mm}/${yy},MOCK SUPPLIER PAYMENT ${i + 1},${fmt(debit)},,${fmt(bal)}`);
+    }
+    return { csv: Buffer.from(lines.join('\n') + '\n'), currency: acct.currency };
+  }
 }
 
 /** Writes to the mock_outbox table so developers and automated tests can read messages. Never used in production. */

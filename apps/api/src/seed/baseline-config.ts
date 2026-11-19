@@ -138,7 +138,7 @@ const contingent = (code: string, name: string, type: string, summary: string): 
     ] },
 });
 products.push(
-  contingent('APG', 'Advance Payment Guarantee', 'APG', 'Guarantees repayment of an advance payment made by the beneficiary to the customer under a contract.'),
+  contingent('APG', 'Advance Payment Guarantee', 'APG', 'Guarantees the return of an advance payment made by the beneficiary to the customer under a contract.'),
   contingent('BANK_GUARANTEE', 'Bank Guarantee', 'BANK_GUARANTEE', 'General Kafalah guarantee issued in favour of a named beneficiary.'),
   contingent('BID_BOND', 'Bid Bond', 'BID_BOND', 'Supports the customer’s tender submission.'),
   contingent('PERFORMANCE_BOND', 'Performance Bond', 'PERFORMANCE_BOND', 'Guarantees the customer’s performance of contract obligations.'),
@@ -259,7 +259,7 @@ const orr: BaselineItem = { kind: 'scorecard', key: 'ORR_STANDARD', title: 'Obli
     ] },
     { code: 'RELATIONSHIP', name: 'Banking relationship & conduct', weight: 20, questions: [
       { code: 'ACCOUNT_CONDUCT', text: 'Account conduct with the Bank', options: opts(['POOR', 'Returned items / irregular conduct', 0], ['SATISFACTORY', 'Satisfactory', 6], ['EXCELLENT', 'Excellent, active account', 10]) },
-      { code: 'REPAYMENT_HISTORY', text: 'Repayment history on existing facilities', options: opts(['DEFAULT', 'Past due or restructured', 0], ['NEW', 'No prior facility with the Bank', 5], ['GOOD', 'Always met obligations as they fell due', 10]) },
+      { code: 'PAYMENT_HISTORY', text: 'Payment history on existing facilities', options: opts(['DEFAULT', 'Past due or restructured', 0], ['NEW', 'No prior facility with the Bank', 5], ['GOOD', 'Always met obligations as they fell due', 10]) },
     ] },
     { code: 'GOVERNANCE', name: 'Governance & compliance', weight: 15, questions: [
       { code: 'FIN_REPORTING', text: 'Quality of financial reporting', options: opts(['WEAK', 'Unaudited or qualified opinion', 2], ['ADEQUATE', 'Audited by a mid-tier firm, unqualified', 7], ['STRONG', 'Audited by a reputable firm, unqualified', 10]) },
@@ -494,6 +494,12 @@ const policies: BaselineItem[] = [
     ],
     categoryThresholds: { A: 12, B: 5 },
   } },
+  // PRD: offer letters of ₦2m and below — Relationship Officer signs, Team Lead countersigns; above ₦2m — the account
+  // officer (Relationship / Branch Manager) signs and the RBE or Group Head countersigns.
+  { kind: 'offer_signoff', key: 'STANDARD', title: 'Offer letter sign-off', payload: { bands: [
+    { maxAmountMinor: N(2_000_000), label: 'Relationship Officer + Team Lead countersign', signRoles: ['RM'], countersignRoles: ['BM'], signerMustBeAssignedRm: true },
+    { maxAmountMinor: 9_000_000_000_000_000, label: 'Relationship / Branch Manager + RBE or Group Head countersign', signRoles: ['RM', 'BM'], countersignRoles: ['RBE', 'DH'], signerMustBeAssignedRm: true },
+  ] } },
   // DEFAULT pending the Bank's Information Security password standard (OQ-21).
   { kind: 'password_policy', key: 'CUSTOMER_PORTAL', title: 'Customer portal password policy', payload: { minLength: 12, maxLength: 128, requireUpper: true, requireLower: true, requireDigit: true, requireSymbol: true, disallowPersonalInfo: true, maxFailedAttempts: 5, lockMinutes: 30 } },
   { kind: 'rarorac_threshold', key: 'STANDARD', title: 'RARORAC pricing threshold', payload: { hurdlePct: 15, minProfitRatePct: 18, minFeePct: 1, exceptionApproverRole: 'GH_CREDIT_RISK', justificationMinLength: 50 } },
@@ -511,7 +517,7 @@ const notif = (event: string, audiences: string[], title: string, body: string, 
 const notifications: BaselineItem[] = [
   notif('APPLICATION_CREATED', ['RM'], 'New draft facility request', '{{customerName}} has started facility request {{facilityRef}} ({{productName}}).', 'INFO', ['IN_APP']),
   notif('APPLICATION_SUBMITTED', ['CUSTOMER', 'RM'], 'Facility request submitted', 'Facility request {{facilityRef}} for {{amount}} has been submitted and is under review.'),
-  notif('TASK_ASSIGNED', ['ASSIGNEES'], 'Task assigned: {{stageName}}', '{{facilityRef}} — {{customerName}} ({{amount}}) is awaiting your {{stageName}}.', 'ACTION'),
+  notif('TASK_ASSIGNED', ['ASSIGNEES'], 'Task assigned: {{stageName}}', '{{facilityRef}} — {{customerName}} ({{amount}}) is awaiting your {{stageName}}.{{summary}}', 'ACTION'),
   notif('TASK_REASSIGNED', ['ASSIGNEES'], 'Task reassigned to you: {{stageName}}', '{{facilityRef}} — {{customerName}} has been reassigned to you.', 'ACTION'),
   notif('SLA_WARNING', ['ASSIGNEES'], 'SLA approaching: {{stageName}}', '{{facilityRef}} is due by {{dueAt}}.', 'WARNING'),
   notif('SLA_BREACHED', ['ASSIGNEES', 'ROLE:CREDIT_TEAM_LEAD'], 'SLA breached: {{stageName}}', '{{facilityRef}} has exceeded the {{stageName}} SLA.', 'CRITICAL'),
@@ -521,6 +527,7 @@ const notifications: BaselineItem[] = [
   notif('CLARIFICATION_ANSWERED', ['ASSIGNEES'], 'Clarification answered on {{facilityRef}}', '{{actorName}} replied to "{{subject}}".'),
   notif('FACILITY_APPROVED', ['CUSTOMER', 'RM'], 'Facility approved', 'Facility request {{facilityRef}} has been approved. Your offer letter will follow.'),
   notif('FACILITY_DECLINED', ['CUSTOMER', 'RM'], 'Facility request outcome', 'Facility request {{facilityRef}} was not approved. Your relationship manager will contact you.', 'WARNING'),
+  notif('OFFER_SIGNOFF_REQUIRED', ['RM', 'ROLE:BM', 'ROLE:RBE'], 'Offer letter ready for sign-off', 'The offer letter for {{facilityRef}} — {{customerName}} has passed its check and needs signing ({{rule}}).', 'ACTION'),
   notif('OFFER_ISSUED', ['CUSTOMER', 'RM'], 'Offer letter ready', 'The offer letter for {{facilityRef}} is ready for your review and response.', 'ACTION'),
   notif('OFFER_ACCEPTED', ['RM', 'ROLE:CREDIT_OPS', 'ROLE:LEGAL', 'ROLE:SHARIAH'], 'Offer accepted', '{{customerName}} has accepted the offer for {{facilityRef}}.'),
   notif('OFFER_REJECTED', ['RM'], 'Offer rejected', '{{customerName}} has rejected the offer for {{facilityRef}}.', 'WARNING'),

@@ -83,6 +83,9 @@ export async function seedDemoData(db: Db): Promise<void> {
   must(await h.act(s.md, aid, 'MD', 'APPROVE', { comment: 'Approved. Contract award verified; cash cover and counter-indemnity adequate.', conditions: ['Lien on 30% cash deposit before issuance'] }), 'md');
   must(await s.creditops.post(`/api/facilities/${aid}/offer`), 'offer');
   const off = (await s.creditops.get(`/api/facilities/${aid}/offer`)).body.data.offers[0];
-  must(await s.creditops2.post(`/api/offers/${off.id}/check`, { decision: 'ISSUE' }), 'issue');
+  must(await s.creditops2.post(`/api/offers/${off.id}/check`, { decision: 'ISSUE' }), 'check');
+  must(await s.rm.post(`/api/offers/${off.id}/sign`, { kind: 'SIGN' }), 'sign');
+  must(await s.rbe.post(`/api/offers/${off.id}/sign`, { kind: 'COUNTERSIGN' }), 'countersign');
+  await h.drain(['termsheet.refresh']); // combined term sheets (normally produced by the worker)
   console.log('DEMO data: ABC Manufacturing Ltd with Murabaha (in review), Ijarah (draft), APG (offer issued)');
 }

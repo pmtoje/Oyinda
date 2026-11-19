@@ -42,6 +42,8 @@ export interface CoreBankingAdapter {
   getExposure(cbaCustomerId: string): Promise<{ lines: CbaExposureLine[]; groupLines: CbaExposureLine[] }>;
   bookFacility(input: { idempotencyKey: string; cbaCustomerId: string; product: string; amountMinor: number; currency: string; tenorMonths: number; profitRatePct: number }): Promise<{ reference: string }>;
   postDisbursement(input: { idempotencyKey: string; facilityReference: string; amountMinor: number; beneficiaryAccount: string; narrative: string }): Promise<{ reference: string }>;
+  /** SWR: spool an Alternative Bank account statement (CSV in the Bank's statement export layout). */
+  getStatement(input: { accountNumber: string; from: string; to: string }): Promise<{ csv: Buffer; currency: string }>;
 }
 
 export interface MessagingAdapter {

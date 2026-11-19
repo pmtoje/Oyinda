@@ -13,6 +13,7 @@ export function MemoTab({ id }: { id: string }) {
   const sheets = useFac<any[]>(id, 'termsheet', `/api/facilities/${id}/generated/TERM_SHEET`);
   const [memoOpen, setMemoOpen] = useState(false);
   const [sheetEdit, setSheetEdit] = useState(false);
+  const [sheetView, setSheetView] = useState(false);
   const refresh = useRefresh(id);
   const genSheet = useAction(async () => { await api.post(`/api/facilities/${id}/term-sheet`, {}); await refresh(); });
   const latest = memos.data?.[0];
@@ -43,13 +44,15 @@ export function MemoTab({ id }: { id: string }) {
       </Section>
       <Section title="Combined term sheet" sub="ORR, FRR, financial analysis, collateral, E&S, approval workflow, votes, comments and decisions, with names and timestamps. Edits create a new version; earlier versions are kept."
         actions={can('memo.generate') && <><Button size="sm" onClick={() => genSheet.run()} loading={genSheet.loading}>Generate term sheet</Button>{sheets.data?.length ? <Button size="sm" onClick={() => setSheetEdit(true)}>Edit (new version)</Button> : null}</>}>
+        {sheets.data?.length ? <div className="row"><Button size="sm" onClick={() => setSheetView(true)}>View latest</Button><span className="xs muted">Updated automatically at submission and at every decision. Format: the Bank's Credit Approval Memo.</span></div> : null}
         <ErrorAlert error={genSheet.error} />
         <Panel flush><QueryState q={sheets} empty={<Empty title="No term sheet generated" />}>{() => (
           <table className="data"><thead><tr><th>Version</th><th>Based on</th><th>Reason</th><th>By</th><th>Generated</th><th /></tr></thead>
             <tbody>{sheets.data!.map((s) => <tr key={s.id}><td>v{s.version}</td><td>{s.basedOn ? `v${s.basedOn}` : '—'}</td><td className="small">{s.editReason ?? '—'}</td><td>{s.generatedBy}</td><td className="small">{dateTime(s.createdAt)}</td><td className="num"><Button size="sm" onClick={() => openDocument(s.documentId, 'attachment')}>Download .docx</Button></td></tr>)}</tbody></table>)}</QueryState></Panel>
       </Section>
       {memoOpen && <MemoDrawer id={id} onClose={() => setMemoOpen(false)} onDone={async () => { setMemoOpen(false); await refresh(); }} />}
-      {sheetEdit && <SheetEditDrawer id={id} onClose={() => setSheetEdit(false)} onDone={async () => { setSheetEdit(false); await refresh(); }} />}
+      {sheetEdit && <SheetEditDrawer id={id} latest={sheets.data?.[0]} onClose={() => setSheetEdit(false)} onDone={async () => { setSheetEdit(false); await refresh(); }} />}
+      {sheetView && sheets.data?.[0] && <SheetViewDrawer latest={sheets.data[0]} onClose={() => setSheetView(false)} />}
     </div>
   );
 }
@@ -71,17 +74,45 @@ function MemoDrawer({ id, onClose, onDone }: { id: string; onClose: () => void; 
   );
 }
 
-function SheetEditDrawer({ id, onClose, onDone }: { id: string; onClose: () => void; onDone: () => void }) {
-  const [purpose, setPurpose] = useState(''); const [note, setNote] = useState(''); const [reason, setReason] = useState('');
-  const go = useAction(async () => { await api.post(`/api/facilities/${id}/term-sheet`, { overrides: { ...(purpose ? { purpose } : {}), ...(note ? { decisionNote: note } : {}) }, reason }); onDone(); });
+const CAM_FIELDS: [string, string][] = [
+  ['natureOfBusiness', '4. Nature of business'], ['operations', '4. Products, production processes & operations'], ['strategy', '4. Strategies & industry position'], ['milestones', '4. Past successes and milestones'],
+  ['creditStatusOtherBanks', '4. Credit status from other banks, suppliers and competitors'], ['corporateStructure', '5. Corporate structure and organisation'], ['boardProfile', '6. Profile of the board of directors'], ['managementProfile', '6. Profile of key management staff'],
+  ['industryAnalysis', '7. Industry analysis / relationship update'], ['environment', '7. Operating environment'], ['swot', '8. SWOT analysis'], ['financialAnalysisComment', '9. Financial analysis comment'], ['projectedCashflow', '10. Projected cash flow comment'],
+  ['valueChain', '15. Value chain eco-conversion'], ['raroacComment', '18. RAROC & relationship strategy comment'], ['remarks', '22. Remarks'], ['criticalIssues', '23. Critical credit issues (one per line)'], ['transactionDynamics', '24. Transaction dynamics'],
+  ['facilityEfficiencyRatio', '25. Facility efficiency ratio'], ['justification', '26. Justification for the request'], ['purpose', '16. Purpose (override)'], ['decisionNote', '27. Decision note'],
+];
+
+function SheetEditDrawer({ id, latest, onClose, onDone }: { id: string; latest: any; onClose: () => void; onDone: () => void }) {
+  const initial: Record<string, string> = latest?.content?.overrides ?? {};
+  const [v, setV] = useState<Record<string, string>>(initial);
+  const [reason, setReason] = useState('');
+  const changed = Object.fromEntries(Object.entries(v).filter(([k, x]) => (x ?? '') !== (initial[k] ?? '') && x.trim()));
+  const go = useAction(async () => { await api.post(`/api/facilities/${id}/term-sheet`, { overrides: changed, reason }); onDone(); });
   return (
-    <Drawer title="Edit term sheet" onClose={onClose} footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={reason.trim().length < 5 || (!purpose && !note)} loading={go.loading} onClick={() => go.run()}>Create new version</Button></>}>
+    <Drawer title="Edit combined term sheet (Credit Approval Memo)" onClose={onClose} footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={reason.trim().length < 5 || !Object.keys(changed).length} loading={go.loading} onClick={() => go.run()}>Create new version</Button></>}>
       <div className="stack">
-        <Alert tone="info">The previous version is kept unchanged. Computed sections (ratings, workflow, votes) always reflect the record.</Alert>
-        <TextArea label="Purpose (override)" value={purpose} onChange={(e) => setPurpose(e.target.value)} />
-        <TextArea label="Decision note" value={note} onChange={(e) => setNote(e.target.value)} />
+        <Alert tone="info">Narrative sections are yours to write; figures, ratings, statements, collateral and the approval workflow come from the record and cannot be edited here. The previous version is kept, and your text carries into later automatic updates.</Alert>
+        {CAM_FIELDS.map(([k, label]) => <TextArea key={k} label={label} value={v[k] ?? ''} onChange={(e) => setV({ ...v, [k]: e.target.value })} />)}
         <TextInput label="Reason for edit" value={reason} onChange={(e) => setReason(e.target.value)} required />
         <ErrorAlert error={go.error} />
+      </div>
+    </Drawer>
+  );
+}
+
+function SheetViewDrawer({ latest, onClose }: { latest: any; onClose: () => void }) {
+  const sections: any[] = latest?.content?.sections ?? [];
+  return (
+    <Drawer title={`Combined term sheet v${latest.version}`} onClose={onClose} footer={<><Button onClick={onClose}>Close</Button><Button variant="primary" onClick={() => openDocument(latest.documentId, 'attachment')}>Download .docx</Button></>}>
+      <div className="stack doc-view">
+        {sections.map((sec, i) => (
+          <section key={i}>
+            <h4>{sec.heading}</h4>
+            {(sec.paragraphs ?? []).filter(Boolean).map((p: string, j: number) => <p key={j} className="small">{p}</p>)}
+            {sec.bullets?.length > 0 && <ul className="small">{sec.bullets.map((b: string, j: number) => <li key={j}>{b}</li>)}</ul>}
+            {sec.table?.rows?.length > 0 && <div className="table-wrap"><table className="data"><thead><tr>{sec.table.headers.map((h: string) => <th key={h}>{h}</th>)}</tr></thead><tbody>{sec.table.rows.map((r: any[], j: number) => <tr key={j}>{r.map((c, k) => <td key={k} className="small">{c ?? '—'}</td>)}</tr>)}</tbody></table></div>}
+          </section>
+        ))}
       </div>
     </Drawer>
   );

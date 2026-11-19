@@ -1,3 +1,4 @@
+import { SpoolStatementButton } from '../../../components/SpoolStatement';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../../lib/api';
@@ -120,7 +121,7 @@ export function StatementsTab({ id }: { id: string }) {
   return (
     <div className="stack">
       <Section title="Bank statements" sub="Statements belong to the customer and are reused across requests."
-        actions={<>{can('financials.edit') && <Button size="sm" onClick={() => setUploading(true)}>Upload statement</Button>}{can('financials.validate') && <Button size="sm" variant="primary" onClick={() => run.run()} loading={run.loading}>Run analysis</Button>}<Button size="sm" variant="ghost" onClick={() => refresh()}>Refresh</Button></>}>
+        actions={<>{can('financials.edit') && <SpoolStatementButton facilityId={id} onDone={refresh} />}{can('financials.edit') && <Button size="sm" onClick={() => setUploading(true)}>Upload statement</Button>}{can('financials.validate') && <Button size="sm" variant="primary" onClick={() => run.run()} loading={run.loading}>Run analysis</Button>}<Button size="sm" variant="ghost" onClick={() => refresh()}>Refresh</Button></>}>
         {pending && <Alert tone="info">Statement parsing is running in the background. Refresh in a moment.</Alert>}
         <ErrorAlert error={run.error ?? review.error} />
         <Panel flush>
@@ -153,6 +154,11 @@ export function StatementsTab({ id }: { id: string }) {
                 <div style={{ display: 'flex', gap: 2 }}><div className="bar" style={{ width: `${(t.altBankCreditNgnMinor / max) * 100}%` }} title="Alternative Bank" /><div className="bar accent" style={{ width: `${((t.creditNgnMinor - t.altBankCreditNgnMinor) / max) * 100}%` }} title="Other banks" /></div>
                 <span className="num">{money(t.creditNgnMinor, 'NGN', { compact: true })}</span></div>))}
             <div className="row small muted" style={{ marginTop: 8 }}><span><span className="bar" style={{ display: 'inline-block', width: 12 }} /> Alternative Bank</span><span><span className="bar accent" style={{ display: 'inline-block', width: 12 }} /> Other banks</span></div>
+          </Panel>
+          <Panel title="Monthly summary — all accounts (NGN)" flush actions={<span className="xs muted">Foreign-currency amounts converted at the rates below</span>}>
+            <div className="table-wrap"><table className="data"><thead><tr><th>Months</th><th className="num">Debit</th><th className="num">Credit</th><th className="num">Closing balances</th><th className="num">Wallet share (%)</th></tr></thead>
+              <tbody>{totals.map((t) => <tr key={t.month}><td className="mono small">{t.month}</td><td className="num">{money(t.debitNgnMinor, 'NGN')}</td><td className="num">{money(t.creditNgnMinor, 'NGN')}</td><td className="num">{t.closingBalanceNgnMinor === null || t.closingBalanceNgnMinor === undefined ? '—' : money(t.closingBalanceNgnMinor, 'NGN')}</td><td className="num">{pct(t.walletSharePct)}</td></tr>)}</tbody>
+              <tfoot><tr><th>Total</th><th className="num">{money(a.summary.totalDebitNgnMinor, 'NGN')}</th><th className="num">{money(a.summary.totalCreditNgnMinor, 'NGN')}</th><th /><th className="num">{pct(a.summary.walletSharePct)}</th></tr></tfoot></table></div>
           </Panel>
           {a.fxRates?.length > 0 && <Panel title="FX rates applied" flush><table className="data"><thead><tr><th>Pair</th><th className="num">Rate</th><th>Rate date</th><th>Source</th></tr></thead><tbody>{a.fxRates.map((r: any) => <tr key={r.id}><td>{r.base_ccy}/NGN</td><td className="num">{Number(r.rate).toLocaleString('en-NG')}</td><td>{date(r.rate_date)}</td><td className="small">{r.source ?? '—'}</td></tr>)}</tbody></table></Panel>}
         </>

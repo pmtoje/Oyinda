@@ -7,7 +7,7 @@ import { formatMoney } from '../../lib/money.js';
 import { audit } from '../audit/audit.js';
 import { loadFacility } from '../facilities/access.js';
 import { emit } from '../notifications/service.js';
-import { CONDITION_PERMS, checkOffer, decideNegotiation, prepareOffer, respondToOffer } from './service.js';
+import { CONDITION_PERMS, checkOffer, decideNegotiation, prepareOffer, respondToOffer, signOffer } from './service.js';
 
 export async function offerRoutes(app: FastifyInstance) {
   const db = getPool();
@@ -16,13 +16,13 @@ export async function offerRoutes(app: FastifyInstance) {
   app.get('/api/facilities/:id/offer', async (req, reply) => {
     const f = await loadFacility(db, req, parse(idParam, req.params).id);
     const cust = req.auth!.subjectType === 'CUSTOMER';
-    const offers = await q<any>(db, `SELECT o.*, g.content, g.rendered_document_id, t.version_no AS terms_version, t.amount_minor, t.currency, t.tenor_months, t.profit_rate_pct, t.payment_frequency, (SELECT payload->>'pricingBasis' FROM config_item WHERE id=f2.product_config_id) AS pricing_basis, mk.display_name AS maker_name, ck.display_name AS checker_name
-      FROM offer_letter o JOIN facility_request f2 ON f2.id=o.facility_id JOIN generated_document g ON g.id=o.generated_document_id JOIN approved_terms t ON t.id=o.terms_id LEFT JOIN app_user mk ON mk.id=o.maker_id LEFT JOIN app_user ck ON ck.id=o.checker_id
+    const offers = await q<any>(db, `SELECT o.*, g.content, g.rendered_document_id, t.version_no AS terms_version, t.amount_minor, t.currency, t.tenor_months, t.profit_rate_pct, t.payment_frequency, (SELECT payload->>'pricingBasis' FROM config_item WHERE id=f2.product_config_id) AS pricing_basis, mk.display_name AS maker_name, ck.display_name AS checker_name, sg.display_name AS signed_name, cs.display_name AS countersigned_name
+      FROM offer_letter o JOIN facility_request f2 ON f2.id=o.facility_id JOIN generated_document g ON g.id=o.generated_document_id JOIN approved_terms t ON t.id=o.terms_id LEFT JOIN app_user mk ON mk.id=o.maker_id LEFT JOIN app_user ck ON ck.id=o.checker_id LEFT JOIN app_user sg ON sg.id=o.signed_by LEFT JOIN app_user cs ON cs.id=o.countersigned_by
       WHERE o.facility_id=$1 ${cust ? `AND o.status IN ('ISSUED','ACCEPTED','REJECTED','NEGOTIATING','SUPERSEDED','EXPIRED')` : ''} ORDER BY o.created_at DESC`, [f.id]);
     const negotiations = await q<any>(db, `SELECT n.*, u.display_name AS reviewer FROM negotiation_request n LEFT JOIN app_user u ON u.id=n.reviewer_id WHERE n.facility_id=$1 ORDER BY n.created_at DESC`, [f.id]);
     const terms = cust ? [] : await q(db, 'SELECT id, version_no AS version, source, amount_minor AS "amountMinor", tenor_months AS "tenorMonths", profit_rate_pct AS "profitRatePct", approved_by_names AS "approvedBy", created_at AS "createdAt" FROM approved_terms WHERE facility_id=$1 ORDER BY version_no', [f.id]);
     return ok(reply, {
-      offers: offers.map((o) => ({ id: o.id, status: o.status, termsVersion: o.terms_version, amount: formatMoney(o.amount_minor, o.currency), tenorMonths: o.tenor_months, profitRatePct: o.profit_rate_pct, pricingBasis: o.pricing_basis, pricingLabel: ({ PROFIT_RATE: 'Profit rate', RENTAL: 'Rental rate', PROFIT_SHARING_RATIO: 'Expected profit rate', FEE: 'Commission', NONE: 'Profit' } as Record<string, string>)[o.pricing_basis] ?? 'Profit rate', paymentFrequency: o.payment_frequency, title: o.content.title, sections: o.content.sections, documentId: o.rendered_document_id, issuedAt: o.issued_at, expiresAt: o.expires_at, respondedAt: o.responded_at, responseNote: o.response_note, rowVersion: o.row_version, ...(cust ? {} : { maker: o.maker_name, checker: o.checker_name }) })),
+      offers: offers.map((o) => ({ id: o.id, status: o.status, termsVersion: o.terms_version, amount: formatMoney(o.amount_minor, o.currency), tenorMonths: o.tenor_months, profitRatePct: o.profit_rate_pct, pricingBasis: o.pricing_basis, pricingLabel: ({ PROFIT_RATE: 'Profit rate', RENTAL: 'Rental rate', PROFIT_SHARING_RATIO: 'Expected profit rate', FEE: 'Commission', NONE: 'Profit' } as Record<string, string>)[o.pricing_basis] ?? 'Profit rate', paymentFrequency: o.payment_frequency, title: o.content.title, sections: o.content.sections, documentId: o.rendered_document_id, issuedAt: o.issued_at, expiresAt: o.expires_at, respondedAt: o.responded_at, responseNote: o.response_note, rowVersion: o.row_version, ...(cust ? {} : { maker: o.maker_name, checker: o.checker_name, signoff: o.signoff_rule ? { rule: o.signoff_rule.label, signRoles: o.signoff_rule.signRoles, countersignRoles: o.signoff_rule.countersignRoles, signedBy: o.signed_name, signedRole: o.signed_role, signedAt: o.signed_at, countersignedBy: o.countersigned_name, countersignedRole: o.countersigned_role, countersignedAt: o.countersigned_at } : null }) })),
       negotiations: negotiations.map((n) => ({ id: n.id, status: n.status, requestedAmount: n.requested_amount_minor ? formatMoney(n.requested_amount_minor) : null, requestedTenorMonths: n.requested_tenor_months, requestedProfitRatePct: n.requested_profit_rate_pct, requestedOther: n.requested_other, justification: n.justification, decisionNote: n.decision_note, createdAt: n.created_at, decidedAt: n.decided_at, ...(cust ? {} : { reviewer: n.reviewer }) })),
       termsVersions: terms,
     });
@@ -44,6 +44,16 @@ export async function offerRoutes(app: FastifyInstance) {
     await loadFacility(db, req, o.facility_id);
     await tx((c) => checkOffer(c, actorOf(req), offerId, b.decision, b.note));
     return ok(reply, { done: true });
+  });
+
+  app.post('/api/offers/:offerId/sign', async (req, reply) => {
+    const st = requireStaff(req, 'offer.sign');
+    const { offerId } = parse(z.object({ offerId: z.uuid() }), req.params);
+    const b = parse(z.object({ kind: z.enum(['SIGN', 'COUNTERSIGN']) }), req.body);
+    const o = await maybe<any>(db, 'SELECT facility_id FROM offer_letter WHERE id=$1', [offerId]);
+    if (!o) throw notFound('Offer');
+    await loadFacility(db, req, o.facility_id);
+    return ok(reply, await tx((c) => signOffer(c, actorOf(req), st, offerId, b.kind)));
   });
 
   app.post('/api/offers/:offerId/respond', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {

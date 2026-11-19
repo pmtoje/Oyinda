@@ -21,7 +21,8 @@ export const PERMISSIONS: Record<string, string> = {
   'es.checklist': 'Complete the E&S checklist with the customer (RM)',
   'memo.generate': 'Generate and edit credit memos and term sheets',
   'offer.make': 'Prepare offer letters (maker)',
-  'offer.check': 'Check and issue offer letters (checker)',
+  'offer.check': 'Check offer letters (checker)',
+  'offer.sign': 'Sign or countersign offer letters under the sign-off rules',
   'negotiation.review': 'Review customer negotiation requests',
   'condition.legal': 'Action legal conditions',
   'condition.shariah': 'Action Shariah conditions',
@@ -44,10 +45,10 @@ export const PERMISSIONS: Record<string, string> = {
 };
 
 export const ROLES: { code: string; name: string; privileged?: boolean; perms: string[] }[] = [
-  { code: 'RM', name: 'Relationship Manager', perms: ['customer.view.assigned', 'customer.manage', 'facility.view.assigned', 'facility.initiate', 'task.work', 'document.verify', 'financials.edit', 'collateral.edit', 'es.checklist', 'thread.participate', 'ai.use'] },
-  { code: 'BM', name: 'Team Lead (Business)', perms: ['customer.view.assigned', 'facility.view.assigned', 'task.work', 'document.verify', 'thread.participate', 'report.view', 'ai.use'] },
-  { code: 'RBE', name: 'Regional Business Executive', perms: ['customer.view.assigned', 'facility.view.assigned', 'task.work', 'thread.participate', 'report.view'] },
-  { code: 'DH', name: 'Divisional / Directorate Head', perms: ['customer.view.assigned', 'facility.view.assigned', 'task.work', 'thread.participate', 'report.view'] },
+  { code: 'RM', name: 'Relationship Manager', perms: ['offer.sign', 'customer.view.assigned', 'customer.manage', 'facility.view.assigned', 'facility.initiate', 'task.work', 'document.verify', 'financials.edit', 'collateral.edit', 'es.checklist', 'thread.participate', 'ai.use'] },
+  { code: 'BM', name: 'Team Lead (Business)', perms: ['offer.sign', 'customer.view.assigned', 'facility.view.assigned', 'task.work', 'document.verify', 'thread.participate', 'report.view', 'ai.use'] },
+  { code: 'RBE', name: 'Regional Business Executive', perms: ['offer.sign', 'customer.view.assigned', 'facility.view.assigned', 'task.work', 'thread.participate', 'report.view'] },
+  { code: 'DH', name: 'Divisional / Directorate Head', perms: ['offer.sign', 'customer.view.assigned', 'facility.view.assigned', 'task.work', 'thread.participate', 'report.view'] },
   { code: 'CREDIT_ANALYST', name: 'Credit Analyst', perms: ['customer.view.all', 'facility.view.all', 'task.work', 'document.verify', 'financials.edit', 'financials.validate', 'bureau.request', 'exposure.compute', 'collateral.edit', 'risk.assess', 'rarorac.compute', 'rarorac.justify', 'memo.generate', 'thread.participate', 'ai.use'] },
   { code: 'ES_ANALYST', name: 'E&S Analyst', perms: ['customer.view.all', 'facility.view.all', 'task.work', 'es.assess', 'thread.participate', 'ai.use'] },
   { code: 'CREDIT_TEAM_LEAD', name: 'Team Lead, Credit Analysis', perms: ['customer.view.all', 'facility.view.all', 'task.work', 'task.reassign', 'financials.validate', 'risk.assess', 'memo.generate', 'thread.participate', 'report.view', 'ai.use'] },

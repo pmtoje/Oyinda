@@ -41,7 +41,7 @@ export class ClamdAntivirus implements AntivirusAdapter {
 const notProvisioned = (system: string) => () => {
   throw new IntegrationError(system, 'live integration is not provisioned in this environment (gateway endpoint and credentials required)', false);
 };
-export const unprovisionedCba: CoreBankingAdapter = { mode: 'LIVE', findByAccountNumber: notProvisioned('CBA'), getExposure: notProvisioned('CBA'), bookFacility: notProvisioned('CBA'), postDisbursement: notProvisioned('CBA') };
+export const unprovisionedCba: CoreBankingAdapter = { mode: 'LIVE', findByAccountNumber: notProvisioned('CBA'), getExposure: notProvisioned('CBA'), bookFacility: notProvisioned('CBA'), postDisbursement: notProvisioned('CBA'), getStatement: notProvisioned('CBA') };
 export const unprovisionedDirectory: DirectoryAdapter = { mode: 'LIVE', authenticate: notProvisioned('ActiveDirectory') };
 export const unprovisionedBureau: BureauAdapter = { mode: 'LIVE', provider: 'UNPROVISIONED', businessReport: notProvisioned('CreditBureau'), individualReport: notProvisioned('CreditBureau') };
 export const unprovisionedRarorac: RaroracAdapter = { mode: 'LIVE', provider: 'RAPP', compute: notProvisioned('RARORAC') };

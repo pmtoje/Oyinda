@@ -49,3 +49,22 @@ ALTER TABLE app_user ADD COLUMN manager_id uuid REFERENCES app_user(id);
 -- Committee decision recorded by Credit Operations from signed minutes (PRD).
 ALTER TABLE workflow_action DROP CONSTRAINT workflow_action_action_check;
 ALTER TABLE workflow_action ADD CONSTRAINT workflow_action_action_check CHECK (action IN ('SUBMIT','RESUBMIT','CLAIM','RELEASE','REASSIGN','APPROVE','RECOMMEND','DECLINE','RETURN','REQUEST_CLARIFICATION','COMMENT','VOTE','COMPLETE','ROUTE','ESCALATE','SKIP','CANCEL','RECORD_DECISION'));
+
+-- System-generated documents (e.g. the term sheet refreshed as the workflow moves) have no human uploader.
+ALTER TABLE document_version ALTER COLUMN uploaded_by_id DROP NOT NULL;
+ALTER TABLE document_version ADD CONSTRAINT document_version_uploader CHECK (uploaded_by_type = 'SYSTEM' OR uploaded_by_id IS NOT NULL);
+
+-- PRD offer-letter sign-off: after the Credit Operations maker-checker, the business signs and countersigns before issue.
+ALTER TABLE offer_letter DROP CONSTRAINT offer_letter_status_check;
+ALTER TABLE offer_letter ADD CONSTRAINT offer_letter_status_check CHECK (status IN ('PENDING_CHECK','PENDING_SIGNOFF','ISSUED','ACCEPTED','REJECTED','NEGOTIATING','SUPERSEDED','EXPIRED','RETURNED_TO_MAKER'));
+ALTER TABLE offer_letter
+  ADD COLUMN signoff_rule jsonb,
+  ADD COLUMN signed_by uuid REFERENCES app_user(id),
+  ADD COLUMN signed_role text,
+  ADD COLUMN signed_at timestamptz,
+  ADD COLUMN countersigned_by uuid REFERENCES app_user(id),
+  ADD COLUMN countersigned_role text,
+  ADD COLUMN countersigned_at timestamptz,
+  ADD CONSTRAINT offer_letter_distinct_signatories CHECK (countersigned_by IS NULL OR countersigned_by <> signed_by);
+DROP INDEX offer_letter_one_live;
+CREATE UNIQUE INDEX offer_letter_one_live ON offer_letter(facility_id) WHERE status IN ('PENDING_CHECK','PENDING_SIGNOFF','ISSUED','NEGOTIATING');

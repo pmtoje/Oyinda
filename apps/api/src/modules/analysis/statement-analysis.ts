@@ -39,7 +39,7 @@ export function analyseStatements(stmts: StmtInput[], txns: TxnInput[], rateFor:
   const uncertain = unique.filter((t) => t.uncertain).length;
   if (uncertain) issues.push({ severity: 'WARNING', message: `${uncertain} transaction(s) are flagged as uncertain and await validation; figures that depend on them are provisional.` });
 
-  type Row = { account: string; bank: string; isAltBank: boolean; currency: string; month: string; debitMinor: number; creditMinor: number; adjustedCreditMinor: number; closingBalanceMinor: number | null; txnCount: number; debitNgnMinor: number | null; creditNgnMinor: number | null; adjustedCreditNgnMinor: number | null; fxRateId: string | null };
+  type Row = { account: string; bank: string; isAltBank: boolean; currency: string; month: string; debitMinor: number; creditMinor: number; adjustedCreditMinor: number; closingBalanceMinor: number | null; txnCount: number; debitNgnMinor: number | null; creditNgnMinor: number | null; adjustedCreditNgnMinor: number | null; closingBalanceNgnMinor: number | null; fxRateId: string | null };
   const monthly: Row[] = [];
   for (const [key, list] of byAccount) {
     const [bank, account, ccy] = key.split('|') as [string, string, string];
@@ -65,14 +65,19 @@ export function analyseStatements(stmts: StmtInput[], txns: TxnInput[], rateFor:
         else ratesUsed.set(rate.id, rate);
       }
       const conv = (v: number) => (ccy === 'NGN' ? v : rate ? Math.round(v * rate.rate) : null);
-      monthly.push({ account, bank, isAltBank: list[0]!.is_alternative_bank, currency: ccy, month: m, debitMinor: debit, creditMinor: credit, adjustedCreditMinor: adjusted, closingBalanceMinor: closing, txnCount: mt.length, debitNgnMinor: conv(debit), creditNgnMinor: conv(credit), adjustedCreditNgnMinor: conv(adjusted), fxRateId: rate?.id ?? null });
+      monthly.push({ account, bank, isAltBank: list[0]!.is_alternative_bank, currency: ccy, month: m, debitMinor: debit, creditMinor: credit, adjustedCreditMinor: adjusted, closingBalanceMinor: closing, txnCount: mt.length, debitNgnMinor: conv(debit), creditNgnMinor: conv(credit), adjustedCreditNgnMinor: conv(adjusted), closingBalanceNgnMinor: closing === null ? null : conv(closing), fxRateId: rate?.id ?? null });
     }
   }
   const months = [...new Set(monthly.map((r) => r.month))].sort();
   const totals = months.map((m) => {
     const rs = monthly.filter((r) => r.month === m);
     const sum = (f: (r: Row) => number | null) => rs.reduce((a, r) => a + (f(r) ?? 0), 0);
-    return { month: m, creditNgnMinor: sum((r) => r.creditNgnMinor), adjustedCreditNgnMinor: sum((r) => r.adjustedCreditNgnMinor), debitNgnMinor: sum((r) => r.debitNgnMinor), altBankCreditNgnMinor: rs.filter((r) => r.isAltBank).reduce((a, r) => a + (r.creditNgnMinor ?? 0), 0) };
+    const credit = sum((r) => r.creditNgnMinor);
+    const altCredit = rs.filter((r) => r.isAltBank).reduce((a, r) => a + (r.creditNgnMinor ?? 0), 0);
+    // SWR: MONTHS | DEBIT | CREDIT | CLOSING BALANCES | WALLET SHARE (%) — all in NGN; FCY converted at the recorded rate.
+    return { month: m, creditNgnMinor: credit, adjustedCreditNgnMinor: sum((r) => r.adjustedCreditNgnMinor), debitNgnMinor: sum((r) => r.debitNgnMinor), altBankCreditNgnMinor: altCredit,
+      closingBalanceNgnMinor: rs.some((r) => r.closingBalanceNgnMinor !== null) ? sum((r) => r.closingBalanceNgnMinor) : null,
+      walletSharePct: credit > 0 ? Math.round((altCredit / credit) * 10000) / 100 : null };
   });
   const n = totals.length || 1;
   const totalCredit = totals.reduce((a, t) => a + t.creditNgnMinor, 0);

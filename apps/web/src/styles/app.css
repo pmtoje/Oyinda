@@ -276,3 +276,6 @@ table.data .primary-cell { font-weight: 500; color: var(--ink-900); }
 .checklist li::before { content: '○'; position: absolute; left: 0; }
 .checklist li.ok { color: var(--ok-700); }
 .checklist li.ok::before { content: '✓'; }
+
+.doc-view section + section { border-top: 1px solid var(--line, #e5e2da); padding-top: 12px; }
+.doc-view h4 { margin: 0 0 6px; }

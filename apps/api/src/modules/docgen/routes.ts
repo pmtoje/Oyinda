@@ -5,6 +5,7 @@ import { actorOf, ok, parse, requireStaff } from '../../http/context.js';
 import { notFound } from '../../lib/errors.js';
 import { loadFacility } from '../facilities/access.js';
 import { decisionView, generateMemo, generateTermSheet } from './service.js';
+import { CAM_EDITABLE } from './cam.js';
 import { riskFlags } from './risk-flags.js';
 
 const idParam = z.object({ id: z.string() });
@@ -30,7 +31,7 @@ export async function docgenRoutes(app: FastifyInstance) {
   app.post('/api/facilities/:id/term-sheet', async (req, reply) => {
     requireStaff(req, 'memo.generate');
     const f = await loadFacility(db, req, parse(idParam, req.params).id);
-    const b = parse(z.object({ overrides: z.object({ purpose: z.string().trim().max(2000).optional(), decisionNote: z.string().trim().max(4000).optional() }).optional(), reason: z.string().trim().min(5).max(500).optional() }), req.body);
+    const b = parse(z.object({ overrides: z.object(Object.fromEntries(CAM_EDITABLE.map((k) => [k, z.string().trim().max(8000).optional()]))).strict().optional(), reason: z.string().trim().min(5).max(500).optional() }), req.body);
     let edits: { overrides: Record<string, string>; reason: string; basedOn: number } | undefined;
     if (b.overrides && Object.keys(b.overrides).length) {
       const prev = await maybe<any>(db, `SELECT version_no FROM generated_document WHERE facility_id=$1 AND kind='TERM_SHEET' ORDER BY version_no DESC LIMIT 1`, [f.id]);

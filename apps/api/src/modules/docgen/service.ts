@@ -8,6 +8,10 @@ import { storeVersion } from '../documents/service.js';
 import { MIME } from '../documents/mime.js';
 import { renderDocx, type DocSection } from './docx.js';
 import { riskFlags, type RiskFlag } from './risk-flags.js';
+import { camSections } from './cam.js';
+import { registerJob } from '../../jobs/queue.js';
+import { getPool, tx } from '../../db/pool.js';
+import { SYSTEM } from '../audit/audit.js';
 
 const M = (v: number | null | undefined, ccy = 'NGN') => (v === null || v === undefined ? '—' : formatMoney(v, ccy));
 const P = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${Math.round(v * 100) / 100}%`);
@@ -100,28 +104,20 @@ export async function generateMemo(db: Db, actor: Actor, facilityId: string, inp
   return storeGenerated(db, actor, facilityId, 'CREDIT_MEMO', content, docx);
 }
 
-/** Combined term sheet: ORR, FRR, financial analysis, collateral, E&S, approval workflow, comments and decisions. */
-export async function generateTermSheet(db: Db, actor: Actor, facilityId: string, edits?: { overrides: Record<string, string>; reason: string; basedOn: number }) {
+/**
+ * Combined term sheet in the Bank's Credit Approval Memo format (PRD): ORR, FRR, financial analysis, collateral,
+ * E&S and the approval workflow with each officer's name and timestamp. Word format (PRD: not PDF).
+ * Narrative overrides from the previous version are carried forward so automatic refreshes never lose edits.
+ */
+export async function generateTermSheet(db: Db, actor: Actor, facilityId: string, edits?: { overrides: Record<string, string>; reason: string; basedOn: number }, opts: { automatic?: string } = {}) {
   const g = await gatherFacility(db, facilityId);
-  const actions = await q<any>(db, `SELECT a.*, ob.display_name AS on_behalf FROM workflow_action a LEFT JOIN app_user ob ON ob.id=a.on_behalf_of WHERE a.facility_id=$1 AND a.action IN ('SUBMIT','RESUBMIT','RECOMMEND','APPROVE','DECLINE','RETURN','COMPLETE','VOTE','COMMENT','ESCALATE') ORDER BY a.created_at`, [facilityId]);
-  const votes = await q<any>(db, `SELECT v.*, u.display_name, cs.committee_key FROM committee_vote v JOIN committee_session cs ON cs.id=v.session_id JOIN app_user u ON u.id=v.member_id WHERE cs.facility_id=$1 ORDER BY v.created_at`, [facilityId]);
-  const terms = await maybe<any>(db, 'SELECT * FROM approved_terms WHERE facility_id=$1 ORDER BY version_no DESC LIMIT 1', [facilityId]);
-  const memo = await maybe<any>(db, `SELECT content, version_no FROM generated_document WHERE facility_id=$1 AND kind='CREDIT_MEMO' ORDER BY version_no DESC LIMIT 1`, [facilityId]);
-  const byKind = (k: string) => g.risk.find((r: any) => r.kind === k);
-  const o = edits?.overrides ?? {};
-  const sections: DocSection[] = [
-    { heading: 'Facility', table: { headers: ['Term', 'Value'], rows: [['Customer', g.f.legal_name], ['Facility reference', g.f.facility_ref], ['Product', g.product.payload.name], ['Amount', M(terms?.amount_minor ?? g.f.amount_minor, g.f.currency)], ['Tenor', `${terms?.tenor_months ?? g.f.tenor_months} months`], ['Profit rate', terms ? P(terms.profit_rate_pct) : g.rar ? P(g.rar.pricing_rate_pct) : '—'], ['Payment frequency', terms?.payment_frequency ?? g.f.payment_frequency], ['Purpose', o.purpose ?? g.f.purpose]] } },
-    { heading: 'Obligor Risk Rating (ORR)', table: { headers: ['Section', 'Score %', 'Weight'], rows: (byKind('ORR')?.breakdown ?? []).map((s: any) => [s.name, s.scorePct, s.weight]) }, paragraphs: [byKind('ORR') ? `ORR ${byKind('ORR').grade} — score ${byKind('ORR').normalised_score} (scorecard ${byKind('ORR').card_key} v${byKind('ORR').card_version}).` : 'ORR not submitted.'] },
-    { heading: 'Facility Risk Rating (FRR) & financial analysis', paragraphs: [byKind('FRR') ? `FRR ${byKind('FRR').grade} — score ${byKind('FRR').normalised_score}.` : 'FRR not submitted.'], table: { headers: ['Ratio', 'Value', 'Band', 'Score'], rows: g.ratios.filter((r: any) => r.statement_id === g.fa?.summary?.periods?.[0]?.statementId).map((r: any) => [r.name, r.value === null ? '—' : Number(r.value).toFixed(2), r.band, r.score]) } },
-    { heading: 'Industry & collateral ratings', table: { headers: ['Component', 'Score', 'Grade'], rows: ['INDUSTRY', 'COLLATERAL', 'COMBINED'].map((k) => [k, byKind(k)?.normalised_score ?? '—', byKind(k)?.grade ?? '—']) } },
-    { heading: 'Collateral', table: { headers: ['Type', 'Description', 'Eligible (NGN)', 'Perfection'], rows: g.col.items.map((c: any) => [g.colTypes.get(c.type_key) ?? c.type_key, c.description, M(c.eligible_value_ngn_minor), c.perfection_status]) }, paragraphs: [`Coverage ${P(g.col.coveragePct)}.`] },
-    { heading: 'Environmental & social', paragraphs: [g.es ? `Category ${g.es.category ?? '—'}; ${g.es.recommendation ?? 'pending'}. ${g.es.findings ?? ''}` : 'Not required.'] },
-    { heading: 'Approval workflow', table: { headers: ['Date & time', 'Officer', 'Role', 'Action', 'Comment'], rows: actions.map((a: any) => [new Date(a.created_at).toLocaleString('en-NG', { timeZone: 'Africa/Lagos' }), a.actor_name + (a.on_behalf ? ` (for ${a.on_behalf})` : ''), a.actor_role, a.action, a.comment]) } },
-    { heading: 'Committee votes', table: { headers: ['Committee', 'Member', 'Vote', 'Date & time', 'Comment'], rows: votes.map((v: any) => [v.committee_key, v.display_name, v.vote, new Date(v.created_at).toLocaleString('en-NG', { timeZone: 'Africa/Lagos' }), v.comment]) } },
-    { heading: 'Decision & conditions', paragraphs: [terms ? `Approved (terms version ${terms.version_no}) by: ${terms.approved_by_names.join(', ')}.` : `Status: ${g.f.status}.`, ...(o.decisionNote ? [o.decisionNote] : [])], bullets: (terms?.conditions ?? memo?.content?.input?.conditions ?? []).map((c: any) => (typeof c === 'string' ? c : `${c.description}${c.mandatory ? '' : ' (non-mandatory)'}`)) },
-  ];
-  const docx = await renderDocx({ title: 'Combined Term Sheet', subtitle: `${g.f.legal_name}${edits ? ` — revised: ${edits.reason}` : ''}`, reference: g.f.facility_ref, classification: 'CONFIDENTIAL — INTERNAL', sections });
-  return storeGenerated(db, actor, facilityId, 'TERM_SHEET', { sections, overrides: o, memoVersion: memo?.version_no ?? null }, docx, edits ? { basedOn: edits.basedOn, editReason: edits.reason } : {});
+  const prev = await maybe<any>(db, `SELECT content, version_no FROM generated_document WHERE facility_id=$1 AND kind='TERM_SHEET' ORDER BY version_no DESC LIMIT 1`, [facilityId]);
+  const memo = await maybe<any>(db, `SELECT version_no FROM generated_document WHERE facility_id=$1 AND kind='CREDIT_MEMO' ORDER BY version_no DESC LIMIT 1`, [facilityId]);
+  const o: Record<string, string> = { ...(prev?.content?.overrides ?? {}), ...(edits?.overrides ?? {}) };
+  const sections = await camSections(db, g, o);
+  const subtitle = `${g.f.legal_name} — ${g.product.payload.name} ${M(g.f.amount_minor, g.f.currency)}${edits ? ` — revised: ${edits.reason}` : opts.automatic ? ` — updated: ${opts.automatic}` : ''}`;
+  const docx = await renderDocx({ title: 'Credit Approval Memo — Combined Term Sheet', subtitle, reference: g.f.facility_ref, classification: 'CONFIDENTIAL — INTERNAL', sections, footerNote: `Generated by Gazelle ${new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos' })}` });
+  return storeGenerated(db, actor, facilityId, 'TERM_SHEET', { format: 'CAM', sections, overrides: o, memoVersion: memo?.version_no ?? null }, docx, edits ? { basedOn: edits.basedOn, editReason: edits.reason } : prev ? { basedOn: prev.version_no, editReason: opts.automatic ?? 'Regenerated' } : {});
 }
 
 /** Executive decision view: one screen, under two minutes. */
@@ -147,3 +143,9 @@ export async function decisionView(db: Db, facilityId: string) {
     recommendations: chain.map((c) => ({ stage: c.stage_name, officer: c.actor_name, role: c.actor_role, action: c.action, comment: c.comment, at: c.created_at })),
   };
 }
+
+/** PRD: the combined term sheet is generated at submission and updated as the request moves through the approval workflow. */
+registerJob('termsheet.refresh', async ({ facilityId, reason }) => {
+  await tx((c) => generateTermSheet(c, SYSTEM, facilityId, undefined, { automatic: reason }));
+});
+void getPool;

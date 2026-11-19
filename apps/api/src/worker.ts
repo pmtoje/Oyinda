@@ -5,6 +5,7 @@ const { runOnce, reclaimStale } = await import('./jobs/queue.js');
 await import('./modules/notifications/service.js');
 await import('./modules/documents/service.js');
 await import('./modules/analysis/statement-routes.js');
+await import('./modules/docgen/service.js');
 const { slaSweep } = await import('./modules/workflow/sweep.js');
 const { monitoringSweep } = await import('./modules/servicing/routes.js');
 const { expireDocuments } = await import('./modules/documents/service.js');

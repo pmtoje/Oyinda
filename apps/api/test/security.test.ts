@@ -127,3 +127,23 @@ describe('Phase 78 — application security assessment', () => {
     expect(audit[0].n).toBe(0); // full BVN never in the audit trail
   });
 });
+
+describe('statement spooling from core banking (SWR §2, control 6)', () => {
+  it('retrieves statements only for accounts the Bank holds for this customer', async () => {
+    const { drain } = await import('./helpers.js');
+    // Another customer's account (Kano) cannot be requested through ABC's facility — by staff or by the customer.
+    expect((await s.analyst!.post(`/api/facilities/${facilityId}/bank-statements/spool`, { accountNumber: '0100000003', periodStart: '2025-11-01', periodEnd: '2026-10-31' })).status).toBe(404);
+    expect((await abc.post(`/api/facilities/${facilityId}/bank-statements/spool`, { accountNumber: '0100000003', periodStart: '2025-11-01', periodEnd: '2026-10-31' })).status).toBe(404);
+    // ABC cannot reach the Kano facility either.
+    const kanoFac = (await q(db(), `SELECT f.id FROM facility_request f JOIN customer c ON c.id=f.customer_id WHERE c.legal_name='Kano Agro-Allied Processing Ltd' LIMIT 1`))[0];
+    if (kanoFac) expect((await abc.post(`/api/facilities/${kanoFac.id}/bank-statements/spool`, { accountNumber: '0100000001', periodStart: '2025-11-01', periodEnd: '2026-10-31' })).status).toBe(404);
+    const r = await abc.post(`/api/facilities/${facilityId}/bank-statements/spool`, { accountNumber: '0100000002', periodStart: '2025-11-01', periodEnd: '2026-10-31' });
+    expect(r.status).toBe(202);
+    expect(r.body.data.message).toMatch(/MOCK/);
+    await drain(['statement.parse']);
+    const st = (await q(db(), 'SELECT status, transaction_count, is_alternative_bank, currency FROM bank_statement WHERE id=$1', [r.body.data.id]))[0];
+    expect(['PARSED', 'NEEDS_REVIEW']).toContain(st.status);
+    expect(st.transaction_count).toBe(24);
+    expect([st.is_alternative_bank, st.currency]).toEqual([true, 'USD']);
+  });
+});
