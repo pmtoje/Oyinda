@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { validateCondition, parseFormula, type Condition } from '@gazelle/shared';
+import { validateCondition, parseFormula, variablesOf, type Condition } from '@gazelle/shared';
 
 /** Facts that conditions may reference. Admin-authored rules are validated against this catalogue. */
 export const FACT_CATALOGUE: Record<string, string> = {
@@ -47,6 +47,33 @@ const optionCode = z.string().regex(/^[A-Z0-9][A-Z0-9_]{0,60}$/, 'Use upper-case
 const minor = z.number().int().nonnegative();
 const pct = z.number().min(0).max(100);
 const roleCode = z.string().regex(/^[A-Z][A-Z0-9_]{1,40}$/);
+/** Variables available to the facility efficiency ratio formula (amounts in Naira). */
+export const EFFICIENCY_VARIABLES: Record<string, string> = {
+  REQUEST_AMOUNT: 'Requested facility amount (₦, FX-converted)',
+  TENOR_MONTHS: 'Requested tenor (months)',
+  OUTSTANDING_EXPOSURE: 'Existing outstanding exposure — direct plus CCF-weighted contingent (₦)',
+  AGGREGATE_EXPOSURE: 'Aggregate exposure including this request and related parties (₦)',
+  ANNUAL_REVENUE: 'Revenue, latest period, annualised (₦)',
+  EBITDA: 'EBITDA, latest period, annualised (₦)',
+  PROFIT_AFTER_TAX: 'Profit after tax, latest period, annualised (₦)',
+  OPERATING_CASH_FLOW: 'Operating cash flow, latest period, annualised (₦)',
+  TOTAL_EQUITY: 'Total equity, latest period (₦)',
+  TOTAL_FINANCING: 'Total financing / borrowings, latest period (₦)',
+  AVG_MONTHLY_CREDIT_TURNOVER: 'Average monthly credit turnover across all accounts, excluding reversals (₦)',
+  ANNUAL_CREDIT_TURNOVER: 'Average monthly credit turnover × 12 (₦)',
+  ALTBANK_WALLET_SHARE: 'Alternative Bank share of credit turnover (%)',
+  ELIGIBLE_COLLATERAL: 'Eligible collateral value after haircuts (₦)',
+  COLLATERAL_COVERAGE: 'Eligible collateral as a percentage of the request (%)',
+  PRICING_RATE: 'Proposed profit rate or commission (%)',
+  RARORAC: 'RARORAC (%)',
+};
+
+export function efficiencyFormulaError(formula: string): string | null {
+  try {
+    const vars = [...variablesOf(parseFormula(formula))].filter((v) => !(v in EFFICIENCY_VARIABLES));
+    return vars.length ? `Unknown variable(s): ${vars.join(', ')}. Use the listed variables only.` : null;
+  } catch (e) { return (e as Error).message; }
+}
 export const PREREQUISITES = ['BUREAU', 'EXPOSURE', 'FINANCIAL_ANALYSIS', 'STATEMENT_ANALYSIS', 'COLLATERAL', 'RISK_RATING', 'RARORAC', 'CREDIT_MEMO', 'ES_ASSESSMENT', 'CONDITIONS_LEGAL', 'CONDITIONS_SHARIAH', 'CONDITIONS_ALL_MANDATORY', 'DOCUMENTS_VERIFIED'] as const;
 const prereqs = z.array(z.enum(PREREQUISITES)).default([]);
 
@@ -257,6 +284,19 @@ export const schemas = {
     })).default([]),
   }),
 
+  /** CAM §25 facility efficiency ratio — defined and changed from time to time on management's or the Board's direction. */
+  facility_efficiency_ratio: z.object({
+    name: z.string().min(3).max(80),
+    description: z.string().min(10).max(1000),
+    formula: z.string().min(1).max(500).superRefine((f, ctx) => { const e = efficiencyFormulaError(f); if (e) ctx.addIssue({ code: 'custom', message: e }); }),
+    unit: z.enum(['x', '%', 'days', 'NGN', 'ratio']),
+    direction: z.enum(['HIGHER_BETTER', 'LOWER_BETTER', 'NEUTRAL']),
+    bands: z.array(z.object({ min: z.number().nullable().optional(), max: z.number().nullable().optional(), label: z.string().min(1).max(40), assessment: z.string().min(3).max(300) })).max(10).default([]),
+    directedBy: z.enum(['MANAGEMENT', 'BOARD']),
+    /** Reference of the management or Board direction (e.g. MANCO minutes 2026/41, Board resolution 2026/12). */
+    directionReference: z.string().trim().min(3).max(120),
+  }),
+
   /** PRD offer-letter sign-off bands: who signs and who countersigns, by facility amount (NGN). */
   offer_signoff: z.object({
     bands: z.array(z.object({
@@ -362,6 +402,7 @@ export const KIND_LABEL: Record<ConfigKind, string> = {
   committee: 'Committees',
   password_policy: 'Customer password policy',
   offer_signoff: 'Offer letter sign-off',
+  facility_efficiency_ratio: 'Facility efficiency ratio',
   sla_policy: 'SLA policies',
   business_calendar: 'Business calendar',
   notification_rule: 'Notification rules',

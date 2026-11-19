@@ -1,4 +1,6 @@
-import type { ReactElement } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../../lib/api';
 import { Button, Check, SelectInput, TextArea, TextInput } from '../../../components/ui';
 import { money } from '../../../lib/format';
 import { ConditionBuilder, ConditionPreview, ListInput, NairaField, NumberField, Section, useRoles, type Condition } from './common';
@@ -205,6 +207,51 @@ export function EsTriggerEditor({ value, onChange }: P) {
   );
 }
 
+const EFF_DEFAULTS = { name: 'Facility efficiency ratio', description: '', formula: '', unit: 'x', direction: 'HIGHER_BETTER', directedBy: 'MANAGEMENT', directionReference: '', bands: [] as any[] };
+
+/** CAM §25 facility efficiency ratio: defined and changed from time to time on management's or the Board's direction. */
+export function EfficiencyRatioEditor({ value, onChange }: P) {
+  const v = { ...EFF_DEFAULTS, ...(value ?? {}) };
+  useEffect(() => { if (!value || !Object.keys(value).length) onChange(EFF_DEFAULTS); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const set = (patch: any) => onChange({ ...v, ...patch });
+  const bands: any[] = v.bands ?? [];
+  const num = (x: string) => (x.trim() === '' ? null : Number(x));
+  const vars = useQuery({ queryKey: ['admin', 'efficiency-variables'], queryFn: () => api.get<{ key: string; description: string }[]>('/api/admin/config/efficiency-variables') });
+  const [ref, setRef] = useState('');
+  const preview = useQuery({ queryKey: ['admin', 'efficiency-preview', v.formula, ref], queryFn: () => api.post<any>('/api/admin/config/efficiency-preview', { formula: v.formula, ...(ref.trim() ? { facilityRef: ref.trim() } : {}) }), enabled: !!v.formula.trim(), retry: false });
+  return (
+    <>
+      <Section title="Direction" intro="Record who directed this definition. Each change is a new version that a second administrator approves; earlier term sheets keep the version they used.">
+        <div className="grid cols-2">
+          <SelectInput label="Directed by" value={v.directedBy} options={[{ value: 'MANAGEMENT', label: 'Management' }, { value: 'BOARD', label: 'Board' }]} onChange={(e) => set({ directedBy: e.target.value })} />
+          <TextInput label="Direction reference" value={v.directionReference} placeholder="e.g. MANCO minutes 2026/41 or Board resolution 2026/12" onChange={(e) => set({ directionReference: e.target.value })} />
+        </div>
+      </Section>
+      <Section title="Definition" intro="Write the formula with the variables listed below, + − × ÷ ^ and abs/min/max/avg. Amounts are in Naira.">
+        <div className="grid cols-2"><TextInput label="Name" value={v.name} onChange={(e) => set({ name: e.target.value })} /><SelectInput label="Unit" value={v.unit} options={[{ value: 'x', label: 'times (×)' }, { value: '%', label: '%' }, { value: 'days', label: 'days' }, { value: 'NGN', label: '₦' }, { value: 'ratio', label: 'ratio' }]} onChange={(e) => set({ unit: e.target.value })} /></div>
+        <TextArea label="Description" rows={2} value={v.description} onChange={(e) => set({ description: e.target.value })} hint="What the ratio measures, in plain language. Shown on the term sheet." />
+        <TextInput label="Formula" className="input mono" value={v.formula} placeholder="e.g. ANNUAL_CREDIT_TURNOVER / REQUEST_AMOUNT" onChange={(e) => set({ formula: e.target.value.toUpperCase() })} />
+        <SelectInput label="Direction" value={v.direction} options={[{ value: 'HIGHER_BETTER', label: 'Higher is better' }, { value: 'LOWER_BETTER', label: 'Lower is better' }, { value: 'NEUTRAL', label: 'Neutral' }]} onChange={(e) => set({ direction: e.target.value })} />
+        <div className="panel" style={{ padding: 12 }}>
+          <div className="row between"><strong className="small">Preview</strong><input className="input" style={{ maxWidth: 240 }} aria-label="Facility reference for preview" placeholder="Facility reference (optional)" value={ref} onChange={(e) => setRef(e.target.value)} /></div>
+          <div className="small" style={{ marginTop: 6 }}>{!v.formula.trim() ? <span className="muted">Enter a formula.</span> : preview.isLoading ? 'Checking…' : preview.error ? <span style={{ color: 'var(--danger-700)' }}>{(preview.error as any).message}</span> : !preview.data?.valid ? <span style={{ color: 'var(--danger-700)' }}>{preview.data?.error}</span> : preview.data.value === undefined ? 'Formula is valid. Enter a facility reference to see its value.' : preview.data.value === null ? `Cannot compute for this facility: missing ${preview.data.missing.join(', ') || preview.data.error}.` : <>Value for {ref}: <strong>{Number(preview.data.value).toLocaleString('en-NG', { maximumFractionDigits: 4 })}</strong></>}</div>
+        </div>
+        <details className="small"><summary>Available variables</summary><table className="data"><tbody>{(vars.data ?? []).map((x) => <tr key={x.key}><td className="mono">{x.key}</td><td>{x.description}</td></tr>)}</tbody></table></details>
+      </Section>
+      <Section title="Assessment bands" intro="Optional. Lower bound inclusive, upper bound exclusive; leave a bound empty for open-ended.">
+        <div className="table-wrap"><table className="data"><thead><tr><th>From</th><th>To</th><th>Label</th><th>Assessment</th><th /></tr></thead>
+          <tbody>{bands.map((b, i) => <tr key={i}>
+            <td><input className="input" aria-label="From" value={b.min ?? ''} onChange={(e) => set({ bands: upd(bands, i, { min: num(e.target.value) }) })} /></td>
+            <td><input className="input" aria-label="To" value={b.max ?? ''} onChange={(e) => set({ bands: upd(bands, i, { max: num(e.target.value) }) })} /></td>
+            <td><input className="input" aria-label="Label" value={b.label} onChange={(e) => set({ bands: upd(bands, i, { label: e.target.value }) })} /></td>
+            <td><input className="input" aria-label="Assessment" value={b.assessment} onChange={(e) => set({ bands: upd(bands, i, { assessment: e.target.value }) })} /></td>
+            <td><Button size="sm" variant="ghost" onClick={() => set({ bands: del(bands, i) })}>Remove</Button></td></tr>)}</tbody></table></div>
+        <div><Button size="sm" onClick={() => set({ bands: [...bands, { min: null, max: null, label: 'Band', assessment: 'Describe the assessment.' }] })}>Add band</Button></div>
+      </Section>
+    </>
+  );
+}
+
 export const STRUCTURED: Partial<Record<string, (p: P) => ReactElement>> = {
-  approval_authority: AuthorityEditor, sla_policy: SlaEditor, fipg_rule: FipgEditor, ratio: RatioEditor, committee: CommitteeEditor, es_trigger: EsTriggerEditor,
+  approval_authority: AuthorityEditor, sla_policy: SlaEditor, fipg_rule: FipgEditor, ratio: RatioEditor, committee: CommitteeEditor, es_trigger: EsTriggerEditor, facility_efficiency_ratio: EfficiencyRatioEditor,
 };

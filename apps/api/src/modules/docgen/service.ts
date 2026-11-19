@@ -9,6 +9,7 @@ import { MIME } from '../documents/mime.js';
 import { renderDocx, type DocSection } from './docx.js';
 import { riskFlags, type RiskFlag } from './risk-flags.js';
 import { camSections } from './cam.js';
+import { facilityEfficiency, fmtEfficiency } from '../analysis/efficiency.js';
 import { registerJob } from '../../jobs/queue.js';
 import { getPool, tx } from '../../db/pool.js';
 import { SYSTEM } from '../audit/audit.js';
@@ -41,6 +42,7 @@ export interface MemoInput { recommendation: 'APPROVE' | 'APPROVE_WITH_CONDITION
 export async function buildMemoContent(db: Db, facilityId: string, input: MemoInput) {
   const g = await gatherFacility(db, facilityId);
   const { f, fa, ratios, sa, exposure, col, es, rar, risk, flags } = g;
+  const eff = await facilityEfficiency(db, facilityId);
   const latest = fa?.summary?.periods?.[0];
   const ratio = (k: string) => ratios.find((r: any) => r.ratio_key === k && r.statement_id === latest?.statementId);
   const combined = risk.find((r: any) => r.kind === 'COMBINED');
@@ -74,6 +76,7 @@ export async function buildMemoContent(db: Db, facilityId: string, input: MemoIn
     { heading: 'Security', table: { headers: ['Type', 'Description', 'Market value', 'Haircut', 'Eligible (NGN)', 'Perfection'], rows: col.items.map((c: any) => [g.colTypes.get(c.type_key) ?? c.type_key, c.description, M(c.market_value_minor, c.currency), `${c.haircut_pct}%`, M(c.eligible_value_ngn_minor), c.perfection_status.replace(/_/g, ' ')]) }, paragraphs: [`Eligible cover: ${P(col.coveragePct)}${col.isCashBacked ? ' — qualifies as cash-backed' : ''}.`] },
     { heading: 'Environmental & social', paragraphs: es ? [`Category ${es.category ?? 'pending'}; recommendation: ${(es.recommendation ?? 'pending').replace(/_/g, ' ').toLowerCase()}.`, es.findings ?? ''] : ['E&S review not required under the configured trigger.'] },
     { heading: 'Pricing & RARORAC', paragraphs: rar ? [`Proposed profit rate ${P(rar.pricing_rate_pct)}; RARORAC ${P(rar.rarorac_pct)} against hurdle ${P(rar.hurdle_pct)} — ${rar.within_threshold ? 'within threshold' : 'PRICING EXCEPTION'}.${rar.mode === 'MOCK' ? ' Computed by the MOCK pricing adapter — not a production RARORAC result.' : ''}`, ...(rar.justification ? [`Exception justification (${rar.justified_by_name}): ${rar.justification}`] : [])] : ['Not computed.'] },
+    ...(eff.configured ? [{ heading: 'Facility efficiency ratio', paragraphs: [`${eff.name}: ${fmtEfficiency(eff.value, eff.unit)}${eff.band ? ` — ${eff.band.label}: ${eff.band.assessment}` : ''}${eff.value === null ? ` (not computed: ${eff.missing.join(', ') || eff.error})` : ''}. Definition v${eff.version}: ${eff.formula}, per ${eff.directedBy === 'BOARD' ? 'Board' : 'management'} direction ${eff.directionReference}.`] }] : []),
     { heading: 'Risk rating', table: { headers: ['Component', 'Scorecard (version)', 'Score', 'Grade'], rows: risk.map((r: any) => [r.kind, `${r.card_key} v${r.card_version}`, r.normalised_score, r.grade]) } },
     { heading: 'Recommendation & conditions', paragraphs: [`Recommendation: ${input.recommendation.replace(/_/g, ' ')}.`, input.commentary], bullets: input.conditions },
   ];

@@ -2,6 +2,7 @@ import type { Db } from '../../db/pool.js';
 import { maybe, q } from '../../db/pool.js';
 import { formatMoney } from '../../lib/money.js';
 import type { DocSection } from './docx.js';
+import { facilityEfficiency, fmtEfficiency } from '../analysis/efficiency.js';
 import type { gatherFacility } from './service.js';
 
 const M = (v: number | null | undefined, ccy = 'NGN') => (v === null || v === undefined ? '—' : formatMoney(v, ccy));
@@ -32,6 +33,7 @@ export async function camSections(db: Db, g: Awaited<ReturnType<typeof gatherFac
   const counterparties = await q<any>(db, 'SELECT * FROM business_counterparty WHERE customer_id=$1 AND deleted_at IS NULL ORDER BY kind, name', [f.customer_id]);
   const statements = await q<any>(db, 'SELECT id, statement_type, period_end, months, auditor, audit_opinion, currency FROM financial_statement WHERE customer_id=$1 ORDER BY period_end DESC', [f.customer_id]).catch(() => [] as any[]);
   const byKind = (k: string) => g.risk.find((r: any) => r.kind === k);
+  const eff = await facilityEfficiency(db, f.id);
   const actorOf = (stage: string) => actions.find((a: any) => a.task_id && (a.stage_name ?? '').startsWith(stage) && ['RECOMMEND', 'APPROVE', 'DECLINE'].includes(a.action))?.actor_name;
   const memoInput = memo?.content?.input ?? {};
   const directors = g.parties.filter((p: any) => p.party_type === 'DIRECTOR');
@@ -121,7 +123,14 @@ export async function camSections(db: Db, g: Awaited<ReturnType<typeof gatherFac
     { heading: '22. Remarks', paragraphs: [o.remarks ?? memoInput.commentary ?? AWAITING('Remarks')] },
     { heading: '23. Critical credit issues — for Credit Risk', bullets: o.criticalIssues ? o.criticalIssues.split('\n') : g.flags.filter((fl: any) => fl.severity === 'HIGH').map((fl: any) => fl.statement), paragraphs: g.flags.some((fl: any) => fl.severity === 'HIGH') || o.criticalIssues ? [] : ['No critical issues flagged.'] },
     { heading: '24. Transaction dynamics', paragraphs: [o.transactionDynamics ?? `${g.product.payload.shariahStructure} Supplier / asset: ${f.supplier_name ?? '—'} / ${f.underlying_asset ?? '—'}. Payment from ${f.source_of_payment ?? '—'}.`] },
-    { heading: '25. Facility efficiency ratio', paragraphs: [o.facilityEfficiencyRatio ?? 'Not computed: the definition of the facility efficiency ratio is awaited from Credit Risk (open question).'] },
+    eff.configured
+      ? { heading: '25. Facility efficiency ratio', table: { headers: ['Item', 'Detail'], rows: [
+          [eff.name, `${fmtEfficiency(eff.value, eff.unit)}${eff.band ? ` — ${eff.band.label}` : ''}`],
+          ['Definition', `${eff.formula} (version ${eff.version}, set on ${eff.directedBy === 'BOARD' ? 'Board' : 'management'} direction ${eff.directionReference})`],
+          ...(eff.band ? [['Assessment', eff.band.assessment]] : []),
+          ...Object.entries(eff.inputs).map(([k, v]) => [k, v === undefined ? 'not available' : v.toLocaleString('en-NG', { maximumFractionDigits: 2 })]),
+        ] }, paragraphs: [...(eff.value === null ? [`Not computed: ${eff.missing.length ? `missing ${eff.missing.join(', ')}` : eff.error ?? 'calculation failed'}.`] : []), ...(o.facilityEfficiencyRatio ? [o.facilityEfficiencyRatio] : [])] }
+      : { heading: '25. Facility efficiency ratio', paragraphs: [o.facilityEfficiencyRatio ?? 'Not computed: no definition is in force. An administrator sets it under Configuration → Facility efficiency ratio on management’s or the Board’s direction.'] },
     { heading: '26. Justification for the request / credit consideration', paragraphs: [o.justification ?? memoInput.commentary ?? AWAITING('Justification')] },
     { heading: '27. Approval recommendations and conditions — for Credit Risk', paragraphs: [memoInput.recommendation ? `Credit analyst recommendation: ${String(memoInput.recommendation).replace(/_/g, ' ').toLowerCase()}.` : 'Credit analyst recommendation pending.', terms ? `Approved (terms version ${terms.version_no}) by: ${terms.approved_by_names.join(', ')}.` : `Status: ${String(f.status).replace(/_/g, ' ').toLowerCase()}.`, ...(o.decisionNote ? [o.decisionNote] : [])], bullets: (terms?.conditions ?? memoInput.conditions ?? []).map((c: any) => (typeof c === 'string' ? c : `${c.description}${c.mandatory ? '' : ' (non-mandatory)'}`)) },
     { heading: 'Approval workflow — comments and decisions', table: { headers: ['Date & time', 'Name', 'Role / stage', 'Action', 'Comment'], rows: actions.map((a: any) => [ts(a.created_at), (a.actor_name ?? 'Gazelle system') + (a.on_behalf ? ` (for ${a.on_behalf})` : ''), a.stage_name ?? a.actor_role ?? '—', a.action.replace(/_/g, ' '), a.comment]) } },

@@ -6,6 +6,7 @@ import { notFound } from '../../lib/errors.js';
 import { loadFacility } from '../facilities/access.js';
 import { decisionView, generateMemo, generateTermSheet } from './service.js';
 import { CAM_EDITABLE } from './cam.js';
+import { facilityEfficiency } from '../analysis/efficiency.js';
 import { riskFlags } from './risk-flags.js';
 
 const idParam = z.object({ id: z.string() });
@@ -41,6 +42,12 @@ export async function docgenRoutes(app: FastifyInstance) {
     }
     const g = await tx((c) => generateTermSheet(c, actorOf(req), f.id, edits));
     return ok(reply, { id: g.id, version: g.version_no, documentId: g.rendered_document_id }, 201);
+  });
+
+  app.get('/api/facilities/:id/efficiency-ratio', async (req, reply) => {
+    requireStaff(req);
+    const f = await loadFacility(db, req, parse(idParam, req.params).id);
+    return ok(reply, await facilityEfficiency(db, f.id));
   });
 
   app.get('/api/facilities/:id/decision-view', async (req, reply) => {

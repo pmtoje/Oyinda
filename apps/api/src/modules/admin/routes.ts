@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { evaluate, validateCondition } from '@gazelle/shared';
+import { evalFormula, evaluate, parseFormula, validateCondition } from '@gazelle/shared';
 import { env, integrationModes } from '../../config/env.js';
 import { getPool, maybe, one, q, tx } from '../../db/pool.js';
 import { actorOf, ok, parse, requireAnyPerm, requireStaff } from '../../http/context.js';
@@ -8,7 +8,8 @@ import { badRequest, conflict, forbidden, notFound, unprocessable } from '../../
 import { metrics } from '../../lib/metrics.js';
 import { audit, verifyAuditChain } from '../audit/audit.js';
 import { approve, createDraft, deactivate, getById, reject, submitDraft } from '../config/service.js';
-import { CONFIG_KINDS, FACT_CATALOGUE, FACT_KEYS, KIND_LABEL, type ConfigKind } from '../config/schemas.js';
+import { CONFIG_KINDS, EFFICIENCY_VARIABLES, efficiencyFormulaError, FACT_CATALOGUE, FACT_KEYS, KIND_LABEL, type ConfigKind } from '../config/schemas.js';
+import { efficiencyInputs } from '../analysis/efficiency.js';
 import { revokeAllFor } from '../identity/session.js';
 import { issueStaffLink, localStaffAuth } from '../identity/staff-credentials.js';
 import { loadFacility } from '../facilities/access.js';
@@ -37,6 +38,19 @@ export async function adminRoutes(app: FastifyInstance) {
     return ok(reply, rows.map(configView));
   });
   app.get('/api/admin/config/facts', async (req, reply) => { requireStaff(req, 'config.view'); return ok(reply, Object.entries(FACT_CATALOGUE).map(([fact, description]) => ({ fact, description }))); });
+  /** Facility efficiency ratio: the variables a definition may use, and a preview of a draft formula on a real facility. */
+  app.get('/api/admin/config/efficiency-variables', async (req, reply) => { requireStaff(req, 'config.view'); return ok(reply, Object.entries(EFFICIENCY_VARIABLES).map(([key, description]) => ({ key, description }))); });
+  app.post('/api/admin/config/efficiency-preview', async (req, reply) => {
+    requireStaff(req, 'config.edit');
+    const b = parse(z.object({ formula: z.string().min(1).max(500), facilityRef: z.string().trim().max(40).optional() }), req.body);
+    const error = efficiencyFormulaError(b.formula);
+    if (error || !b.facilityRef) return ok(reply, { valid: !error, error });
+    const f = await maybe<any>(db, 'SELECT id FROM facility_request WHERE facility_ref=$1', [b.facilityRef]);
+    if (!f) throw notFound('Facility');
+    const inputs = await efficiencyInputs(db, f.id);
+    const r = evalFormula(parseFormula(b.formula), inputs);
+    return ok(reply, { valid: true, value: r.ok ? r.value : null, missing: r.ok ? [] : (r as any).missing ?? [], error: r.ok ? null : (r as any).error, inputs });
+  });
   app.get('/api/admin/config/:id', async (req, reply) => {
     requireStaff(req, 'config.view');
     const { id } = parse(z.object({ id: z.uuid() }), req.params);

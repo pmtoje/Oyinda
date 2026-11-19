@@ -6,6 +6,9 @@ import { useAuth } from '../../lib/auth';
 import { date, dateTime } from '../../lib/format';
 import { Alert, Button, Drawer, ErrorAlert, KV, Loading, PageHeader, Panel, Status, Tabs, TextArea, TextInput, useAction } from '../../components/ui';
 import { describeCondition, JsonEditor, PayloadDiff } from './parts/common';
+
+/** Kinds the platform reads under one fixed key. */
+const SINGLE_KEY_KINDS: Record<string, string> = { facility_efficiency_ratio: 'STANDARD' };
 import { STRUCTURED } from './parts/editors';
 import type { ConfigRow } from './ConfigList';
 
@@ -44,7 +47,7 @@ export default function ConfigEdit() {
   const [payload, setPayload] = useState<any>(undefined);
   const [valid, setValid] = useState(true);
   const [title, setTitle] = useState('');
-  const [newKey, setNewKey] = useState('');
+  const [newKey, setNewKey] = useState(SINGLE_KEY_KINDS[sp.get('kind') ?? ''] ?? '');
   const [reason, setReason] = useState('');
   const [effectiveFrom, setEffectiveFrom] = useState('');
   const [mode, setMode] = useState<'form' | 'json'>('form');

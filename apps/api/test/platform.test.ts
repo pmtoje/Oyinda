@@ -305,3 +305,54 @@ describe('staff directory by spreadsheet (interim, until AD sync)', () => {
     expect(list[0].status).toBe('APPLIED');
   });
 });
+
+describe('facility efficiency ratio (set on management / Board direction)', () => {
+  const define = async (payload: Record<string, unknown>, reason: string) => {
+    const d = await s.admin!.post('/api/admin/config', { kind: 'facility_efficiency_ratio', key: 'STANDARD', title: 'Facility efficiency ratio', payload, changeReason: reason });
+    if (d.status !== 201) return d;
+    await s.admin!.post(`/api/admin/config/${d.body.data.id}/submit`);
+    return s.superadmin!.post(`/api/admin/config/${d.body.data.id}/approve`);
+  };
+  const def = { name: 'Facility efficiency ratio', description: 'Annual credit turnover through all accounts relative to the requested facility.', formula: 'ANNUAL_CREDIT_TURNOVER / REQUEST_AMOUNT', unit: 'x', direction: 'HIGHER_BETTER', directedBy: 'MANAGEMENT', directionReference: 'MANCO minutes 2026/41',
+    bands: [{ min: 10, label: 'Strong', assessment: 'Turnover comfortably supports the facility.' }, { min: 4, max: 10, label: 'Adequate', assessment: 'Turnover supports the facility.' }, { max: 4, label: 'Weak', assessment: 'Turnover is thin relative to the request.' }] };
+  let fid: string;
+
+  it('is not computed until a definition is approved', async () => {
+    fid = (await q(db(), `SELECT f.id FROM facility_request f JOIN statement_analysis sa ON sa.facility_id=f.id ORDER BY sa.created_at DESC LIMIT 1`))[0].id;
+    const r = await s.analyst!.get(`/api/facilities/${fid}/efficiency-ratio`);
+    expect(r.body.data.configured).toBe(false);
+  });
+
+  it('rejects formulas that use unknown variables', async () => {
+    const bad = await s.admin!.post('/api/admin/config', { kind: 'facility_efficiency_ratio', key: 'STANDARD', title: 'Facility efficiency ratio', payload: { ...def, formula: 'TURNOVER_GUESS / REQUEST_AMOUNT' }, changeReason: 'Trying an undefined input' });
+    expect(bad.status).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(bad.body)).toMatch(/Unknown variable/);
+    const vars = (await s.admin!.get('/api/admin/config/efficiency-variables')).body.data.map((v: any) => v.key);
+    expect(vars).toEqual(expect.arrayContaining(['REQUEST_AMOUNT', 'ANNUAL_CREDIT_TURNOVER', 'RARORAC']));
+  });
+
+  it('computes from the facility’s own analyses once approved, with band, inputs and the direction reference', async () => {
+    const prev = await s.admin!.post('/api/admin/config/efficiency-preview', { formula: def.formula, facilityRef: (await q(db(), 'SELECT facility_ref FROM facility_request WHERE id=$1', [fid]))[0].facility_ref });
+    expect(prev.body.data.valid).toBe(true);
+    expect((await define(def, 'Defined on management direction MANCO 2026/41')).status).toBe(200);
+    const r = (await s.analyst!.get(`/api/facilities/${fid}/efficiency-ratio`)).body.data;
+    expect(r.configured).toBe(true);
+    expect(r.value).toBeCloseTo(r.inputs.ANNUAL_CREDIT_TURNOVER / r.inputs.REQUEST_AMOUNT, 3);
+    expect(r.value).toBeCloseTo(prev.body.data.value, 3);
+    expect(r.band.label).toBe(r.value >= 10 ? 'Strong' : r.value >= 4 ? 'Adequate' : 'Weak');
+    expect(r).toMatchObject({ version: 1, directedBy: 'MANAGEMENT', directionReference: 'MANCO minutes 2026/41' });
+  });
+
+  it('can be redefined from time to time; new term sheets use the definition in force', async () => {
+    expect((await define({ ...def, formula: 'EBITDA / REQUEST_AMOUNT', directedBy: 'BOARD', directionReference: 'Board resolution 2026/12' }, 'Board directed an EBITDA basis')).status).toBe(200);
+    const r = (await s.analyst!.get(`/api/facilities/${fid}/efficiency-ratio`)).body.data;
+    expect(r).toMatchObject({ version: 2, directedBy: 'BOARD', formula: 'EBITDA / REQUEST_AMOUNT' });
+    const { generateTermSheet } = await import('../src/modules/docgen/service.js');
+    const { SYSTEM } = await import('../src/modules/audit/audit.js');
+    const { tx } = await import('../src/db/pool.js');
+    const ts = await tx((c) => generateTermSheet(c, SYSTEM, fid, undefined, { automatic: 'test' }));
+    const sec = ts.content.sections.find((x: any) => x.heading === '25. Facility efficiency ratio');
+    expect(JSON.stringify(sec)).toMatch(/Board resolution 2026\/12/);
+    expect(JSON.stringify(sec)).toMatch(/version 2/);
+  });
+});

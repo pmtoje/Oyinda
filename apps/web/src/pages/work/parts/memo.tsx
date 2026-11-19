@@ -20,6 +20,7 @@ export function MemoTab({ id }: { id: string }) {
   const es = latest?.content?.executiveSummary;
   return (
     <div className="stack">
+      <EfficiencyPanel id={id} />
       <Section title="Credit memorandum" sub="Assembled from the analysis in Gazelle; your recommendation and commentary are added. Each generation is a new, immutable version (Word)."
         actions={can('memo.generate') && <Button size="sm" variant="primary" onClick={() => setMemoOpen(true)}>{latest ? 'Generate new version' : 'Generate memo'}</Button>}>
         <QueryState q={memos} empty={<Panel><Empty title="No credit memo yet">Complete the analysis tabs, then generate the memo.</Empty></Panel>}>{() => (
@@ -115,6 +116,27 @@ function SheetViewDrawer({ latest, onClose }: { latest: any; onClose: () => void
         ))}
       </div>
     </Drawer>
+  );
+}
+
+/** CAM §25: the facility efficiency ratio under the definition currently in force. */
+function EfficiencyPanel({ id }: { id: string }) {
+  const q = useFac<any>(id, 'efficiency', `/api/facilities/${id}/efficiency-ratio`);
+  if (!q.data) return null;
+  const e = q.data;
+  if (!e.configured) return <Alert tone="info" title="Facility efficiency ratio not defined">No definition is in force. An administrator sets it under Configuration → Facility efficiency ratio on management’s or the Board’s direction; it then appears here and in section 25 of the term sheet.</Alert>;
+  const fmt = (v: number | null) => (v === null ? '—' : e.unit === '%' ? `${v.toFixed(2)}%` : e.unit === 'x' ? `${v.toFixed(2)}×` : e.unit === 'days' ? `${Math.round(v)} days` : e.unit === 'NGN' ? `₦${v.toLocaleString('en-NG')}` : v.toFixed(4));
+  return (
+    <Panel title={e.name} actions={<span className="xs muted">Definition v{e.version} · {e.directedBy === 'BOARD' ? 'Board' : 'Management'} direction {e.directionReference}</span>}>
+      <div className="row" style={{ alignItems: 'baseline', gap: 12 }}>
+        <div className="metric" style={{ minWidth: 160 }}><div className="label">Value</div><div className="value">{fmt(e.value)}</div>{e.band && <div className="sub">{e.band.label}</div>}</div>
+        <div className="small" style={{ flex: 1 }}>
+          <div className="mono xs">{e.formula}</div>
+          {e.band && <p style={{ margin: '6px 0 0' }}>{e.band.assessment}</p>}
+          {e.value === null && <p style={{ margin: '6px 0 0' }}>Not computed yet: {e.missing.length ? `waiting for ${e.missing.join(', ')}` : e.error}.</p>}
+        </div>
+      </div>
+    </Panel>
   );
 }
 
