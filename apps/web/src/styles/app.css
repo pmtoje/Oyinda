@@ -198,7 +198,7 @@ table.data .primary-cell { font-weight: 500; color: var(--ink-900); }
 .vsteps li.current::before { background: var(--accent-500); box-shadow: 0 0 0 3px var(--accent-100); }
 
 /* ---------- tabs ---------- */
-.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); overflow-x: auto; margin-bottom: 18px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px 2px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
 .tabs button, .tabs a { background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 12px; font: inherit; font-size: var(--fs-md); color: var(--ink-500); cursor: pointer; white-space: nowrap; text-decoration: none; }
 .tabs button[aria-selected='true'], .tabs a.active { color: var(--brand-800); border-bottom-color: var(--brand-700); font-weight: 500; }
 .tabs .flag { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--danger-700); margin-left: 6px; vertical-align: middle; }

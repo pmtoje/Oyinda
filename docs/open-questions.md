@@ -17,3 +17,6 @@ Raised under MBP Phase 75. Nothing here blocks the build: each item has a config
 | OQ-11 | Account-opening journey URL for customers without an Alternative Bank account. | Onboarding "No" branch. | Configurable `ACCOUNT_OPENING_URL`. | Digital Banking |
 | OQ-12 | Approved private AI deployment (model, endpoint, VPC). | AI layer. | `AI_MODE=local` deterministic engine; `private-endpoint` adapter behind a host allow-list. | Technology / InfoSec |
 | OQ-13 | Confirm the moveable Islamic public holiday dates each year. | SLA business-hour calculation. | Provisional dates in `business_calendar/NG_HEAD_OFFICE`. | Operations |
+| OQ-14 | Should customers be able to edit or withdraw financial statements they entered before submission? | Currently only staff correct them. | Staff correction with audit trail. | Product owner |
+| OQ-15 | OCR provider for PDF / scanned bank statements and financial statements. | PDF statements are flagged for manual validation. | CSV/XLSX parsed automatically. | Technology |
+| OQ-16 | Confirm the drop-off funnel step order and any additional journey steps to track. | Analytics accuracy. | Order matches the application stepper. | Digital Banking |

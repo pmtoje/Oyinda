@@ -264,3 +264,20 @@ describe('validation helpers', () => {
     expect(issues.map((i) => i.field)).toEqual(['assetCostMinor', 'rogue']);
   });
 });
+
+describe('XLSX statement parsing', () => {
+  it('parses an Excel internet-banking export', async () => {
+    const ExcelJS = (await import('exceljs')).default;
+    const { parseStatementFile } = await import('../src/modules/analysis/statement-parser.js');
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Statement');
+    ws.addRow(['Account No: 0100000001']);
+    ws.addRow(['Trans Date', 'Narration', 'Debit', 'Credit', 'Balance']);
+    ws.addRow([new Date(Date.UTC(2026, 0, 5)), 'NIP TRF FROM CUSTOMER', null, 1500.5, 11500.5]);
+    ws.addRow(['10/01/2026', 'POS PURCHASE', 500, null, 11000.5]);
+    const r = await parseStatementFile(Buffer.from(await wb.xlsx.writeBuffer()), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    expect(r.ok).toBe(true);
+    expect(r.detectedAccountNumber).toBe('0100000001');
+    expect(r.transactions.map((t) => [t.txnDate, t.creditMinor, t.debitMinor])).toEqual([['2026-01-05', 150050, 0], ['2026-01-10', 0, 50000]]);
+  });
+});

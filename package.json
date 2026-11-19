@@ -1,9 +1,11 @@
 {
   "name": "gazelle",
   "private": true,
-  "description": "Gazelle by Alternative Bank — corporate credit origination, assessment, approval and monitoring platform",
+  "description": "Gazelle by Alternative Bank \u2014 corporate credit origination, assessment, approval and monitoring platform",
   "packageManager": "pnpm@10.28.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev:api": "pnpm --filter @gazelle/api dev",
     "dev:web": "pnpm --filter @gazelle/web dev",
@@ -13,5 +15,10 @@
     "migrate": "pnpm --filter @gazelle/api migrate",
     "seed": "pnpm --filter @gazelle/api seed",
     "e2e": "pnpm --filter @gazelle/web e2e"
+  },
+  "pnpm": {
+    "overrides": {
+      "uuid": ">=11.1.1"
+    }
   }
 }

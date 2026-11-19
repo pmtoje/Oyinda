@@ -49,7 +49,8 @@ Tests live in `apps/api/test/*.test.ts` (API, unit and journey) and `apps/web/e2
 | MBP-51 | Adapter integration architecture | `integrations/*` | all | Done |
 | MBP-52 | Environment separation, no secrets in source | `config/env.ts`, `.env.example` | — | Done |
 | MBP-53 | Demo seed data (ABC Manufacturing; Murabaha, Ijarah, APG; all roles) labelled DEMO | `seed/*` | seed run | Done |
-| MBP-54–56 | Unit, integration, E2E, negative tests, workflow matrix | `apps/api/test`, `apps/web/e2e` | 122+ API tests | Done |
+| MBP-54–56 | Unit, integration, E2E, negative tests, workflow matrix | `apps/api/test`, `apps/web/e2e` | 135 API tests, 6 browser journeys | Done |
+| MBP-78 | Final security assessment | `security.test.ts`, `pnpm audit` | 12 attack-class tests | Done (external pen test pending) |
 | MBP-57–58 | UX QA, accessibility | see `production-readiness.md` | e2e + manual review | Done (formal WCAG audit recommended) |
 | MBP-59–60 | Observability, admin system health | `metrics.ts`, `/api/admin/health` | `platform.test.ts` | Done (OTel exporter: Partial) |
 | MBP-61 | Data quality and reconciliation | `/api/admin/data-quality` | `platform.test.ts` | Done |

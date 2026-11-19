@@ -144,7 +144,7 @@ export function RiskTab({ id }: { id: string }) {
           <Panel title="Scorecards" flush>
             <table className="data"><thead><tr><th>Scorecard</th><th>Version</th><th>Latest</th><th /></tr></thead>
               <tbody>{q.data.scorecards.map((s: any) => { const a = by(s.kind) ?? draft(s.kind); return (
-                <tr key={s.configId}><td className="primary-cell">{s.name}<div className="xs muted">{s.sections.length} sections</div></td><td>v{s.version}</td><td>{a ? <><Status value={a.status} /> {a.grade} ({a.score})</> : '—'}</td>
+                <tr key={s.configId}><td className="primary-cell">{s.name}<div className="xs muted">{s.sections.length} {s.sections.length === 1 ? "section" : "sections"}</div></td><td>v{s.version}</td><td>{a ? <><Status value={a.status} /> {a.grade} ({a.score})</> : '—'}</td>
                   <td className="num">{can('risk.assess') && <Button size="sm" onClick={() => setCard(s)}>{a ? 'Reassess' : 'Assess'}</Button>}</td></tr>); })}</tbody></table>
           </Panel>
           {card && <ScorecardDrawer id={id} card={card} prior={draft(card.kind) ?? by(card.kind)} suggestion={q.data.suggestions} onClose={() => setCard(null)} onDone={async () => { setCard(null); await refresh(); }} />}
