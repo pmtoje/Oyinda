@@ -65,7 +65,7 @@ export default function Tasks() {
   };
 
   const q = useQuery({ queryKey: ['tasks', scope], queryFn: () => api.get<Task[]>(`/api/tasks?scope=${scope}`, { passive: true }), refetchInterval: 60_000 });
-  const all = q.data ?? [];
+  const all = useMemo(() => q.data ?? [], [q.data]);
   const stages = useMemo(() => [...new Set(all.map((t) => t.stageName))].sort(), [all]);
   const products = useMemo(() => [...new Set(all.map((t) => t.productName))].sort(), [all]);
   const rows = useMemo(() => {

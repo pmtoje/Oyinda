@@ -19,7 +19,9 @@ const INJECTION_PATTERNS: [RegExp, string][] = [
 /** Neutralise untrusted text (customer-entered descriptions, document extracts) before it reaches a model. */
 export function sanitiseUntrusted(text: string, maxLen = 2000) {
   const flags: string[] = [];
-  let t = text.normalize('NFKC').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​-‏‪-‮⁦-⁩]/g, '');
+  // Strips control, zero-width and bidi-override characters used to hide instructions (deliberate control-character regex).
+  // eslint-disable-next-line no-control-regex
+  let t = text.normalize('NFKC').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, '');
   for (const [re, label] of INJECTION_PATTERNS) if (re.test(t)) flags.push(label);
   t = t.replace(/[<>]/g, (c) => (c === '<' ? '‹' : '›')).replace(/https?:\/\/[^\s]+/gi, '[link removed]');
   if (t.length > maxLen) { t = t.slice(0, maxLen) + ' [truncated]'; flags.push('truncated'); }

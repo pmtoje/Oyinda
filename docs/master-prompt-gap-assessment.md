@@ -59,8 +59,8 @@ Detail for every requirement is in `requirements-traceability.md`, and conflicts
 | 84–85 | Extreme data, visual regression | Met | Very long names, ₦987bn amounts and long text in the visual suite. Pixel baselines are kept for the public screens; collision and accessibility checks run on all screens. |
 | 88–90 | Observability, error handling, data quality | Met | Health and readiness endpoints, Prometheus metrics, request IDs, a safe error envelope, a dead-letter queue, data-quality checks. Wiring to the Bank's monitoring stack is an infrastructure task. |
 | 91 | No fake functionality | Met | Every mock is labelled in the UI and in production refuses to start. Nothing is presented as live when it is not. |
-| 92 | Code quality | Partial | Strict TypeScript across packages (typecheck in CI). **Open:** no ESLint/Prettier configuration yet. Adding one is a focused follow-up. |
-| 93–94 | Environments, CI/CD | Partial | Environment validation with production guards. `.github/workflows/ci.yml`: typecheck → API tests (PostgreSQL) → build → audit → browser suites → artefacts. **Not yet observed running on GitHub.** Deployment (CD) to the Bank's environments depends on its platform. |
+| 92 | Code quality | Met | Strict TypeScript (`pnpm typecheck`) plus ESLint (`eslint.config.mjs`: recommended JS and TypeScript rules, React Hooks rules, no stray console output, documented exemptions only), zero warnings allowed (`pnpm lint`), both in CI. Formatting is not enforced by a tool (no Prettier). |
+| 93–94 | Environments, CI/CD | Partial | Environment validation with production guards. `.github/workflows/ci.yml`: typecheck → lint → API tests (PostgreSQL) → build → audit → browser suites → artefacts. **Not yet observed running on GitHub.** Deployment (CD) to the Bank's environments depends on its platform. |
 | 95–96 | Documentation, traceability | Met | `docs/` (architecture, data model, security, workflow, runbook, readiness, API reference, decisions, open questions, traceability). |
 | 98–100 | UX acceptance, absolute design rules, final standard | Partial | The absolute design rules are enforced automatically where they can be measured (collisions, clipping, contrast, dark/light, hard-coded rules). Beauty, trust and "would I use this" need the Bank's design and business sign-off with real users. |
 
@@ -70,5 +70,5 @@ Detail for every requirement is in `requirements-traceability.md`, and conflicts
 2. **Independent penetration test** and DPO sign-off (`production-readiness.md`).
 3. **Load and volume test** on production-like infrastructure and data volumes.
 4. **First CI run on GitHub:** confirm the pipeline passes. If pixel baselines are wanted on CI, record them on the CI image (`VISUAL_BASELINES=strict`).
-5. **ESLint and Prettier** configuration, added to CI.
+5. Optional: a code formatter (Prettier) if the Bank's engineering standards require one.
 6. **Manual accessibility audit** with a screen reader, and a **design review** with the Bank's brand team and a few real users of each persona.

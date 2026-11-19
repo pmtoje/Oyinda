@@ -1,5 +1,5 @@
 # Gazelle continuous integration: every push and pull request.
-# Typecheck → API tests (real PostgreSQL) → web build → dependency audit → browser suites (journeys, visual
+# Typecheck → lint → API tests (real PostgreSQL) → web build → dependency audit → browser suites (journeys, visual
 # quality gates in light and dark, session timeout, work queue, interim staff sign-in).
 name: CI
 
@@ -46,6 +46,9 @@ jobs:
 
       - name: Typecheck
         run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
 
       - name: Unit and API tests
         run: pnpm test

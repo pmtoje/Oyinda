@@ -142,7 +142,7 @@ export function splitCsv(text: string): string[][] {
 }
 
 export async function parseStatementFile(buf: Buffer, mime: string): Promise<ParseResult> {
-  if (mime === 'text/csv') return parseRows(splitCsv(buf.toString('utf8').replace(/^﻿/, '')), 'csv-v1');
+  if (mime === 'text/csv') return parseRows(splitCsv(buf.toString('utf8').replace(/^\uFEFF/, '')), 'csv-v1');
   if (mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
     const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();

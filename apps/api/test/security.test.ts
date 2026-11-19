@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { abcClient, act, Client, completeAbcProfile, db, draftMurabaha, getApp, idem, kanoClient, pdf, rewindOtpThrottle, staffLogin, upload, uploadAllRequired } from './helpers.js';
+import { abcClient, Client, completeAbcProfile, db, draftMurabaha, getApp, idem, kanoClient, pdf, rewindOtpThrottle, staffLogin, upload, uploadAllRequired } from './helpers.js';
 import { q } from '../src/db/pool.js';
 import { PrivateEndpointProvider } from '../src/modules/ai/providers.js';
 

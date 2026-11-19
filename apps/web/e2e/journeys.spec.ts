@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { lastOtp, sql, staffSecret, totp } from './helpers';
+import { lastOtp, sql } from './helpers';
 import { CUSTOMER_PASSWORD, customerSignIn, staffSignIn } from './auth';
 import { e2eEnv } from './env';
 

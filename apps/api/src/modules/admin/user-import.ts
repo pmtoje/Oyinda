@@ -48,7 +48,7 @@ export async function readSheet(buf: Buffer, mime: string): Promise<ImportRow[]>
     grid = [];
     ws.eachRow({ includeEmpty: false }, (r) => { grid.push((r.values as unknown[]).slice(1).map(cellText)); });
   } else if (mime === MIME.CSV) {
-    grid = splitCsv(buf.toString('utf8').replace(/^﻿/, '')).map((r) => r.map((c) => String(c ?? '').trim()));
+    grid = splitCsv(buf.toString('utf8').replace(/^\uFEFF/, '')).map((r) => r.map((c) => String(c ?? '').trim()));
   } else throw unprocessable('FILE_TYPE', 'Upload the staff list as an Excel workbook (.xlsx) or CSV.');
   const headerIdx = grid.findIndex((r) => r.some((c) => norm(c) === norm(COLUMNS[0].header) || norm(c) === 'username'));
   if (headerIdx < 0) throw unprocessable('NO_HEADER', `The header row was not found. Use the template: the first column is "${COLUMNS[0].header}".`);

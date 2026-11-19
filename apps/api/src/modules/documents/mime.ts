@@ -40,6 +40,8 @@ export interface FileCheck { ok: boolean; mime?: string; reason?: string }
 export function checkFile(buf: Buffer, filename: string, accepted: readonly string[], maxBytes: number): FileCheck {
   if (buf.length === 0) return { ok: false, reason: 'The file is empty.' };
   if (buf.length > maxBytes) return { ok: false, reason: `The file exceeds the ${Math.round(maxBytes / 1024 / 1024)} MB limit.` };
+  // Rejects path separators, reserved characters and control characters in file names.
+  // eslint-disable-next-line no-control-regex
   if (!/^[^\\/:*?"<>|\x00-\x1f]{1,200}$/.test(filename) || filename.startsWith('.')) return { ok: false, reason: 'The file name is not valid.' };
   const parts = filename.toLowerCase().split('.');
   if (parts.length > 2 && parts.slice(1, -1).some((p) => ['exe', 'js', 'bat', 'cmd', 'sh', 'php', 'html', 'svg', 'scr'].includes(p))) return { ok: false, reason: 'Files with multiple extensions are not accepted.' };
