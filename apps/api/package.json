@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "demo:totp": "tsx src/seed/demo-totp.ts",
-    "demo:otp": "tsx src/seed/demo-otp.ts"
+    "demo:otp": "tsx src/seed/demo-otp.ts",
+    "staff:activation-link": "tsx src/seed/staff-link.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.10.0",

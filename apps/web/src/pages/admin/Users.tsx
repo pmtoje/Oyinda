@@ -79,8 +79,10 @@ function CreateUser({ onClose }: { onClose: () => void }) {
 
 function UserDrawer({ user, onClose }: { user: User; onClose: () => void }) {
   const qc = useQueryClient();
-  const { me } = useAuth();
+  const { me, meta } = useAuth();
   const ref = useReference();
+  const localAuth = meta?.staffAuthMode === 'local';
+  const sendLink = useAction(async (purpose: 'ACTIVATE' | 'RESET') => { const r = await api.post<any>(`/api/admin/users/${user.id}/credential-link`, { purpose }); setNotice(`${purpose === 'ACTIVATE' ? 'Activation' : 'Password reset'} link sent to ${r.sentTo}.${purpose === 'RESET' ? ' The current password no longer works and the user has been signed out.' : ''}`); });
   const roles = useRoles();
   const self = me?.user?.id === user.id;
   const refresh = () => qc.invalidateQueries({ queryKey: ['admin'] });
@@ -104,6 +106,14 @@ function UserDrawer({ user, onClose }: { user: User; onClose: () => void }) {
       <div className="stack">
         {self && <Alert tone="warn">This is your own account. You cannot change your own roles, limits or status.</Alert>}
         {notice && <Alert tone="ok">{notice}</Alert>}
+        {localAuth && !self && (
+          <div className="panel" style={{ padding: 12 }}>
+            <div className="small" style={{ fontWeight: 500 }}>Interim Gazelle sign-in</div>
+            <p className="xs muted" style={{ margin: '4px 0 8px' }}>The user sets their own password from a single-use link sent to their work e-mail. Administrators never see or set passwords.</p>
+            <div className="row"><Button size="sm" onClick={() => sendLink.run('ACTIVATE')} loading={sendLink.loading}>Send activation link</Button><Button size="sm" variant="danger" onClick={() => sendLink.run('RESET')} loading={sendLink.loading}>Reset password</Button></div>
+            <ErrorAlert error={sendLink.error} />
+          </div>
+        )}
         <ErrorAlert error={err} />
         <KV items={[['Username', user.username], ['Email', user.email], ['Staff number', user.staffNumber ?? '—'], ['MFA', user.mfaEnrolled ? 'Enrolled' : 'Not yet enrolled'], ['Last sign-in', dateTime(user.lastLoginAt)]]} />
 

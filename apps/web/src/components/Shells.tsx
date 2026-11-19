@@ -19,9 +19,11 @@ export function Brand({ to = '/' }: { to?: string }) {
 export function ModeBanner() {
   const { meta } = useAuth();
   if (!meta) return null;
-  const mocks = Object.entries(meta.integrationModes).filter(([, m]) => m === 'mock').map(([k]) => k);
-  if (!meta.nonProduction && !mocks.length) return null;
-  return <div className="mode-banner" role="note">{meta.environment.toUpperCase()} environment · DEMO / NON-PRODUCTION data{mocks.length ? ` · Mock integrations: ${mocks.join(', ')}` : ''}</div>;
+  const local = meta.staffAuthMode === 'local';
+  const mocks = Object.entries(meta.integrationModes).filter(([k, m]) => m === 'mock' && !(local && k === 'activeDirectory')).map(([k]) => k);
+  if (!meta.nonProduction && !mocks.length && !local) return null;
+  const parts = [...(meta.nonProduction ? [`${meta.environment.toUpperCase()} environment · DEMO / NON-PRODUCTION data`] : []), ...(mocks.length ? [`Mock integrations: ${mocks.join(', ')}`] : []), ...(local ? ['Interim staff sign-in (Gazelle passwords) until Active Directory'] : [])];
+  return <div className="mode-banner" role="note">{parts.join(' · ')}</div>;
 }
 
 function Bell({ to }: { to: string }) {

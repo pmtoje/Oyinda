@@ -37,6 +37,10 @@ const schema = z.object({
   CLAMD_HOST: z.string().optional(),
   CLAMD_PORT: z.coerce.number().int().optional(),
   LDAP_URL: z.string().optional(),
+  /** Staff sign-in: `directory` (Active Directory + MFA, the target state) or `local` (interim Gazelle password + MFA). */
+  STAFF_AUTH_MODE: z.enum(['directory', 'local']).default('directory'),
+  /** Required to run `local` staff sign-in in production: reference of the Information Security approval / waiver. */
+  STAFF_LOCAL_AUTH_APPROVAL_REF: z.string().trim().min(3).optional(),
   ALLOW_MOCK_IN_PRODUCTION: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
@@ -53,9 +57,13 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   }
   const env = parsed.data;
   if (env.APP_ENV === 'production') {
+    // With interim local staff sign-in the directory adapter is not used for authentication, so a mock AD_MODE is not a risk.
     const mocks = (['CBA_MODE', 'IDENTITY_MODE', 'MESSAGING_MODE', 'AD_MODE', 'BUREAU_MODE', 'RARORAC_MODE', 'AV_MODE'] as const).filter(
-      (k) => env[k] === 'mock',
+      (k) => env[k] === 'mock' && !(k === 'AD_MODE' && env.STAFF_AUTH_MODE === 'local'),
     );
+    if (env.STAFF_AUTH_MODE === 'local' && !env.STAFF_LOCAL_AUTH_APPROVAL_REF) {
+      throw new Error('STAFF_AUTH_MODE=local in production requires STAFF_LOCAL_AUTH_APPROVAL_REF (the Information Security approval reference)');
+    }
     if (mocks.length && !env.ALLOW_MOCK_IN_PRODUCTION) {
       throw new Error(`Refusing to start in production with mock integrations: ${mocks.join(', ')}`);
     }

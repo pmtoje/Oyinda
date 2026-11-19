@@ -2,7 +2,10 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { dateTime } from '../lib/format';
-import { Button, Empty, ErrorAlert, Loading, PageHeader, Panel, Status } from './ui';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../lib/auth';
+import { Alert, Button, Empty, ErrorAlert, Loading, PageHeader, Panel, Status, TextInput, useAction } from './ui';
 
 export function NotificationsPage() {
   const qc = useQueryClient();
@@ -45,6 +48,28 @@ export function SessionsPage() {
             <tbody>{q.data!.map((s) => <tr key={s.id}><td className="primary-cell">{s.device_label}{s.current && <> <Status value="ACTIVE" label="This device" /></>}</td><td className="mono">{s.ip}</td><td>{dateTime(s.created_at)}</td><td>{dateTime(s.last_seen_at)}</td><td className="num">{!s.current && <Button size="sm" variant="danger" onClick={() => revoke.mutate(s.id)}>Sign out</Button>}</td></tr>)}</tbody></table></div>
         )}
       </Panel>
+      <ChangeStaffPassword />
     </>
+  );
+}
+
+/** Interim staff sign-in only: change the Gazelle password (signs out everywhere). */
+function ChangeStaffPassword() {
+  const { me, meta, refresh } = useAuth();
+  const nav = useNavigate();
+  const [f, setF] = useState({ currentPassword: '', newPassword: '', confirm: '' });
+  const go = useAction(async () => { await api.post('/api/auth/staff/password/change', { currentPassword: f.currentPassword, newPassword: f.newPassword }); await refresh(); nav('/staff/login', { replace: true }); });
+  if (me?.type !== 'STAFF' || meta?.staffAuthMode !== 'local') return null;
+  return (
+    <Panel title="Change Gazelle password">
+      <form className="stack" style={{ maxWidth: 420 }} onSubmit={(e) => { e.preventDefault(); void go.run(); }}>
+        <TextInput label="Current password" type="password" autoComplete="current-password" required value={f.currentPassword} onChange={(e) => setF({ ...f, currentPassword: e.target.value })} />
+        <TextInput label="New password" type="password" autoComplete="new-password" required value={f.newPassword} onChange={(e) => setF({ ...f, newPassword: e.target.value })} />
+        <TextInput label="Confirm new password" type="password" autoComplete="new-password" required value={f.confirm} onChange={(e) => setF({ ...f, confirm: e.target.value })} error={f.confirm && f.confirm !== f.newPassword ? 'The passwords do not match.' : undefined} />
+        {go.error && (go.error as any).details?.unmet ? <Alert tone="danger" title="Your new password does not meet the requirements"><ul>{(go.error as any).details.unmet.map((x: string) => <li key={x}>{x}</li>)}</ul></Alert> : <ErrorAlert error={go.error} />}
+        <p className="xs muted">Changing your password signs you out of every device.</p>
+        <div><Button type="submit" variant="primary" loading={go.loading} disabled={!f.currentPassword || !f.newPassword || f.newPassword !== f.confirm}>Change password</Button></div>
+      </form>
+    </Panel>
   );
 }

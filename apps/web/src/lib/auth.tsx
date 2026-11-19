@@ -7,7 +7,7 @@ export interface Me {
   type: 'STAFF' | 'CUSTOMER'; csrfToken: string; mfaSatisfied?: boolean;
   user: any; customer?: { id: string; ref: string; name: string };
 }
-interface Meta { environment: string; nonProduction: boolean; integrationModes: Record<string, string> }
+interface Meta { environment: string; nonProduction: boolean; integrationModes: Record<string, string>; staffAuthMode?: 'directory' | 'local' }
 const Ctx = createContext<{ me: Me | null | undefined; meta?: Meta; refresh: () => Promise<void>; logout: () => Promise<void>; can: (p: string) => boolean } | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {

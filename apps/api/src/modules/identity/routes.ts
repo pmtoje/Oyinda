@@ -13,6 +13,7 @@ import { getActive } from '../config/service.js';
 import { issueOtp, verifyOtp, OTP_MESSAGES } from './otp.js';
 import { createSession, enforceSingleSession, revokeAllFor, revokeSession, SESSION_COOKIE } from './session.js';
 import { checkPassword, hashPassword, verifyPassword, type PasswordPolicy } from './password.js';
+import { changePassword, issueStaffLink, localStaffAuth, passwordExpired, setPasswordWithToken, staffPolicy, tokenInfo } from './staff-credentials.js';
 import { newTotpSecret, otpauthUri, verifyTotp } from './totp.js';
 import { recordStep } from '../analytics/journey.js';
 
@@ -347,20 +348,28 @@ export async function identityRoutes(app: FastifyInstance) {
     const generic = () => unauthorized('The username or password is incorrect, or your account is not enabled for Gazelle.');
     const user = await maybe<any>(db, `SELECT * FROM app_user WHERE lower(ad_username)=lower($1)`, [body.username]);
     if (user?.locked_until && new Date(user.locked_until) > new Date()) throw new AppError(423, 'ACCOUNT_LOCKED', 'Too many failed attempts. Sign-in is locked for 30 minutes.');
-    const dir = await integrations().directory.authenticate(body.username, body.password);
-    if (!dir || !user || user.status !== 'ACTIVE') {
+    // Directory (AD) sign-in is the target; `local` is the interim Gazelle password until AD authentication is available.
+    const local = localStaffAuth();
+    const policy = local ? await staffPolicy(db) : { maxFailedAttempts: 5, lockMinutes: 30, maxAgeDays: 0 };
+    const verified = local ? await verifyPassword(body.password, user?.password_hash) : !!(await integrations().directory.authenticate(body.username, body.password));
+    if (!verified || !user || user.status !== 'ACTIVE') {
       if (user) {
         const failed = user.failed_login_count + 1;
-        const lock = failed >= 5;
-        await q(db, `UPDATE app_user SET failed_login_count=$2, locked_until = CASE WHEN $3 THEN now() + interval '30 minutes' ELSE locked_until END WHERE id=$1`, [user.id, lock ? 0 : failed, lock]);
+        const lock = failed >= policy.maxFailedAttempts;
+        await q(db, `UPDATE app_user SET failed_login_count=$2, locked_until = CASE WHEN $3 THEN now() + make_interval(mins => $4) ELSE locked_until END WHERE id=$1`, [user.id, lock ? 0 : failed, lock, policy.lockMinutes]);
       }
       await audit(db, actorOf(req), { action: 'STAFF_LOGIN_FAILED', entityType: 'app_user', entityId: user?.id ?? null, outcome: 'FAILURE', metadata: { username: body.username.slice(0, 60) } });
       throw generic();
     }
+    if (local && passwordExpired(policy, user.password_changed_at)) {
+      const link = await tx((c) => issueStaffLink(c, actorOf(req), user.id, 'RESET'));
+      await link.send();
+      throw new AppError(403, 'PASSWORD_EXPIRED', `Your password has expired. A link to set a new one has been sent to ${link.sentTo}.`);
+    }
     const s = await tx(async (c) => {
       await q(c, 'UPDATE app_user SET failed_login_count=0 WHERE id=$1', [user.id]);
       const sess = await createSession(c, { subjectType: 'STAFF', subjectId: user.id, mfaSatisfied: false, ip: req.ip, userAgent: req.headers['user-agent'] });
-      await audit(c, { ...actorOf(req), type: 'STAFF', id: user.id, label: user.display_name }, { action: 'STAFF_PASSWORD_VERIFIED', entityType: 'app_user', entityId: user.id, metadata: { directoryMode: integrations().directory.mode } });
+      await audit(c, { ...actorOf(req), type: 'STAFF', id: user.id, label: user.display_name }, { action: 'STAFF_PASSWORD_VERIFIED', entityType: 'app_user', entityId: user.id, metadata: local ? { staffAuthMode: 'local' } : { directoryMode: integrations().directory.mode } });
       return sess;
     });
     setSessionCookie(reply, s.token);
@@ -370,6 +379,48 @@ export async function identityRoutes(app: FastifyInstance) {
       return ok(reply, { mfa: 'ENROL', csrfToken: s.csrfToken, enrolment: { secret, uri: otpauthUri(secret, user.email) } });
     }
     return ok(reply, { mfa: 'VERIFY', csrfToken: s.csrfToken });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Interim staff passwords (STAFF_AUTH_MODE=local): set via single-use e-mailed links; never chosen by administrators.
+  // ---------------------------------------------------------------------------
+  const requireLocal = () => { if (!localStaffAuth()) throw notFound('Route'); };
+
+  app.get('/api/auth/staff/password/link', { config: AUTH_LIMIT }, async (req, reply) => {
+    requireLocal();
+    const { token } = parse(z.object({ token: z.string().min(20).max(100) }), req.query);
+    const info = await tokenInfo(db, token);
+    if (!info) throw unprocessable('LINK_INVALID', 'This link is invalid or has expired. Ask for a new one from the sign-in page or your administrator.');
+    const { maxFailedAttempts: _a, lockMinutes: _b, ...policy } = info.policy; void _a; void _b;
+    return ok(reply, { purpose: info.purpose, username: info.username, policy });
+  });
+
+  app.post('/api/auth/staff/password/set', { config: AUTH_LIMIT }, async (req, reply) => {
+    requireLocal();
+    const b = parse(z.object({ token: z.string().min(20).max(100), password: z.string().min(1).max(256) }), req.body);
+    const r = await tx((c) => setPasswordWithToken(c, actorOf(req), b.token, b.password));
+    return ok(reply, { username: r.username, next: 'SIGN_IN' });
+  });
+
+  /** Self-service reset. Identical response whether or not the username exists. */
+  app.post('/api/auth/staff/password/forgot', { config: AUTH_LIMIT }, async (req, reply) => {
+    requireLocal();
+    const b = parse(z.object({ username: z.string().trim().min(2).max(100) }), req.body);
+    const u = await maybe<any>(db, `SELECT id FROM app_user WHERE lower(ad_username)=lower($1) AND status='ACTIVE'`, [b.username]);
+    if (u) {
+      const recent = await one<{ n: number }>(db, `SELECT count(*)::int AS n FROM staff_credential_token WHERE user_id=$1 AND created_at > now() - interval '1 hour'`, [u.id]);
+      if (recent.n < 3) { const link = await tx((c) => issueStaffLink(c, actorOf(req), u.id, 'RESET')); await link.send(); }
+    }
+    return ok(reply, { message: 'If the username is registered, a link to set a new password has been sent to the work e-mail address on record.' });
+  });
+
+  app.post('/api/auth/staff/password/change', { config: AUTH_LIMIT }, async (req, reply) => {
+    requireLocal();
+    const st = requireStaff(req);
+    const b = parse(z.object({ currentPassword: z.string().min(1).max(256), newPassword: z.string().min(1).max(256) }), req.body);
+    await tx((c) => changePassword(c, actorOf(req), st.id, b.currentPassword, b.newPassword));
+    reply.clearCookie(SESSION_COOKIE, { path: '/' });
+    return ok(reply, { changed: true, next: 'SIGN_IN' });
   });
 
   app.post('/api/auth/staff/mfa/verify', { config: AUTH_LIMIT }, async (req, reply) => {

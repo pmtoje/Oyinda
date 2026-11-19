@@ -14,6 +14,8 @@ export default function App() {
       <Route path="/login" element={L(() => import('./pages/public/CustomerLogin'))} />
       <Route path="/verify-email" element={L(() => import('./pages/public/VerifyEmail'))} />
       <Route path="/staff/login" element={L(() => import('./pages/public/StaffLogin'))} />
+      <Route path="/staff/forgot-password" element={L(() => import('./pages/public/StaffForgotPassword'))} />
+      <Route path="/staff/set-password" element={L(() => import('./pages/public/StaffSetPassword'))} />
 
       <Route path="/portal" element={<PortalShell />}>
         <Route index element={L(() => import('./pages/portal/Dashboard'))} />

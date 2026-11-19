@@ -12,6 +12,15 @@
 
 All configuration is environment-driven (`apps/api/src/config/env.ts`, validated at start-up). Secrets (`HMAC_KEY`, `DATA_KEY`, AD bind credentials, gateway credentials) come from the Bank's secrets manager. **Rotating `DATA_KEY`** requires re-wrapping data keys: `DATA_KEY_ID` is recorded on every document version and field ciphertext to support a dual-key rotation window.
 
+### Interim staff sign-in (until Active Directory)
+
+1. Obtain the Information Security approval and set `STAFF_AUTH_MODE=local` and `STAFF_LOCAL_AUTH_APPROVAL_REF=<approval reference>`; restart the API. Production refuses `local` without the reference. `AD_MODE` may stay `mock` because the directory is not used for sign-in in this mode.
+2. Load staff from the spreadsheet (Admin → Users & access → Import from spreadsheet) or create them by hand. Every new active user receives a single-use activation link (72 hours) at their work e-mail.
+3. Bootstrap the first administrators, before anyone can sign in, with `pnpm --filter @gazelle/api staff:activation-link <username>` (two administrators are needed for maker-checker). The link goes only to the user's e-mail on record.
+4. Staff set their own password from the link and enrol the authenticator at first sign-in. Forgotten passwords: the sign-in page sends a one-hour reset link. An administrator can send a reset link, which also withdraws the current password and signs the user out.
+5. Policy (`password_policy/STAFF_INTERIM`, maker-checker): 14+ characters with mixed character types, no name/username/e-mail, 90-day expiry, last 5 not reusable, lock after 5 failures for 30 minutes. An expired password cannot sign in; a reset link is sent automatically.
+6. When AD authentication is ready: set `STAFF_AUTH_MODE=directory` and `AD_MODE=live`. Gazelle passwords stop working immediately (the password routes return 404); authenticator enrolments are kept.
+
 ## Health & monitoring
 
 * `GET /health/live`, `GET /health/ready` (unauthenticated, minimal).

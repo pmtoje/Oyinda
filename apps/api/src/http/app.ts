@@ -113,7 +113,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
 
   if (!process.env.WEB_DIST_DIR) app.setNotFoundHandler((req, reply) => reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Not found.', requestId: req.id } }));
 
-  app.get('/api/meta', async () => ({ data: { product: 'Gazelle by Alternative Bank', environment: e.APP_ENV, integrationModes: integrationModes(e), nonProduction: e.APP_ENV !== 'production' } }));
+  app.get('/api/meta', async () => ({ data: { product: 'Gazelle by Alternative Bank', environment: e.APP_ENV, integrationModes: integrationModes(e), nonProduction: e.APP_ENV !== 'production', staffAuthMode: env().STAFF_AUTH_MODE } }));
 
   await registerRoutes(app);
 

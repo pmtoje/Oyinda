@@ -158,7 +158,7 @@ export async function applyImport(db: Db, actor: Actor, batch: any) {
   if (preview.some((p) => p.username.toLowerCase() === approver.ad_username.toLowerCase() && p.action !== 'NO_CHANGE')) throw unprocessable('SELF', 'You cannot approve an import that changes your own access.');
   const rows: ImportRow[] = batch.rows;
   const byUser = new Map<string, string>();
-  const applied = { created: 0, updated: 0, rolesGranted: 0, rolesRemoved: 0, sessionsEnded: 0 };
+  const applied = { created: 0, updated: 0, rolesGranted: 0, rolesRemoved: 0, sessionsEnded: 0, createdUserIds: [] as string[] };
   // Pass 1: users. Pass 2: reporting lines (managers may be created in the same file).
   for (const r of rows) {
     const p = preview.find((x) => x.rowNo === r.rowNo)!;
@@ -169,6 +169,7 @@ export async function applyImport(db: Db, actor: Actor, batch: any) {
       id = (await one<any>(db, `INSERT INTO app_user(ad_username, display_name, email, staff_number, directorate_code, business_unit_code, status, source, source_batch_id)
         VALUES ($1,$2,$3,$4,$5,$6,$7,'SPREADSHEET',$8) RETURNING id`, [r.username, r.name, r.email.toLowerCase(), r.staffNumber || null, r.directorate.toUpperCase(), r.businessUnit.toUpperCase(), status, batch.id])).id;
       applied.created++;
+      if (status === 'ACTIVE') applied.createdUserIds.push(id);
     } else {
       id = before.id;
       if (p.action === 'UPDATE') applied.updated++;

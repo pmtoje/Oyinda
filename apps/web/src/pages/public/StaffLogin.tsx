@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthLayout } from '../../components/Shells';
 import { Alert, Button, ErrorAlert, TextInput, useAction } from '../../components/ui';
 import { api } from '../../lib/api';
@@ -9,7 +9,8 @@ import { OtpField } from './parts/OtpField';
 export default function StaffLogin() {
   const nav = useNavigate();
   const loc = useLocation() as { state?: { from?: string } };
-  const { refresh } = useAuth();
+  const { refresh, meta } = useAuth();
+  const local = meta?.staffAuthMode === 'local';
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [mfa, setMfa] = useState<{ mfa: 'ENROL' | 'VERIFY'; enrolment?: { secret: string; uri: string } } | null>(null);
@@ -22,14 +23,16 @@ export default function StaffLogin() {
     nav(from && (from.startsWith('/work') || from.startsWith('/admin')) ? from : '/work', { replace: true });
   });
   return (
-    <AuthLayout heading="Gazelle staff workspace." text="Sign in with your Alternative Bank network (Active Directory) credentials. A second factor from your authenticator app is required.">
+    <AuthLayout heading="Gazelle staff workspace." text={local ? 'Sign in with your Gazelle username and password. A second factor from your authenticator app is required.' : 'Sign in with your Alternative Bank network (Active Directory) credentials. A second factor from your authenticator app is required.'}>
       {!mfa ? (
         <form className="stack" onSubmit={(e) => { e.preventDefault(); void login.run(); }}>
           <div><h2>Staff sign-in</h2><p className="muted">Restricted to authorised Alternative Bank staff. Activity is logged.</p></div>
           <ErrorAlert error={login.error} />
-          <TextInput label="Network username" autoComplete="username" required value={username} onChange={(e) => setUsername(e.target.value)} />
-          <TextInput label="Password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          {local && <Alert tone="info">Interim sign-in until Active Directory is connected: use the Gazelle password you set from your activation e-mail.</Alert>}
+          <TextInput label={local ? 'Username' : 'Network username'} autoComplete="username" required value={username} onChange={(e) => setUsername(e.target.value)} />
+          <TextInput label={local ? 'Gazelle password' : 'Password'} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           <Button type="submit" variant="primary" size="lg" loading={login.loading} disabled={!username || !password}>Continue</Button>
+          {local && <p className="small muted"><Link to="/staff/forgot-password">Forgotten your password?</Link></p>}
         </form>
       ) : (
         <form className="stack" onSubmit={(e) => { e.preventDefault(); void verify.run(); }}>

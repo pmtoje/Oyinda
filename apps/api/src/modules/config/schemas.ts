@@ -280,6 +280,10 @@ export const schemas = {
     disallowPersonalInfo: z.boolean().default(true),
     maxFailedAttempts: z.number().int().min(3).max(10).default(5),
     lockMinutes: z.number().int().min(5).max(1440).default(30),
+    /** Days before the password must be changed (0 = no expiry). */
+    maxAgeDays: z.number().int().min(0).max(3650).default(0),
+    /** Number of previous passwords that cannot be reused (0 = no history check). */
+    historyCount: z.number().int().min(0).max(24).default(0),
   }),
 
   committee: z.object({

@@ -31,6 +31,7 @@ async function staffSignIn(page: Page, username: string) {
 }
 
 test.describe.configure({ mode: 'serial' });
+test.skip(e2eEnv.STAFF_AUTH_MODE === 'local', 'Directory-mode journeys; the interim sign-in journey is in local-auth.spec.ts');
 
 test('Journey 1: a new corporate customer onboards with their Alternative Bank account', async ({ page }) => {
   await page.goto('/');

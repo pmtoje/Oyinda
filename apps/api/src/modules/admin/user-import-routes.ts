@@ -7,6 +7,7 @@ import { badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { audit } from '../audit/audit.js';
 import { detectMime, MIME } from '../documents/mime.js';
 import { ROLES } from '../identity/rbac.js';
+import { issueStaffLink, localStaffAuth } from '../identity/staff-credentials.js';
 import { applyImport, COLUMNS, previewImport, readSheet } from './user-import.js';
 
 const view = (b: any, full = false) => ({
@@ -85,11 +86,16 @@ export async function userImportRoutes(app: FastifyInstance) {
         await audit(c, actorOf(req), { action: 'USER_IMPORT_REJECTED', entityType: 'user_import_batch', entityId: bid, metadata: { note: body.note } });
         return { status: 'REJECTED' };
       }
-      const applied = await applyImport(c, actorOf(req), b);
-      await q(c, `UPDATE user_import_batch SET status='APPLIED', checker_id=$2, decided_at=now(), decision_note=$3, applied_summary=$4 WHERE id=$1`, [bid, s.id, body.note ?? null, JSON.stringify(applied)]);
-      await audit(c, actorOf(req), { action: 'USER_IMPORT_APPLIED', entityType: 'user_import_batch', entityId: bid, metadata: applied });
-      return { status: 'APPLIED', applied };
+      const { createdUserIds, ...applied } = await applyImport(c, actorOf(req), b);
+      // Interim local sign-in: new staff receive a single-use activation link at their work e-mail.
+      const links = localStaffAuth() ? await Promise.all(createdUserIds.map((id) => issueStaffLink(c, actorOf(req), id, 'ACTIVATE'))) : [];
+      const summary = { ...applied, activationLinksSent: links.length };
+      await q(c, `UPDATE user_import_batch SET status='APPLIED', checker_id=$2, decided_at=now(), decision_note=$3, applied_summary=$4 WHERE id=$1`, [bid, s.id, body.note ?? null, JSON.stringify(summary)]);
+      await audit(c, actorOf(req), { action: 'USER_IMPORT_APPLIED', entityType: 'user_import_batch', entityId: bid, metadata: summary });
+      return { status: 'APPLIED', applied: summary, links };
     });
+    for (const l of (out as any).links ?? []) await l.send();
+    delete (out as any).links;
     return ok(reply, out);
   });
 

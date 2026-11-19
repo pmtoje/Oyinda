@@ -10,6 +10,7 @@ import { audit, verifyAuditChain } from '../audit/audit.js';
 import { approve, createDraft, deactivate, getById, reject, submitDraft } from '../config/service.js';
 import { CONFIG_KINDS, FACT_CATALOGUE, FACT_KEYS, KIND_LABEL, type ConfigKind } from '../config/schemas.js';
 import { revokeAllFor } from '../identity/session.js';
+import { issueStaffLink, localStaffAuth } from '../identity/staff-credentials.js';
 import { loadFacility } from '../facilities/access.js';
 import { buildFacts } from '../facilities/facts.js';
 
@@ -116,9 +117,10 @@ export async function adminRoutes(app: FastifyInstance) {
     const u = await tx(async (c) => {
       const r = await one<any>(c, `INSERT INTO app_user(ad_username, display_name, email, staff_number, directorate_code, business_unit_code, is_demo) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`, [b.username, b.name, b.email.toLowerCase(), b.staffNumber ?? null, b.directorate, b.businessUnit, env().APP_ENV !== 'production']);
       await audit(c, actorOf(req), { action: 'USER_CREATED', entityType: 'app_user', entityId: r.id, after: b });
-      return r;
+      return { ...r, link: localStaffAuth() ? await issueStaffLink(c, actorOf(req), r.id, 'ACTIVATE') : null };
     });
-    return ok(reply, { id: u.id }, 201);
+    if (u.link) await u.link.send();
+    return ok(reply, { id: u.id, activationLinkSentTo: u.link?.sentTo ?? null }, 201);
   });
   app.patch('/api/admin/users/:uid', async (req, reply) => {
     const s = requireStaff(req, 'user.manage');
@@ -134,6 +136,23 @@ export async function adminRoutes(app: FastifyInstance) {
     });
     return ok(reply, { updated: true });
   });
+  /** Interim local sign-in: send an activation or reset link to the user's work e-mail. Administrators never see or set passwords. */
+  app.post('/api/admin/users/:uid/credential-link', async (req, reply) => {
+    const s = requireStaff(req, 'user.manage');
+    if (!localStaffAuth()) throw conflict('DIRECTORY_AUTH', 'Staff sign in with Active Directory; Gazelle passwords are not in use.');
+    const { uid } = parse(z.object({ uid: z.uuid() }), req.params);
+    const b = parse(z.object({ purpose: z.enum(['ACTIVATE', 'RESET']) }), req.body);
+    if (uid === s.id) throw forbidden('Use “Change password” or the sign-in page for your own account.');
+    if (!(await maybe(db, 'SELECT 1 FROM app_user WHERE id=$1', [uid]))) throw notFound('User');
+    const link = await tx(async (c) => {
+      const l = await issueStaffLink(c, actorOf(req), uid, b.purpose);
+      if (b.purpose === 'RESET') { await q(c, 'UPDATE app_user SET password_hash=NULL WHERE id=$1', [uid]); await revokeAllFor(c, 'STAFF', uid, 'password_reset_by_admin'); }
+      return l;
+    });
+    await link.send();
+    return ok(reply, { sentTo: link.sentTo });
+  });
+
   /** Role changes. Privileged roles need a second administrator (maker-checker). */
   app.post('/api/admin/users/:uid/roles', async (req, reply) => {
     const s = requireStaff(req, 'user.manage');
