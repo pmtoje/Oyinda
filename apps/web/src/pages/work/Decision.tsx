@@ -6,7 +6,7 @@ import { ActionRail, useCurrentTask } from './parts/ActionRail';
 import { useFac } from './parts/common';
 
 function Indicator({ label, value, sub, bad }: { label: string; value: React.ReactNode; sub?: React.ReactNode; bad?: boolean }) {
-  return <div className={bad ? 'metric alert' : 'metric'}><div className="label">{label}</div><div className="value">{value}</div>{sub && <div className="sub">{sub}</div>}</div>;
+  return <div className={bad ? 'metric metric-alert' : 'metric'}><div className="label">{label}</div><div className="value">{value}</div>{sub && <div className="sub">{sub}</div>}</div>;
 }
 
 export default function Decision() {

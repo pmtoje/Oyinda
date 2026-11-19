@@ -21,9 +21,9 @@ export default function Health() {
       {!d.audit.ok && <Alert tone="danger" title="Audit chain integrity failure">Broken at entry #{d.audit.brokenAt}. Escalate immediately.</Alert>}
       <div className="grid cols-4" style={{ margin: '16px 0' }}>
         <div className="metric"><div className="label">Database</div><div className="value">{d.database.ok ? 'Healthy' : 'Unavailable'}</div><div className="sub">{d.database.latencyMs} ms round trip</div></div>
-        <div className={`metric ${d.sla.breached ? 'alert' : ''}`}><div className="label">SLA</div><div className="value">{d.sla.breached} breached</div><div className="sub">{d.sla.warning} approaching · {d.sla.open} open tasks</div></div>
-        <div className={`metric ${d.deadLetters.length ? 'alert' : ''}`}><div className="label">Dead-letter jobs</div><div className="value">{d.deadLetters.length}</div><div className="sub">Exhausted all retries</div></div>
-        <div className={`metric ${d.audit.ok ? '' : 'alert'}`}><div className="label">Audit chain</div><div className="value">{d.audit.ok ? 'Intact' : 'Broken'}</div><div className="sub">{d.audit.checked.toLocaleString()} entries verified</div></div>
+        <div className={`metric ${d.sla.breached ? 'metric-alert' : ''}`}><div className="label">SLA</div><div className="value">{d.sla.breached} breached</div><div className="sub">{d.sla.warning} approaching · {d.sla.open} open tasks</div></div>
+        <div className={`metric ${d.deadLetters.length ? 'metric-alert' : ''}`}><div className="label">Dead-letter jobs</div><div className="value">{d.deadLetters.length}</div><div className="sub">Exhausted all retries</div></div>
+        <div className={`metric ${d.audit.ok ? '' : 'metric-alert'}`}><div className="label">Audit chain</div><div className="value">{d.audit.ok ? 'Intact' : 'Broken'}</div><div className="sub">{d.audit.checked.toLocaleString()} entries verified</div></div>
       </div>
       <div className="grid cols-2">
         <Panel title="Integrations" flush>

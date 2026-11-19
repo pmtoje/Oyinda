@@ -47,7 +47,7 @@ export default function Profile({ customerId }: { customerId?: string }) {
     <div className="stack" style={{ ['--gap' as any]: '20px' }}>
       <PageHeader eyebrow={q.data.customer.ref} title="Business profile" sub="Your master profile is reused for every facility request, so you only provide this information once." actions={<span className="small muted">Version {p.version}</span>} />
       <Panel title="Profile completeness">
-        <div className="row"><div className="progress grow" aria-label={`${q.data.completeness.pct}% complete`}><span style={{ width: `${q.data.completeness.pct}%` }} /></div><strong>{q.data.completeness.pct}%</strong></div>
+        <div className="row"><div className="progress grow" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={q.data.completeness.pct} aria-label="Business profile completeness"><span style={{ width: `${q.data.completeness.pct}%` }} /></div><strong>{q.data.completeness.pct}%</strong></div>
         <div className="row small" style={{ marginTop: 10, ['--gap' as any]: '6px 14px' }}>{q.data.completeness.sections.map((s: any) => <span key={s.name} className={s.done ? '' : 'muted'}>{s.done ? '✓' : '○'} {s.name}</span>)}</div>
       </Panel>
 

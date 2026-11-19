@@ -1,34 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import { lastOtp, sql, staffSecret, totp } from './helpers';
+import { CUSTOMER_PASSWORD, customerSignIn, staffSignIn } from './auth';
 import { e2eEnv } from './env';
 
 const otpBox = (p: Page) => p.locator('input[inputmode="numeric"]').first();
-
-const CUSTOMER_PASSWORD = 'Gazelle#Portal2026';
-
-async function customerSignIn(page: Page, email: string, phone: string) {
-  await sql(`UPDATE otp_challenge SET created_at = created_at - interval '1 hour'`);
-  await page.goto('/login');
-  await page.getByLabel('Company e-mail address').fill(email);
-  await page.getByLabel(/^Password/).fill(CUSTOMER_PASSWORD);
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(otpBox(page)).toBeVisible();
-  await otpBox(page).fill(await lastOtp(phone));
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL(/\/portal/);
-}
-
-async function staffSignIn(page: Page, username: string) {
-  await page.goto('/staff/login');
-  await page.getByLabel(/username/i).fill(username);
-  await page.getByLabel('Password').fill(e2eEnv.MOCK_AD_DEMO_PASSWORD!);
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(otpBox(page)).toBeVisible();
-  const secret = await staffSecret(username);
-  await otpBox(page).fill(totp(secret!));
-  await page.getByRole('button', { name: /verify|sign in|continue/i }).last().click();
-  await page.waitForURL(/\/work/);
-}
 
 test.describe.configure({ mode: 'serial' });
 test.skip(e2eEnv.STAFF_AUTH_MODE === 'local', 'Directory-mode journeys; the interim sign-in journey is in local-auth.spec.ts');

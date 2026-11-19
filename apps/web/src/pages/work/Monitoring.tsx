@@ -18,7 +18,7 @@ export default function Monitoring() {
     <>
       <PageHeader title="Portfolio monitoring" sub="Overdue payments, maturities, reviews, covenants, security expiry and financial statement refresh." />
       <Tabs tabs={[{ key: 'OPEN', label: 'Open' }, { key: 'RESOLVED', label: 'Resolved' }]} value={status} onChange={setStatus} />
-      {status === 'OPEN' && rows.length > 0 && <div className="grid cols-3" style={{ marginBottom: 16 }}><div className={count('CRITICAL') ? 'metric alert' : 'metric'}><div className="label">Critical</div><div className="value">{count('CRITICAL')}</div></div><div className="metric"><div className="label">Warning</div><div className="value">{count('WARNING')}</div></div><div className="metric"><div className="label">Information</div><div className="value">{count('INFO')}</div></div></div>}
+      {status === 'OPEN' && rows.length > 0 && <div className="grid cols-3" style={{ marginBottom: 16 }}><div className={count('CRITICAL') ? 'metric metric-alert' : 'metric'}><div className="label">Critical</div><div className="value">{count('CRITICAL')}</div></div><div className="metric"><div className="label">Warning</div><div className="value">{count('WARNING')}</div></div><div className="metric"><div className="label">Information</div><div className="value">{count('INFO')}</div></div></div>}
       <Panel flush>
         {q.isLoading ? <Loading /> : q.error ? <ErrorAlert error={q.error} /> : !rows.length ? <Empty title={status === 'OPEN' ? 'No open monitoring items' : 'Nothing resolved yet'} /> : (
           <div className="table-wrap"><table className="data"><thead><tr><th>Severity</th><th>Item</th><th>Facility</th><th>Due</th><th /></tr></thead>

@@ -65,7 +65,7 @@ export function CollateralTab({ id, currency }: { id: string; currency: string }
       <QueryState q={q}>{() => (
         <div className="stack">
           <div className="grid cols-3">
-            <div className={q.data.coveragePct < 100 && q.data.items.length ? 'metric alert' : 'metric'}><div className="label">Eligible cover</div><div className="value">{pct(q.data.coveragePct)}</div><div className="sub">of the facility amount</div></div>
+            <div className={q.data.coveragePct < 100 && q.data.items.length ? 'metric metric-alert' : 'metric'}><div className="label">Eligible cover</div><div className="value">{pct(q.data.coveragePct)}</div><div className="sub">of the facility amount</div></div>
             <div className="metric"><div className="label">Eligible value</div><div className="value">{money(q.data.eligibleNgnMinor, 'NGN', { compact: true })}</div></div>
             <div className="metric"><div className="label">Cash-backed</div><div className="value">{q.data.isCashBacked ? 'Yes' : 'No'}</div><div className="sub">Cash cover {pct(q.data.cashCoveragePct)}</div></div>
           </div>
@@ -207,7 +207,7 @@ export function PricingTab({ id, product }: { id: string; product: any }) {
         <>
           {latest.mode === 'MOCK' && <Alert tone="warn" title="Development pricing adapter">{latest.notes?.[0] ?? 'This is a MOCK computation and is not a production RARORAC result.'}</Alert>}
           <div className="grid cols-4">
-            <div className={latest.withinThreshold ? 'metric' : 'metric alert'}><div className="label">RARORAC <MockTag mode={latest.mode} /></div><div className="value">{pct(latest.raroracPct, 2)}</div><div className="sub">Hurdle {pct(latest.hurdlePct, 2)}</div></div>
+            <div className={latest.withinThreshold ? 'metric' : 'metric metric-alert'}><div className="label">RARORAC <MockTag mode={latest.mode} /></div><div className="value">{pct(latest.raroracPct, 2)}</div><div className="sub">Hurdle {pct(latest.hurdlePct, 2)}</div></div>
             <div className="metric"><div className="label">Proposed rate</div><div className="value">{pct(latest.proposedProfitRatePct, 2)}</div></div>
             <div className="metric"><div className="label">Recommended rate</div><div className="value">{pct(latest.recommendedProfitRatePct, 2)}</div></div>
             <div className="metric"><div className="label">Threshold</div><div className="value">{latest.withinThreshold ? 'Within' : 'Exception'}</div><div className="sub">{latest.provider}</div></div>

@@ -476,12 +476,23 @@ export async function identityRoutes(app: FastifyInstance) {
   app.get('/api/auth/me', async (req, reply) => {
     const a = req.auth;
     if (!a) throw unauthorized();
+    const pref = await maybe<{ ui_theme: string }>(db, `SELECT ui_theme FROM ${a.subjectType === 'STAFF' ? 'app_user' : 'customer_user'} WHERE id=$1`, [a.subjectId]);
+    const preferences = { theme: pref?.ui_theme ?? 'system' };
     if (a.subjectType === 'STAFF') {
-      return ok(reply, { type: 'STAFF', csrfToken: a.csrfToken, mfaSatisfied: a.mfaSatisfied, user: a.mfaSatisfied && a.staff ? { id: a.staff.id, name: a.staff.name, email: a.staff.email, roles: a.staff.roles, permissions: [...a.staff.permissions], businessUnit: a.staff.businessUnit } : null });
+      return ok(reply, { type: 'STAFF', csrfToken: a.csrfToken, mfaSatisfied: a.mfaSatisfied, preferences, user: a.mfaSatisfied && a.staff ? { id: a.staff.id, name: a.staff.name, email: a.staff.email, roles: a.staff.roles, permissions: [...a.staff.permissions], businessUnit: a.staff.businessUnit } : null });
     }
     const c = a.customer!;
     const customer = await one<any>(db, 'SELECT id, customer_ref, legal_name FROM customer WHERE id=$1', [c.customerId]);
-    return ok(reply, { type: 'CUSTOMER', csrfToken: a.csrfToken, user: { id: c.userId, name: c.fullName, email: maskEmail(c.email), emailVerified: c.emailVerified, permissions: c.permissions, primary: c.portalRole === 'PRIMARY' }, customer: { id: customer.id, ref: customer.customer_ref, name: customer.legal_name } });
+    return ok(reply, { type: 'CUSTOMER', csrfToken: a.csrfToken, preferences, user: { id: c.userId, name: c.fullName, email: maskEmail(c.email), emailVerified: c.emailVerified, permissions: c.permissions, primary: c.portalRole === 'PRIMARY' }, customer: { id: customer.id, ref: customer.customer_ref, name: customer.legal_name } });
+  });
+
+  /** Display preferences saved on the user's account (theme follows the user between devices). */
+  app.put('/api/me/preferences', async (req, reply) => {
+    const a = req.auth;
+    if (!a || (a.subjectType === 'STAFF' && !a.mfaSatisfied)) throw unauthorized();
+    const b = parse(z.object({ theme: z.enum(['light', 'dark', 'system']) }), req.body);
+    await q(db, `UPDATE ${a.subjectType === 'STAFF' ? 'app_user' : 'customer_user'} SET ui_theme=$2 WHERE id=$1`, [a.subjectId, b.theme]);
+    return ok(reply, { theme: b.theme });
   });
 
   app.post('/api/auth/logout', async (req, reply) => {

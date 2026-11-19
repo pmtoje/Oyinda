@@ -38,7 +38,7 @@ export function FinancialsTab({ id, customerId }: { id: string; customerId: stri
           <div className="grid cols-3">
             <div className="metric"><div className="label">Financial score (FRR input)</div><div className="value">{a.frrScore ?? '—'}</div><div className="sub">Weighted ratio score, 0–100</div></div>
             <div className="metric"><div className="label">Periods analysed</div><div className="value">{periods.length}</div><div className="sub">Template v{a.templateVersion}</div></div>
-            <div className={a.quality?.some((x: any) => x.severity === 'ERROR') ? 'metric alert' : 'metric'}><div className="label">Data-quality issues</div><div className="value">{a.quality?.length ?? 0}</div><div className="sub">Run {dateTime(a.runAt)}</div></div>
+            <div className={a.quality?.some((x: any) => x.severity === 'ERROR') ? 'metric metric-alert' : 'metric'}><div className="label">Data-quality issues</div><div className="value">{a.quality?.length ?? 0}</div><div className="sub">Run {dateTime(a.runAt)}</div></div>
           </div>
           {a.quality?.length > 0 && <Alert tone={a.quality.some((x: any) => x.severity === 'ERROR') ? 'danger' : 'warn'} title="Data-quality checks"><ul>{a.quality.map((x: any, i: number) => <li key={i}>{x.message}</li>)}</ul></Alert>}
           <Panel title="Key figures" flush>
@@ -144,7 +144,7 @@ export function StatementsTab({ id }: { id: string }) {
           <div className="grid cols-4">
             <div className="metric"><div className="label">Avg. monthly credit turnover</div><div className="value">{money(a.summary.avgMonthlyCreditTurnoverNgnMinor, 'NGN', { compact: true })}</div><div className="sub">Excludes reversals</div></div>
             <div className="metric"><div className="label">Alternative Bank wallet share</div><div className="value">{pct(a.summary.walletSharePct)}</div><div className="sub">Of total credits</div></div>
-            <div className={a.summary.creditTrendPct !== null && a.summary.creditTrendPct <= -10 ? 'metric alert' : 'metric'}><div className="label">Credit trend</div><div className="value">{pct(a.summary.creditTrendPct)}</div><div className="sub">Last 3 vs first 3 months</div></div>
+            <div className={a.summary.creditTrendPct !== null && a.summary.creditTrendPct <= -10 ? 'metric metric-alert' : 'metric'}><div className="label">Credit trend</div><div className="value">{pct(a.summary.creditTrendPct)}</div><div className="sub">Last 3 vs first 3 months</div></div>
             <div className="metric"><div className="label">Coverage</div><div className="value">{a.summary.monthsCovered} months</div><div className="sub">{a.summary.accounts} account(s), {a.summary.banks} bank(s)</div></div>
           </div>
           {a.issues?.length > 0 && <Alert tone={a.issues.some((i: any) => i.severity === 'ERROR') ? 'danger' : 'warn'} title="Analysis notes"><ul>{a.issues.map((i: any, k: number) => <li key={k}>{i.message}</li>)}</ul></Alert>}

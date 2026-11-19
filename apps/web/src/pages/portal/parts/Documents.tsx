@@ -39,7 +39,7 @@ export function DocumentList({ docs, onChange, readOnly, attentionKeys = [] }: {
           {docs.map((d) => {
             const attention = d.status === 'REJECTED' || d.status === 'EXPIRED' || (d.requirementKey ? attentionKeys.includes(d.requirementKey) : false);
             return (
-              <tr key={d.id} style={attention ? { background: '#fff8f1' } : undefined}>
+              <tr key={d.id} style={attention ? { background: 'var(--warn-bg)' } : undefined}>
                 <td>
                   <div className="primary-cell">{d.title}{d.mandatory ? <span className="req" aria-label="required">*</span> : <span className="xs muted"> (optional)</span>}</div>
                   {d.rejectionReason && <div className="small" style={{ color: 'var(--danger-700)' }}>Returned: {d.rejectionReason}</div>}

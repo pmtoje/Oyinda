@@ -13,7 +13,7 @@ export default function Reports() {
   const d = q.data;
   const t = d?.totals;
   const Metric = ({ label, value, sub, alert }: { label: string; value: string | number; sub?: string; alert?: boolean }) => (
-    <div className={`metric ${alert ? 'alert' : ''}`}><div className="label">{label}</div><div className="value">{value}</div>{sub && <div className="sub">{sub}</div>}</div>
+    <div className={`metric ${alert ? 'metric-alert' : ''}`}><div className="label">{label}</div><div className="value">{value}</div>{sub && <div className="sub">{sub}</div>}</div>
   );
   const byAmount = (key: string) => ({ label: (r: any) => r[key] ?? '—', value: (r: any) => r.count, format: (v: number, r: any) => `${v} · ${money(r.amount_minor, 'NGN', { compact: true })}` });
   return (

@@ -4,7 +4,7 @@ import { api, setCsrf } from './api';
 
 export interface StaffUser { id: string; name: string; email: string; roles: string[]; permissions: string[]; businessUnit: string | null }
 export interface Me {
-  type: 'STAFF' | 'CUSTOMER'; csrfToken: string; mfaSatisfied?: boolean;
+  type: 'STAFF' | 'CUSTOMER'; csrfToken: string; mfaSatisfied?: boolean; preferences?: { theme: 'light' | 'dark' | 'system' };
   user: any; customer?: { id: string; ref: string; name: string };
 }
 interface Meta { environment: string; nonProduction: boolean; integrationModes: Record<string, string>; staffAuthMode?: 'directory' | 'local' }

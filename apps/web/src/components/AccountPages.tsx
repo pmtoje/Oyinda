@@ -5,6 +5,7 @@ import { dateTime } from '../lib/format';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import { useTheme, type ThemePref } from '../lib/theme';
 import { Alert, Button, Empty, ErrorAlert, Loading, PageHeader, Panel, Status, TextInput, useAction } from './ui';
 
 export function NotificationsPage() {
@@ -48,8 +49,28 @@ export function SessionsPage() {
             <tbody>{q.data!.map((s) => <tr key={s.id}><td className="primary-cell">{s.device_label}{s.current && <> <Status value="ACTIVE" label="This device" /></>}</td><td className="mono">{s.ip}</td><td>{dateTime(s.created_at)}</td><td>{dateTime(s.last_seen_at)}</td><td className="num">{!s.current && <Button size="sm" variant="danger" onClick={() => revoke.mutate(s.id)}>Sign out</Button>}</td></tr>)}</tbody></table></div>
         )}
       </Panel>
+      <Appearance />
       <ChangeStaffPassword />
     </>
+  );
+}
+
+/** Light, dark or follow the device. Saved to the account, so it follows the user to other devices. */
+function Appearance() {
+  const { pref, setPref } = useTheme();
+  const options: [ThemePref, string, string][] = [['light', 'Light', 'Bright surfaces; best in well-lit rooms and for printing.'], ['dark', 'Dark', 'Low-glare surfaces for long reviews and dim rooms.'], ['system', 'Match this device', 'Follows your operating system setting automatically.']];
+  return (
+    <Panel title="Appearance">
+      <fieldset className="choice-list" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+        <legend className="sr-only">Colour theme</legend>
+        {options.map(([v, label, hint]) => (
+          <label key={v} className="choice">
+            <input type="radio" name="ui-theme" value={v} checked={pref === v} onChange={() => setPref(v)} />
+            <span><strong>{label}</strong><span className="small muted" style={{ display: 'block' }}>{hint}</span></span>
+          </label>
+        ))}
+      </fieldset>
+    </Panel>
   );
 }
 

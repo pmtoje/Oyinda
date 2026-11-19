@@ -160,7 +160,7 @@ export function AccountTab({ id, status }: { id: string; status: string }) {
             <div className="metric"><div className="label">Approved</div><div className="value">{money(a.approvedMinor, a.currency, { compact: true })}</div><div className="sub">{a.tenorMonths} months at {pct(a.profitRatePct, 2)}</div></div>
             <div className="metric"><div className="label">Utilised</div><div className="value">{money(a.utilisedMinor, a.currency, { compact: true })}</div><div className="sub">Available {money(a.availableMinor, a.currency, { compact: true })}</div></div>
             <div className="metric"><div className="label">Outstanding</div><div className="value">{money(a.outstandingMinor, a.currency, { compact: true })}</div></div>
-            <div className={overdue ? 'metric alert' : 'metric'}><div className="label">Maturity</div><div className="value">{date(a.maturityDate)}</div><div className="sub">{overdue ? `${overdue} instalment(s) overdue` : `Review ${date(a.nextReviewDate)}`}</div></div>
+            <div className={overdue ? 'metric metric-alert' : 'metric'}><div className="label">Maturity</div><div className="value">{date(a.maturityDate)}</div><div className="sub">{overdue ? `${overdue} instalment(s) overdue` : `Review ${date(a.nextReviewDate)}`}</div></div>
           </div>
           <Panel title={<>Core banking <MockTag mode={a.cbaMode} /></>}><KV items={[['CBA reference', <span className="mono">{a.cbaReference}</span>], ['Status', <Status value={a.status} />], ['Start', date(a.startDate)]]} /></Panel>
           <ErrorAlert error={decide.error ?? resolve.error} />

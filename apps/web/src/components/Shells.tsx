@@ -1,3 +1,4 @@
+import { ThemeSwitch } from '../lib/theme';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -9,7 +10,7 @@ import { Loading } from './ui';
 export function Brand({ to = '/' }: { to?: string }) {
   return (
     <Link to={to} className="brand" aria-label="Gazelle by Alternative Bank — home">
-      <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden><rect width="32" height="32" rx="6" fill="#145040" /><path d="M9 23c3-1 5-4 6-8l2-6 1 5c1 4 3 7 6 9" fill="none" stroke="#C9A25E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden><rect width="32" height="32" rx="6" fill="var(--p-green-700)" /><path d="M9 23c3-1 5-4 6-8l2-6 1 5c1 4 3 7 6 9" fill="none" stroke="var(--p-brass-300)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
       <span><span className="brand-name">Gazelle</span><span className="brand-sub">Alternative Bank</span></span>
     </Link>
   );
@@ -53,8 +54,9 @@ export function PortalShell() {
       <header className="topbar">
         <Brand to="/portal" />
         <span className="spacer" />
+        <ThemeSwitch tone="chrome" />
         <Bell to="/portal/notifications" />
-        <div className="user"><strong>{me!.customer?.name}</strong>{me!.user?.name}</div>
+        <div className="user" title={`${me!.customer?.name ?? ''} — ${me!.user?.name ?? ''}`}><strong>{me!.customer?.name}</strong><span>{me!.user?.name}</span></div>
         <button className="icon-btn" onClick={async () => { await logout(); nav('/login'); }}>Sign out</button>
       </header>
       <nav className="portal-nav" aria-label="Portal"><div className="inner">{links.map(([to, l]) => <NavLink key={to} to={to} end={to === '/portal'} className={({ isActive }) => (isActive ? 'active' : '')}>{l}</NavLink>)}</div></nav>
@@ -85,8 +87,9 @@ export function WorkShell() {
         <button className="icon-btn nav-toggle" aria-expanded={open} aria-controls="sidebar" onClick={() => setOpen(!open)}>Menu</button>
         <Brand to="/work" />
         <span className="spacer" />
+        <ThemeSwitch tone="chrome" />
         <Bell to="/work/notifications" />
-        <div className="user"><strong>{me!.user.name}</strong>{roles.map(roleLabel).join(' · ')}</div>
+        <div className="user" title={`${me!.user.name} — ${roles.map(roleLabel).join(' · ')}`}><strong>{me!.user.name}</strong><span>{roles.map(roleLabel).join(' · ')}</span></div>
         <button className="icon-btn" onClick={async () => { await logout(); nav('/staff/login'); }}>Sign out</button>
       </header>
       <div className="work">
@@ -128,7 +131,7 @@ export function AuthLayout({ heading, text, children }: { heading: string; text:
           <div><h1>{heading}</h1><p>{text}</p></div>
           <div className="fine">Alternative Bank Limited is licensed by the Central Bank of Nigeria as a non-interest bank. Gazelle never asks for your PIN, password or one-time code by phone or email.</div>
         </aside>
-        <main className="auth-main" id="main"><div className="auth-card">{children}</div></main>
+        <main className="auth-main" id="main"><div className="auth-theme"><ThemeSwitch /></div><div className="auth-card">{children}</div></main>
       </div>
     </>
   );

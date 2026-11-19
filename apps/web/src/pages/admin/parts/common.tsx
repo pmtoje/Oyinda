@@ -168,11 +168,16 @@ export function NumberField({ label, value, onChange, hint, step, min, max, requ
 }
 
 /** Naira major-unit input bound to a minor-unit integer. */
+/** Naira amount input: thousands separators while reading, raw digits while typing; stored in kobo. Never truncates. */
 export function NairaField({ label, minor, onChange, hint }: { label: string; minor: number | undefined; onChange: (m: number | undefined) => void; hint?: string }) {
+  const [focused, setFocused] = useState(false);
+  const naira = minor === undefined || minor === null ? '' : minor / 100;
+  const shown = naira === '' ? '' : focused ? String(naira) : Number(naira).toLocaleString('en-NG', { maximumFractionDigits: 2 });
   return (
     <Field label={label} hint={hint}>{(id, d) => (
       <div className="input-affix"><span className="affix">₦</span>
-        <input id={id} aria-describedby={d} className="input" inputMode="decimal" value={minor === undefined ? '' : (minor / 100).toString()} onChange={(e) => { const t = e.target.value.replace(/[,\s₦]/g, ''); onChange(t === '' ? undefined : Number.isFinite(Number(t)) ? Math.round(Number(t) * 100) : minor); }} />
+        <input id={id} aria-describedby={d} className="input num-input" inputMode="decimal" value={shown} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+          onChange={(e) => { const t = e.target.value.replace(/[,\s₦]/g, ''); onChange(t === '' ? undefined : Number.isFinite(Number(t)) ? Math.round(Number(t) * 100) : minor); }} />
       </div>)}
     </Field>
   );

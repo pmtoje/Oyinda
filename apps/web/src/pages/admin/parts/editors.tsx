@@ -22,34 +22,44 @@ export function AuthorityEditor({ value, onChange }: P) {
   const set = (patch: any) => onChange({ ...value, ...patch });
   return (
     <>
-      <Section title="Approval levels" intro="Ordered from lowest to highest authority. The chain runs up to the first level whose limit covers the amount; lower levels recommend.">
-        <div className="table-wrap"><table className="data">
-          <thead><tr><th>#</th><th>Code / name</th><th>Type</th><th>Role or committee</th><th className="num">Limit</th><th className="num">Cash-backed limit</th><th>SLA policy</th><th /></tr></thead>
-          <tbody>{levels.map((l, i) => (
-            <tr key={i}>
-              <td>{i + 1}</td>
-              <td><input className="input" aria-label="Level code" value={l.code} onChange={(e) => set({ levels: upd(levels, i, { code: e.target.value.toUpperCase() }) })} /><input className="input" aria-label="Level name" style={{ marginTop: 4 }} value={l.name} onChange={(e) => set({ levels: upd(levels, i, { name: e.target.value }) })} /></td>
-              <td><select className="select" aria-label="Level type" value={l.kind} onChange={(e) => set({ levels: upd(levels, i, { kind: e.target.value }) })}><option value="INDIVIDUAL">Individual</option><option value="COMMITTEE">Committee</option></select></td>
-              <td>{l.kind === 'COMMITTEE'
-                ? <input className="input" aria-label="Committee key" value={l.committeeKey ?? ''} onChange={(e) => set({ levels: upd(levels, i, { committeeKey: e.target.value.toUpperCase(), role: undefined }) })} />
-                : <input className="input" aria-label="Role code" value={l.role ?? ''} onChange={(e) => set({ levels: upd(levels, i, { role: e.target.value.toUpperCase(), committeeKey: undefined }) })} />}</td>
-              <td className="num"><NairaField label="Limit" minor={l.limitMinor} onChange={(m) => set({ levels: upd(levels, i, { limitMinor: m ?? 0 }) })} hint={money(l.limitMinor, 'NGN', { compact: true })} /></td>
-              <td className="num"><NairaField label="Cash-backed" minor={l.cashBackedLimitMinor} onChange={(m) => set({ levels: upd(levels, i, { cashBackedLimitMinor: m }) })} /></td>
-              <td><input className="input" aria-label="SLA policy key" value={l.slaPolicyKey} onChange={(e) => set({ levels: upd(levels, i, { slaPolicyKey: e.target.value }) })} /></td>
-              <td><Button size="sm" variant="ghost" onClick={() => set({ levels: del(levels, i) })}>Remove</Button></td>
-            </tr>))}</tbody>
-        </table></div>
-        <div><Button size="sm" onClick={() => set({ levels: [...levels, { code: 'NEW_LEVEL', name: 'New level', kind: 'INDIVIDUAL', role: 'MD', limitMinor: 0, slaPolicyKey: 'APPROVAL_INDIVIDUAL', alwaysReview: false }] })}>Add level</Button></div>
+      <Section title="Approval levels" intro="Ordered from lowest to highest authority. A level joins the chain when the authority amount is above its “joins above” amount; the first level that may be final and whose limit covers the amount approves, and the levels before it recommend.">
+        {levels.map((l, i) => {
+          const u = (patch: any) => set({ levels: upd(levels, i, patch) });
+          const summary = [l.participatesAboveMinor ? `joins above ${money(l.participatesAboveMinor, 'NGN', { compact: true })}` : 'always takes part', l.canBeFinal === false ? 'concurs only' : `final up to ${money(l.limitMinor, 'NGN', { compact: true })}`, l.overrideOnly ? 'reached only by an override' : null].filter(Boolean).join(' · ');
+          return (
+            <div className="level-card" key={i}>
+              <div className="level-head"><span className="level-no">{i + 1}</span><span className="level-title">{l.name || l.code}</span><span className="level-summary">{summary}</span><span className="grow" /><Button size="sm" variant="ghost" onClick={() => set({ levels: del(levels, i) })}>Remove</Button></div>
+              <div className="level-grid">
+                <TextInput label="Code" value={l.code} onChange={(e) => u({ code: e.target.value.toUpperCase() })} />
+                <div className="span-2"><TextInput label="Name" value={l.name} onChange={(e) => u({ name: e.target.value })} /></div>
+                <SelectInput label="Type" value={l.kind} options={[{ value: 'INDIVIDUAL', label: 'Individual' }, { value: 'COMMITTEE', label: 'Committee' }]} onChange={(e) => u({ kind: e.target.value })} />
+                {l.kind === 'COMMITTEE'
+                  ? <TextInput label="Committee key" value={l.committeeKey ?? ''} onChange={(e) => u({ committeeKey: e.target.value.toUpperCase(), role: undefined })} />
+                  : <RoleSelect label="Role" value={l.role} onChange={(v) => u({ role: v, committeeKey: undefined })} />}
+                <NairaField label="Final authority up to" minor={l.limitMinor} onChange={(m) => u({ limitMinor: m ?? 0 })} hint={money(l.limitMinor, 'NGN', { compact: true })} />
+                <NairaField label="Joins the chain above" minor={l.participatesAboveMinor} onChange={(m) => u({ participatesAboveMinor: m })} hint="Empty = always takes part" />
+                <NairaField label="Cash-backed limit (optional)" minor={l.cashBackedLimitMinor} onChange={(m) => u({ cashBackedLimitMinor: m })} />
+                <TextInput label="SLA policy" value={l.slaPolicyKey} onChange={(e) => u({ slaPolicyKey: e.target.value })} />
+              </div>
+              <div className="row" style={{ marginTop: 10 }}>
+                <Check label="Can hold final authority" checked={l.canBeFinal !== false} onChange={(e) => u({ canBeFinal: e.target.checked })} />
+                <Check label="Reached only through an override (e.g. insider, PEP)" checked={!!l.overrideOnly} onChange={(e) => u({ overrideOnly: e.target.checked })} />
+              </div>
+            </div>
+          );
+        })}
+        <div><Button size="sm" onClick={() => set({ levels: [...levels, { code: 'NEW_LEVEL', name: 'New level', kind: 'INDIVIDUAL', role: 'MD', limitMinor: 0, slaPolicyKey: 'APPROVAL_INDIVIDUAL', alwaysReview: false, canBeFinal: true, overrideOnly: false }] })}>Add level</Button></div>
       </Section>
       <Section title="Routing overrides" intro="Special workflows (insider, PEP, SOL breach, pricing exception). A final level forces that authority; a minimum raises the final level when it is lower.">
         {overrides.map((o, i) => (
-          <div key={i} className="panel" style={{ padding: 12 }}>
-            <div className="grid cols-3">
+          <div key={i} className="panel auto-grid-host" style={{ padding: 12 }}>
+            <div className="auto-grid">
               <TextInput label="Code" value={o.code} onChange={(e) => set({ overrides: upd(overrides, i, { code: e.target.value.toUpperCase() }) })} />
               <SelectInput label="Final level (forced)" value={o.finalLevel ?? ''} placeholder="—" options={levels.map((l) => ({ value: l.code, label: l.name }))} onChange={(e) => set({ overrides: upd(overrides, i, { finalLevel: e.target.value || undefined }) })} />
               <SelectInput label="Minimum final level" value={o.minimumFinalLevel ?? ''} placeholder="—" options={levels.map((l) => ({ value: l.code, label: l.name }))} onChange={(e) => set({ overrides: upd(overrides, i, { minimumFinalLevel: e.target.value || undefined }) })} />
             </div>
             <TextArea label="Reason (shown in the route explanation)" rows={2} value={o.reason} onChange={(e) => set({ overrides: upd(overrides, i, { reason: e.target.value }) })} />
+            <Check label="Every level up to the final level takes part (full chain, regardless of amount)" checked={!!o.fullChain} onChange={(e) => set({ overrides: upd(overrides, i, { fullChain: e.target.checked }) })} />
             <div className="label small" style={{ margin: '8px 0 4px' }}>Applies when</div>
             <ConditionBuilder value={o.when ?? { always: true }} onChange={(c) => set({ overrides: upd(overrides, i, { when: c }) })} />
             <div className="row end" style={{ marginTop: 8 }}><Button size="sm" variant="danger" onClick={() => set({ overrides: del(overrides, i) })}>Remove override</Button></div>
@@ -187,8 +197,8 @@ export function EsTriggerEditor({ value, onChange }: P) {
       </Section>
       <Section title="Questionnaire">
         {qn.map((q, i) => (
-          <div key={i} className="panel" style={{ padding: 12 }}>
-            <div className="grid cols-3"><TextInput label="Code" value={q.code} onChange={(e) => set({ questionnaire: upd(qn, i, { code: e.target.value.toUpperCase() }) })} /><div style={{ gridColumn: 'span 2' }}><TextInput label="Question" value={q.text} onChange={(e) => set({ questionnaire: upd(qn, i, { text: e.target.value }) })} /></div></div>
+          <div key={i} className="panel auto-grid-host" style={{ padding: 12 }}>
+            <div className="auto-grid"><TextInput label="Code" value={q.code} onChange={(e) => set({ questionnaire: upd(qn, i, { code: e.target.value.toUpperCase() }) })} /><div style={{ gridColumn: 'span 2' }}><TextInput label="Question" value={q.text} onChange={(e) => set({ questionnaire: upd(qn, i, { text: e.target.value }) })} /></div></div>
             <table className="data" style={{ marginTop: 8 }}><thead><tr><th>Option code</th><th>Label</th><th>Weight</th><th /></tr></thead>
               <tbody>{q.options.map((o: any, j: number) => <tr key={j}>
                 <td><input className="input" aria-label="Option code" value={o.code} onChange={(e) => set({ questionnaire: upd(qn, i, { options: upd(q.options, j, { code: e.target.value.toUpperCase() }) }) })} /></td>

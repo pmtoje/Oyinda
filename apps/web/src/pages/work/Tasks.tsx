@@ -26,7 +26,7 @@ export default function Tasks() {
         <div className="grid cols-3" style={{ marginBottom: 16 }}>
           <div className="metric"><div className="label">Open</div><div className="value">{rows.length}</div></div>
           <div className={warning ? 'metric' : 'metric'}><div className="label">Approaching SLA</div><div className="value">{warning}</div></div>
-          <div className={breached ? 'metric alert' : 'metric'}><div className="label">SLA breached</div><div className="value">{breached}</div></div>
+          <div className={breached ? 'metric metric-alert' : 'metric'}><div className="label">SLA breached</div><div className="value">{breached}</div></div>
         </div>)}
       <Panel flush>
         {q.isLoading ? <Loading /> : q.error ? <ErrorAlert error={q.error} /> : !rows.length ? <Empty title={scope === 'mine' ? 'No tasks with you' : scope === 'queue' ? 'The queue is clear' : 'Nothing completed yet'}>{scope === 'mine' ? 'New tasks appear here and in your notifications.' : undefined}</Empty> : (
