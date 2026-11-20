@@ -135,7 +135,7 @@ export default function Application() {
           {step === 'FINANCIALS' && <FinancialsStep customerId={f.customerId} />}
           {step === 'BANK_STATEMENTS' && <BankStatementsStep facilityId={f.id} />}
           {step === 'DOCUMENTS' && <DocumentList docs={d.documents} onChange={() => qc.invalidateQueries({ queryKey: ['facility', id] })} attentionKeys={openRework.map((r: any) => r.targetRef).filter(Boolean)} />}
-          {step === 'REVIEW' && <Review d={d} v={v} emailVerified={!!me?.user?.emailVerified} rowVersion={rowVersion} flush={() => (dirty ? patch() : Promise.resolve())} onSubmitted={() => nav(`/portal/facilities/${id}`)} reload={() => qc.invalidateQueries({ queryKey: ['facility', id] })} />}
+          {step === 'REVIEW' && <Review d={d} v={v} emailVerified={!!me?.user?.emailVerified} rowVersion={rowVersion} flush={() => (dirty ? patch() : Promise.resolve())} onSubmitted={async () => { await Promise.all([qc.invalidateQueries({ queryKey: ['facility', id] }), qc.invalidateQueries({ queryKey: ['facilities'] })]); nav(`/portal/facilities/${id}`); }} reload={() => qc.invalidateQueries({ queryKey: ['facility', id] })} />}
         </Panel>
         <aside className="action-rail">
           <Panel title="Your request">
