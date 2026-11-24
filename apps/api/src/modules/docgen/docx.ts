@@ -1,15 +1,17 @@
-import { AlignmentType, BorderStyle, Document, Footer, Header, HeadingLevel, Packer, PageNumber, Paragraph, Table, TableCell, TableRow, TextRun, WidthType, ShadingType } from 'docx';
+import { readFileSync } from 'node:fs';
+import { AlignmentType, ImageRun, BorderStyle, Document, Footer, Header, HeadingLevel, Packer, PageNumber, Paragraph, Table, TableCell, TableRow, TextRun, WidthType, ShadingType } from 'docx';
 
 export interface DocSection { heading: string; paragraphs?: string[]; table?: { headers: string[]; rows: (string | number | null)[][] }; bullets?: string[] }
 
-/** Credit360 document palette: charcoal type and table heads; gold only on the "360" of the header. Print-safe. */
-const BRAND = '16181D';
-const GOLD = 'B88600';
+/** Credit360 document palette: charcoal type and table heads (the logo's #1E1B1E); print-safe in any theme. */
+const BRAND = '1E1B1E';
+/** Compact Credit360 lockup, rendered from the logo system's SVG (docs/brand/README.md). */
+const LOGO = readFileSync(new URL('../../../assets/brand/credit360-compact.png', import.meta.url));
 
 /** Render a structured document to .docx (Credit Risk requires Word format for memos and term sheets). */
 export async function renderDocx(opts: { title: string; subtitle?: string; reference: string; classification: string; sections: DocSection[]; footerNote?: string }): Promise<Buffer> {
   const children: (Paragraph | Table)[] = [
-    new Paragraph({ children: [new TextRun({ text: 'Credit', color: BRAND, size: 22, bold: true }), new TextRun({ text: '360', color: GOLD, size: 22, bold: true }), new TextRun({ text: '  by AltBank', color: '555555', size: 16 })] }),
+    new Paragraph({ spacing: { after: 160 }, children: [new ImageRun({ type: 'png', data: LOGO, transformation: { width: 150, height: 35 }, altText: { name: 'Credit360 by AltBank', title: 'Credit360 by AltBank', description: 'Credit360 by AltBank logo' } })] }),
     new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun({ text: opts.title, color: BRAND })] }),
   ];
   if (opts.subtitle) children.push(new Paragraph({ children: [new TextRun({ text: opts.subtitle, size: 22, color: '555555' })] }));

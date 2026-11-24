@@ -44,15 +44,17 @@ a:hover { color: var(--link-hover); }
 .topbar { --chrome-text: var(--header-text); --chrome-text-2: var(--header-text-2); --chrome-line: var(--header-line); border-bottom: 1px solid var(--header-line); height: 60px; background: var(--header-bg); color: var(--header-text); display: flex; align-items: center; padding: 0 20px; gap: 16px; position: sticky; top: 0; z-index: 20; }
 .topbar a, .topbar button { color: var(--chrome-text); }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--chrome-text); text-decoration: none; }
-/* Credit360 wordmark (typographic lockup; the C-and-orbit symbol is added from the supplied logo file). */
-.wordmark { display: inline-flex; flex-direction: column; line-height: 1; font-family: var(--font-display); }
-.wordmark .wm-main { font-weight: var(--fw-heavy); font-size: 1.3rem; letter-spacing: -0.03em; white-space: nowrap; }
-.wordmark .wm-credit { color: var(--wordmark-credit); }
-.wordmark .wm-360 { color: var(--wordmark-360); }
-.wordmark .wm-sub { font-weight: var(--fw-semibold); font-size: 0.6875rem; color: var(--wordmark-sub); margin-top: 3px; letter-spacing: 0.01em; }
-.wordmark.lg .wm-main { font-size: 2rem; }
-.wordmark.lg .wm-sub { font-size: 0.875rem; margin-top: 5px; }
-.auth-aside { --wordmark-credit: var(--chrome-text); --wordmark-sub: var(--chrome-text-2); }
+/* Credit360 logo. Heights keep the lockup's own proportions; clear space comes from the surrounding padding. */
+.logo { display: block; height: 100%; width: auto; }
+.logo-pair { display: block; }
+.logo-compact { height: 36px; }
+.logo-primary { height: 64px; }
+@media (max-width: 640px) { .logo-compact { height: 30px; } .logo-primary { height: 52px; } }
+.logo-symbol { display: none; height: 32px; }
+@media (max-width: 420px) { .topbar .logo-full { display: none; } .topbar .logo-symbol { display: block; } }
+.logo-pair .logo-dark { display: none; }
+[data-theme='dark'] .logo-pair .logo-light { display: none; }
+[data-theme='dark'] .logo-pair .logo-dark { display: block; }
 .topbar .spacer { flex: 1; }
 .topbar .user { font-size: var(--fs-sm); color: var(--chrome-text-2); text-align: right; line-height: 1.25; min-width: 0; max-width: 34ch; }
 .topbar .user > * { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

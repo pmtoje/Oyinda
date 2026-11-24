@@ -2,10 +2,8 @@
  * Credit360 by AltBank — design tokens.
  *
  * Three layers:
- *   1. Palette  — raw brand values: deep charcoal, warm golden yellow, cream and warm neutrals.
- *                 PROVISIONAL: derived from the Credit360 brand description (charcoal "Credit", golden "360",
- *                 cream supporting surfaces) pending (a) the supplied logo file and (b) reconciliation with
- *                 AltBank's approved corporate colour codes. Not certified corporate hex values. Replacing the
+ *   1. Palette  — raw brand values MEASURED from the supplied Credit360 logo system (charcoal, gold, cream);
+ *                 still to be reconciled with AltBank's certified corporate colour codes (decision C-01). Replacing the
  *                 palette here re-themes the whole product. See docs/credit360-gap-analysis.md §Brand.
  *   2. Semantic — what a colour is FOR (text, surface, border, action, status…), defined per theme.
  *   3. Aliases  — older scale names (--ink-900, --brand-700…) mapped onto semantic roles.
@@ -15,16 +13,17 @@
 
 /* ---------- 1. Palette (shared by both themes) ---------- */
 :root {
-  /* Charcoal — "Credit" in the wordmark, primary type and dark surfaces */
-  --p-char-1000: #0b0c0f; --p-char-950: #111317; --p-char-900: #16181d; --p-char-850: #1a1d23; --p-char-800: #20242b;
-  --p-char-750: #262a32; --p-char-700: #2e333c; --p-char-600: #3a3f49; --p-char-500: #4b515c;
-  /* Warm gold — "360" and the orbit; warm and modern, not metallic */
-  --p-gold-200: #ffe7a3; --p-gold-300: #ffd66b; --p-gold-400: #ffc93c; --p-gold-500: #f5b700; --p-gold-600: #e0a500;
-  --p-gold-700: #a87700; --p-gold-800: #8a5f00; --p-gold-900: #6b4a00;
-  /* Cream and warm neutrals — supporting surfaces, borders and secondary text */
-  --p-cream-50: #fffdf8; --p-cream-100: #fffaf0; --p-cream-200: #fbf4e4; --p-cream-300: #f4ecda;
-  --p-warm-50: #faf9f6; --p-warm-100: #f3f1ec; --p-warm-150: #e9e5dc; --p-warm-200: #d9d3c6; --p-warm-300: #b5afa3;
-  --p-warm-400: #8f8a80; --p-warm-500: #6a6f78; --p-warm-600: #555b66; --p-warm-700: #3c414b;
+  /* Charcoal — measured from the logo: "Credit" #1E1B1E, app-icon field #221F22 (a warm near-black) */
+  --p-char-1000: #0e0c0e; --p-char-950: #151315; --p-char-900: #1e1b1e; --p-char-850: #221f22; --p-char-800: #29262a;
+  --p-char-750: #302d31; --p-char-700: #38353a; --p-char-600: #46434a; --p-char-500: #5a565e;
+  /* Gold — measured: orbit and sparkle #FDB205; the "360" runs #F6A50B → #EC9C05 */
+  --p-gold-200: #ffe7a3; --p-gold-300: #ffd66b; --p-gold-400: #ffc53a; --p-gold-500: #fdb205; --p-gold-600: #ec9c05;
+  --p-gold-700: #a87400; --p-gold-800: #8a5e00; --p-gold-900: #6b4800;
+  --p-gold-360-top: #f6a50b; --p-gold-360-bottom: #ec9c05;
+  /* Cream and warm neutrals — measured page #FCF8F3 and peach accent #FDECD8 from the logo sheet */
+  --p-cream-50: #fffdf9; --p-cream-100: #fcf8f3; --p-cream-200: #f8f0e4; --p-cream-300: #f3e7d6; --p-peach-100: #fdecd8;
+  --p-warm-50: #fcf8f3; --p-warm-100: #f4efe8; --p-warm-150: #e8e2d8; --p-warm-200: #d8d1c4; --p-warm-300: #b5aea2;
+  --p-warm-400: #8f897f; --p-warm-500: #6a656c; --p-warm-600: #57525a; --p-warm-700: #3e3a40;
   --p-white: #ffffff;
 
   /* Plus Jakarta Sans: rounded, softly geometric, matches the friendly rounded wordmark (SIL OFL 1.1, self-hosted). */
@@ -78,13 +77,10 @@
   --header-text: var(--p-char-900);
   --header-text-2: var(--p-warm-600);
   --header-line: var(--p-warm-150);
-  --wordmark-credit: var(--p-char-900);
-  --wordmark-360: var(--p-gold-500);
-  --wordmark-sub: var(--p-warm-600);
-  --focus-ring: rgba(245, 183, 0, 0.55);
+  --focus-ring: rgba(253, 178, 5, 0.55);
   --overlay: rgba(17, 19, 23, 0.45);
   --skeleton-hi: var(--p-cream-100);
-  --shadow-color: 22, 24, 29;
+  --shadow-color: 30, 27, 30;
 
   /* Status — the same meaning always has the same treatment. Warning is orange (not gold) so it never reads as brand. */
   --ok-text: #11573b;     --ok: #15803d;     --ok-bg: #e5f4ea;     --ok-border: #b9dfc6;
@@ -103,24 +99,24 @@
   color-scheme: dark;
   --bg: var(--p-char-950);
   --bg-sunken: var(--p-char-1000);
-  --surface: var(--p-char-850);
-  --surface-raised: var(--p-char-800);
-  --surface-muted: #181b21;
-  --surface-hover: #242830;
-  --surface-selected: #332c14;
-  --text: #f4f1ea;
+  --surface: var(--p-char-900);
+  --surface-raised: var(--p-char-850);
+  --surface-muted: #1a181a;
+  --surface-hover: #2a272b;
+  --surface-selected: #3a3016;
+  --text: #f7f3ec;
   --text-2: #d6d1c7;
   --text-3: #aca79d;
   --text-4: #94908a;
   --text-disabled: #5d5f64;
-  --border: #2b2f37;
-  --border-strong: #3b404a;
+  --border: #322e33;
+  --border-strong: #433f45;
   --link: var(--p-gold-300);
   --link-hover: var(--p-gold-200);
   --brand-text: var(--p-gold-300);
   --accent: var(--p-gold-500);
   --accent-text: var(--p-gold-300);
-  --accent-bg: #2f2710;
+  --accent-bg: #33290f;
   --action: var(--p-gold-500);
   --action-hover: var(--p-gold-400);
   --action-text: var(--p-char-900);
@@ -129,25 +125,22 @@
   --chrome-text-2: #c5c0b6;
   --chrome-text-3: #99948b;
   --chrome-line: rgba(255, 255, 255, 0.12);
-  --header-bg: #14161b;
+  --header-bg: #191719;
   --header-text: #f4f1ea;
   --header-text-2: #b3aea5;
-  --header-line: #262a31;
-  --wordmark-credit: #f4f1ea;
-  --wordmark-360: var(--p-gold-500);
-  --wordmark-sub: #b3aea5;
+  --header-line: #2c292d;
   --focus-ring: rgba(255, 201, 60, 0.6);
   --overlay: rgba(0, 0, 0, 0.6);
-  --skeleton-hi: #22262d;
+  --skeleton-hi: #2a272b;
   --shadow-color: 0, 0, 0;
 
   --ok-text: #a7e1bd;     --ok: #4cc27a;     --ok-bg: #13291d;     --ok-border: #22513a;
   --warn-text: #fbc79a;   --warn: #f79a4b;   --warn-bg: #2f1d0f;   --warn-border: #5c3a1d;
   --danger-text: #f6b6b0; --danger: #ef7f76; --danger-bg: #351816; --danger-border: #5f2a26;
   --info-text: #b7d0f2;   --info: #7eaee9;   --info-bg: #14233a;   --info-border: #2a4568;
-  --neutral-text: #d6d1c7; --neutral-bg: #23272e; --neutral-border: #3b404a;
+  --neutral-text: #d6d1c7; --neutral-bg: #2a272b; --neutral-border: #433f45;
 
-  --chart-1: #d6d1c7; --chart-2: var(--p-gold-500); --chart-3: #7eaee9; --chart-4: #c79bbd; --chart-5: #7fc694; --chart-grid: #2b2f37;
+  --chart-1: #d6d1c7; --chart-2: var(--p-gold-500); --chart-3: #7eaee9; --chart-4: #c79bbd; --chart-5: #7fc694; --chart-grid: #322e33;
 }
 
 /* ---------- 3. Aliases (legacy scale names → semantic roles) ---------- */

@@ -22,8 +22,8 @@ The repository already holds a working, tested platform, built as "Gazelle". Per
 | Prompt part | Status | Notes / remaining work |
 | --- | --- | --- |
 | I §1 Product identity | **Built** | Every customer- and staff-visible name, e-mail, SMS, authenticator label, Word document and browser title is now *Credit360 by AltBank* (single source: `packages/shared/src/brand.ts`). Kept for compatibility (not customer-visible as a name): package names `@gazelle/*`, cookie `gz_session`, storage key `gz-theme`, historical migrations. See decision C-03 for reference prefixes. |
-| I §2 Logo | **Blocked** | The logo image referred to in the prompt was **not received**. The prompt forbids inventing a mark, so the product uses a *typographic* lockup that follows the described characteristics ("Credit" charcoal, "360" gold, "by AltBank" beneath) and a clearly marked **provisional** icon (`apps/web/public/credit360-icon.svg`: a bold rounded C in gold on charcoal, without the orbit or sparkle). On receipt of the file: retain the original, reconstruct SVG variants (horizontal, compact, light, dark, icon-only), favicon and app icons, then replace the `Wordmark` component and the provisional icon. |
-| I §3 Brand compliance | **Partial** | Palette, typography and radii re-tokenised (charcoal, warm gold, cream, warm neutrals). Values are **provisional** (derived from the brand description) and need reconciliation with AltBank's approved corporate codes and the logo file (decision C-01). |
+| I §2 Logo | **Built** | Logo sheet received 24-Nov-2026 and kept as reference (`docs/brand/reference/`). SVGs traced from the artwork itself: primary, compact, symbol and app icon, each with dark-background variants, plus favicon, Apple touch icon, manifest icons and a PNG for Word documents. Used in every header (symbol alone below 420 px), the sign-in panels and generated documents. Interpretation notes and usage rules are in `docs/brand/README.md`. A designer's master vector file should replace the traced SVGs when available. |
+| I §3 Brand compliance | **Partial** | Palette now **measured from the logo** (charcoal `#1E1B1E`, gold `#FDB205`, "360" `#F6A50B`→`#EC9C05`, cream `#FCF8F3`). Still to reconcile with AltBank's certified corporate codes (C-01). |
 | II §4–6 Design, personality, typography | **Partial** | Plus Jakarta Sans (SIL OFL 1.1, self-hosted, no third-party requests) with a weight scale; rounded radii; gold reserved for primary actions, the active item and the "360". Customer dashboard now leads with *Welcome back* / *Your financing journey*. Further refinement in Phase 18 (design review), with the logo in hand. |
 | II §7 Light and dark | **Built** | Both themes are re-designed on the new palette (light header keeps the charcoal wordmark; dark is deep charcoal, not inverted); system preference, persistence per account, applied before first paint; print and Word documents are theme-independent. |
 | II §8 Zero overlap | **Built** | Automated collision, clipping, overflow and panel-escape checks on every major screen in both themes at **1920, 1440, 1280, 1024, 768, 390, 375 and 320 px**. Browser zoom is covered by width: 200% zoom at 1280 px lays out as 640 CSS px, and 400% as 320 px (WCAG 1.4.10 reflow). Data includes ₦25,000,000,000.50, ₦987bn and very long names. Fixes from extending to phones: grid and flex children may shrink, form controls are capped to their column, label/value lists stack under 420 px, long authority-level names wrap, panel headers wrap. |
@@ -54,7 +54,7 @@ The repository already holds a working, tested platform, built as "Gazelle". Per
 | # | Decision | Interim position |
 | --- | --- | --- |
 | C-01 | Approved AltBank colour codes and typeface licence for Credit360 | Provisional palette in `tokens.css`; Plus Jakarta Sans (OFL, free for commercial use). |
-| C-02 | The official Credit360 logo file (all variants) | Typographic lockup + provisional icon, clearly marked; no invented symbol. |
+| C-02 | The official Credit360 logo file (all variants) | **Received** (raster sheet); traced SVG set in use. Master vector file still wanted for exact fidelity. |
 | C-03 | Reference prefixes customers see (`GZ-CUS-…`, `GZ-FAC-…`) | Kept unchanged so existing records, documents and audit history stay consistent. Changing them needs a decision (e.g. `C360-` for new records only). |
 | C-04 | Identity verification providers for BVN and NIN, lawful basis and consent wording, retention of verification results | Sandbox adapter only; never reported as a live check. |
 | C-05 | BVN/NIN discrepancy policy: who may clear a discrepancy, and whether a cleared discrepancy can proceed to submission | Two-person review (maker-checker) with reasons; submission blocked until verified or cleared. |
@@ -76,7 +76,7 @@ The repository already holds a working, tested platform, built as "Gazelle". Per
 
 1. **Done this phase:** identity rename, provisional brand tokens, typography, light/dark on the new palette, document template, table overflow hardening, customer dashboard hierarchy.
 2. **Done — Phase 4: promoter BVN/NIN verification** (§13), with a sandbox provider until live contracts are in place.
-3. Phase 2 completion on receipt of the logo: SVG variants, icons, component catalogue, design review.
+3. **Done:** logo system from the supplied sheet. Remaining Phase 2: component catalogue page and a design review with the brand team.
 4. **Done:** visual checks at all eight §49 widths (zoom covered by width). Remaining: open drawers and modals as visual states.
 5. Phase 12 / 6 polish: drag-and-drop uploads with previews; executive dashboard breakdowns (§36).
 6. Live integrations as the Bank supplies contracts and credentials (CAC, tax, BVN, NIN, bureau, statements, AD).

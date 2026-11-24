@@ -8,18 +8,31 @@ import { roleLabel } from '../lib/format';
 import { useAuth } from '../lib/auth';
 import { Loading } from './ui';
 
-/** Credit360 wordmark: "Credit" charcoal, "360" gold, "by AltBank" beneath. Typographic until the logo artwork is supplied. */
-export function Wordmark({ size }: { size?: 'lg' }) {
+/**
+ * Credit360 logo, from the approved logo system (traced to SVG from the supplied artwork; see docs/brand/README.md).
+ * Light surfaces use the charcoal lockup; dark surfaces the warm-white variant. Both are present and CSS shows the
+ * one matching the theme, so switching never flashes. The link carries the accessible name.
+ */
+export function Wordmark({ size, surface }: { size?: 'lg'; surface?: 'dark' }) {
+  const kind = size === 'lg' ? 'primary' : 'compact';
+  if (surface === 'dark') return <img className={`logo logo-${kind}`} src={`/brand/credit360-${kind}-on-dark.svg`} alt="" />;
   return (
-    <span className={size === 'lg' ? 'wordmark lg' : 'wordmark'} aria-hidden>
-      <span className="wm-main"><span className="wm-credit">Credit</span><span className="wm-360">360</span></span>
-      <span className="wm-sub">by AltBank</span>
-    </span>
+    <>
+      <span className={`logo-pair logo-${kind} logo-full`}>
+        <img className="logo logo-light" src={`/brand/credit360-${kind}.svg`} alt="" />
+        <img className="logo logo-dark" src={`/brand/credit360-${kind}-on-dark.svg`} alt="" />
+      </span>
+      {/* Narrow headers show the symbol alone (the C, orbit and sparkle), still recognisable at small sizes. */}
+      {kind === 'compact' && <span className="logo-pair logo-symbol">
+        <img className="logo logo-light" src="/brand/credit360-symbol.svg" alt="" />
+        <img className="logo logo-dark" src="/brand/credit360-symbol-on-dark.svg" alt="" />
+      </span>}
+    </>
   );
 }
 
-export function Brand({ to = '/', size }: { to?: string; size?: 'lg' }) {
-  return <Link to={to} className="brand" aria-label="Credit360 by AltBank — home"><Wordmark size={size} /></Link>;
+export function Brand({ to = '/', size, surface }: { to?: string; size?: 'lg'; surface?: 'dark' }) {
+  return <Link to={to} className="brand" aria-label="Credit360 by AltBank — home"><Wordmark size={size} surface={surface} /></Link>;
 }
 
 /** Persistent, honest indicator that integrations are mocked (never disguise mock data as live). */
@@ -136,7 +149,7 @@ export function AuthLayout({ heading, text, children }: { heading: string; text:
       <ModeBanner />
       <div className="auth-wrap">
         <aside className="auth-aside">
-          <Brand size="lg" />
+          <Brand size="lg" surface="dark" />
           <div><h1>{heading}</h1><p>{text}</p></div>
           <div className="fine">The Alternative Bank Limited is licensed by the Central Bank of Nigeria as a non-interest bank. Credit360 never asks for your PIN, password or one-time code by phone or email.</div>
         </aside>

@@ -126,8 +126,7 @@ async function audit(page: Page, name: string, theme: string, opts: { axe?: bool
   expect.soft(found, `${name} (${theme}) layout defects`).toEqual({});
   if (opts.axe !== false) {
     const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).exclude('.mode-banner')
-      // WCAG 1.4.3 exempts logotypes from contrast requirements; the brand gold is never used for ordinary text.
-      .exclude('.wordmark').analyze();
+.analyze(); // the logo is artwork (SVG images in a labelled link); the brand gold is never used for ordinary text
     const serious = r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.help} — ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(' | ')}`);
     expect.soft(serious, `${name} (${theme}) accessibility`).toEqual([]);
   }
