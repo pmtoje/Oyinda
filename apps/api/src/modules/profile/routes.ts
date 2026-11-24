@@ -6,7 +6,6 @@ import { actorOf, ok, parse } from '../../http/context.js';
 import { encryptField, hmac } from '../../lib/crypto.js';
 import { notFound, unprocessable } from '../../lib/errors.js';
 import { maskBvn } from '../../lib/mask.js';
-import { integrations } from '../../integrations/index.js';
 import { audit } from '../audit/audit.js';
 import { resolveCustomer } from '../facilities/access.js';
 
@@ -149,11 +148,8 @@ export async function profileRoutes(app: FastifyInstance) {
     const cid = await resolveCustomer(db, req, parse(idParam, req.params).customerId, true);
     const b = parse(partySchema, req.body);
     const actor = actorOf(req);
-    if (b.bvn) {
-      const v = await integrations().identity.verifyBvn(b.bvn, b.fullName);
-      if (!v.valid) throw unprocessable('BVN_INVALID', 'The BVN could not be verified. Check the number and try again.');
-      if (v.nameMatch === 'MISMATCH') throw unprocessable('BVN_NAME_MISMATCH', 'The name does not match the BVN record.');
-    }
+    // Structure only here; identity is verified through the promoter verification step (consent, BVN + NIN, review).
+    if (b.bvn && /^(\d)\1{10}$/.test(b.bvn)) throw unprocessable('BVN_INVALID', 'Enter a valid 11-digit BVN.');
     const row = await tx(async (c) => {
       if (b.bvn && (await maybe(c, 'SELECT 1 FROM business_party WHERE customer_id=$1 AND bvn_hash=$2 AND party_type=$3 AND deleted_at IS NULL', [cid, hmac(b.bvn, 'bvn'), b.partyType]))) throw unprocessable('DUPLICATE_PARTY', 'This person is already recorded in this capacity.');
       const r = await one<any>(c, `INSERT INTO business_party(customer_id, party_type, entity_kind, full_name, designation, ownership_pct, nationality, bvn_enc, bvn_hash, bvn_last4, is_pep, pep_details, is_insider, insider_relationship, years_experience)

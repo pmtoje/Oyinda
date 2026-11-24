@@ -31,7 +31,7 @@ The repository already holds a working, tested platform, built as "Gazelle". Per
 | III §10 Five experiences | **Built** | Customer portal, RM/business review, credit & risk workspace, post-approval workspace, admin control centre — separate navigation and permissions on one platform. |
 | IV §11 Registration/login | **Built** | Customer password + OTP; staff directory or interim password + TOTP; step-up re-entry of password for sensitive customer actions; configurable session timeout. |
 | IV §12 Business onboarding | **Partial** | Core-banking verified details, profile, parties (directors, shareholders, key executives), ownership checks. Gaps: CAC / tax registry verification adapters (provenance is already separated: "on the Bank's records" vs entered). |
-| **IV §13 Promoter BVN + NIN verification** | **Gap → in progress** | Only a BVN *field* exists today (encrypted, masked). Needed: a controlled verification subsystem — "Verify your identity" step, BVN *and* NIN with consent, provider adapters (sandbox, honest states), comparison with bank records, explicit states, discrepancy review and escalation, masking/encryption/rate limiting/audit, submission gate. **Next phase (task #20).** |
+| **IV §13 Promoter BVN + NIN verification** | **Built (sandbox provider)** | Verify-your-identity step (opens first when anyone is unverified) and a profile section; BVN + NIN + date of birth with versioned consent; server-side checks against the entered details, the other record and the Bank's record; all seven explicit states; one card per person, with checks reused across their capacities; duplicate prevention; daily limit; results go stale when details change; KYC review queue with a two-person rule and audited record reveal; submission gate; masking and encryption. Live BVN/NIN providers await contracts (C-04); discrepancy policy to confirm (C-05). |
 | IV §14 Eligibility / FIPG | **Built** | Configurable rule engine with maker-checker; outcomes explained; no policy in UI code. |
 | IV §15 Application journey | **Built** | Stage navigator adapted by product; summary before submission; customer- and RM-initiated. Promoter verification will become a stage once §13 is built. |
 | V §16 Non-interest product engine | **Built** | Murabaha, Ijarah, Istisna, Salam, Qard, Musharaka, Mudaraba, Wakalah Bil Istithmar, Kafalah guarantees, investment structures — each with its own fields, Shariah structure, limits, pricing basis (profit rate or fee), documents, conditions. All templates require Bank Legal / Risk / Shariah sign-off before production (C-06). |
@@ -75,7 +75,7 @@ The repository already holds a working, tested platform, built as "Gazelle". Per
 ## 5. Roadmap (dependency order)
 
 1. **Done this phase:** identity rename, provisional brand tokens, typography, light/dark on the new palette, document template, table overflow hardening, customer dashboard hierarchy.
-2. **Next — Phase 4: promoter BVN/NIN verification** (largest functional gap; §13).
+2. **Done — Phase 4: promoter BVN/NIN verification** (§13), with a sandbox provider until live contracts are in place.
 3. Phase 2 completion on receipt of the logo: SVG variants, icons, component catalogue, design review.
 4. Visual regression extension: 320 / 375 / 1920 px, 200% zoom, the §8 value set, open drawers and modals.
 5. Phase 12 / 6 polish: drag-and-drop uploads with previews; executive dashboard breakdowns (§36).

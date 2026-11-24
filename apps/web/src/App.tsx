@@ -43,6 +43,7 @@ export default function App() {
         <Route path="reports/drop-off" element={L(() => import('./pages/work/DropOff'))} />
         <Route path="reports/exports" element={L(() => import('./pages/work/Exports'))} />
         <Route path="delegations" element={L(() => import('./pages/work/Delegations'))} />
+        <Route path="identity-reviews" element={L(() => import('./pages/work/IdentityReviews'))} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="security" element={<SessionsPage />} />
       </Route>

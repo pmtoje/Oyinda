@@ -1,10 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { Db } from '../db/pool.js';
 import { q } from '../db/pool.js';
-import { DEMO_CBA_CUSTOMERS, DEMO_EXPOSURE } from './mock-data.js';
+import { DEMO_CBA_CUSTOMERS, DEMO_CBA_PEOPLE, DEMO_EXPOSURE, SANDBOX_IDENTITIES, SANDBOX_UNAVAILABLE } from './mock-data.js';
 import type {
   AntivirusAdapter, BureauAdapter, CoreBankingAdapter, DirectoryAdapter, IdentityAdapter, MessagingAdapter, RaroracAdapter,
 } from './types.js';
+import { IntegrationError } from './types.js';
 
 /** Deterministic pseudo-random from a seed so mock outputs are stable and testable. */
 const seeded = (seed: string) => parseInt(createHash('sha256').update(seed).digest('hex').slice(0, 8), 16) / 0xffffffff;
@@ -12,6 +13,10 @@ const seeded = (seed: string) => parseInt(createHash('sha256').update(seed).dige
 export class MockCoreBanking implements CoreBankingAdapter {
   mode = 'MOCK' as const;
   private bookings = new Map<string, string>();
+  async findPersonByBvn(bvn: string) {
+    const p = DEMO_CBA_PEOPLE.find((x) => x.bvn === bvn);
+    return p ? { cbaCustomerId: p.cbaCustomerId, fullName: p.fullName, dateOfBirth: p.dateOfBirth } : null;
+  }
   async findByAccountNumber(accountNumber: string) {
     return DEMO_CBA_CUSTOMERS.find((c) => c.accounts.some((a) => a.accountNumber === accountNumber)) ?? null;
   }
@@ -117,13 +122,22 @@ export class MockBureau implements BureauAdapter {
   }
 }
 
+/**
+ * SANDBOX identity provider (non-production only; production refuses to start with it). Answers from a small
+ * registry of synthetic identities so every outcome can be exercised. Results are recorded as SANDBOX and are
+ * never presented as a live BVN/NIN check.
+ */
 export class MockIdentity implements IdentityAdapter {
   mode = 'MOCK' as const;
-  async verifyBvn(bvn: string, _fullName: string) {
-    // Structural validation only in mock mode; '00000000000'-style values are rejected.
-    const valid = /^[0-9]{11}$/.test(bvn) && !/^(\d)\1{10}$/.test(bvn);
-    return { valid, nameMatch: valid ? ('UNKNOWN' as const) : ('MISMATCH' as const) };
+  provider = 'Credit360 identity sandbox';
+  private lookup(kind: 'bvn' | 'nin', value: string) {
+    if (value === SANDBOX_UNAVAILABLE[kind]) throw new IntegrationError('Identity', `${kind.toUpperCase()} provider unavailable (sandbox outage simulation)`, true);
+    const hit = SANDBOX_IDENTITIES.find((p) => p[kind] === value);
+    const providerRef = `SBX-${kind.toUpperCase()}-${createHash('sha256').update(value).digest('hex').slice(0, 10).toUpperCase()}`;
+    return hit ? { found: true, record: { fullName: hit.fullName, dateOfBirth: hit.dateOfBirth }, providerRef } : { found: false, providerRef };
   }
+  async lookupBvn(bvn: string) { return this.lookup('bvn', bvn); }
+  async lookupNin(nin: string) { return this.lookup('nin', nin); }
 }
 
 /**

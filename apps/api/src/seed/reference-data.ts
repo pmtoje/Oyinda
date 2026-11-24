@@ -18,6 +18,7 @@ export const BUSINESS_UNITS = [
   { code: 'KAN-COMM-1', name: 'Kano Commercial 1', directorate: 'COMM' },
   { code: 'CREDIT-RISK', name: 'Credit Risk Management', directorate: 'RISK' },
   { code: 'CREDIT-OPS', name: 'Credit Operations', directorate: 'OPS' },
+  { code: 'KYC-COMP', name: 'KYC & Compliance', directorate: 'RISK' },
   { code: 'LEGAL-SERV', name: 'Legal Services', directorate: 'LEGAL' },
   { code: 'SHARIAH-COMP', name: 'Shariah Compliance', directorate: 'SHARIAH' },
   { code: 'EXECUTIVE', name: 'Executive Office', directorate: 'EXEC' },

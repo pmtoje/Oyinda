@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { abcClient, act, Client, completeAbcProfile, db, draftMurabaha, getApp, performCreditAnalysis, staffLogin, uploadAllRequired } from './helpers.js';
+import { abcClient, act, Client, completeAbcProfile, db, draftMurabaha, getApp, performCreditAnalysis, staffLogin, uploadAllRequired, verifyPromoters } from './helpers.js';
 import { q } from '../src/db/pool.js';
 
 /**
@@ -55,6 +55,7 @@ async function declareParty(body: Record<string, unknown>) {
   const r = await abc.post(`/api/customers/${customerId}/parties`, body);
   expect(r.status, JSON.stringify(r.body)).toBe(201);
   addedParties.push(r.body.data.id);
+  await verifyPromoters(abc, customerId); // a new director must have their BVN and NIN verified before submission
   return r.body.data.id as string;
 }
 async function removeParty(id: string) {
@@ -65,8 +66,8 @@ async function removeParty(id: string) {
 describe('master prompt scenarios through the live workflow', () => {
   it('PEP: a politically exposed director sends a ₦150m request through the full chain to the Board', async () => {
     // Declaring a PEP requires the connection to be described
-    expect((await abc.post(`/api/customers/${customerId}/parties`, { partyType: 'DIRECTOR', fullName: 'Hon. Bello Musa', designation: 'Non-executive Director', isPep: true })).status).toBe(400);
-    const id = await declareParty({ partyType: 'DIRECTOR', fullName: 'Hon. Bello Musa', designation: 'Non-executive Director', isPep: true, pepDetails: 'Serving member of a State House of Assembly (DEMO)' });
+    expect((await abc.post(`/api/customers/${customerId}/parties`, { partyType: 'DIRECTOR', fullName: 'Hon. Tobiloba Ajayi', designation: 'Non-executive Director', isPep: true })).status).toBe(400);
+    const id = await declareParty({ partyType: 'DIRECTOR', fullName: 'Hon. Tobiloba Ajayi', designation: 'Non-executive Director', isPep: true, pepDetails: 'Serving member of a State House of Assembly (DEMO)' });
     const r = await toApproval();
     expect(r.keys).toEqual(fullChainToBoard(r.matrix));
     expect(r.keys.at(-1)).toBe('BOARD');

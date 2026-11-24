@@ -44,6 +44,8 @@ export interface CoreBankingAdapter {
   postDisbursement(input: { idempotencyKey: string; facilityReference: string; amountMinor: number; beneficiaryAccount: string; narrative: string }): Promise<{ reference: string }>;
   /** SWR: spool an Alternative Bank account statement (CSV in the Bank's statement export layout). */
   getStatement(input: { accountNumber: string; from: string; to: string }): Promise<{ csv: Buffer; currency: string }>;
+  /** The Bank's own record of a person (customer, signatory or promoter) by BVN, for identity comparison. */
+  findPersonByBvn(bvn: string): Promise<{ cbaCustomerId: string; fullName: string; dateOfBirth?: string } | null>;
 }
 
 export interface MessagingAdapter {
@@ -81,9 +83,18 @@ export interface BureauAdapter {
   individualReport(input: { bvn: string; name: string }): Promise<BureauReport>;
 }
 
+/** Only the attributes needed for matching are requested from identity providers (data minimisation). */
+export interface IdentityRecord { fullName: string; dateOfBirth?: string }
+export interface IdentityLookup { found: boolean; record?: IdentityRecord; providerRef: string }
+/**
+ * BVN and NIN verification providers. A lookup either finds the identifier (with its record), reports it not
+ * found, or throws IntegrationError when the provider is unavailable — never a guessed result.
+ */
 export interface IdentityAdapter {
   mode: Mode;
-  verifyBvn(bvn: string, fullName: string): Promise<{ valid: boolean; nameMatch: 'MATCH' | 'PARTIAL' | 'MISMATCH' | 'UNKNOWN' }>;
+  provider: string;
+  lookupBvn(bvn: string): Promise<IdentityLookup>;
+  lookupNin(nin: string): Promise<IdentityLookup>;
 }
 
 export interface RaroracRequest {

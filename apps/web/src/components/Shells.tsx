@@ -107,6 +107,7 @@ export function WorkShell() {
             {(can('facility.view.all') || can('facility.view.assigned')) && <SideLink to="/work/facilities">Facilities</SideLink>}
             {(can('customer.view.assigned') || can('customer.view.all')) && <SideLink to="/work/customers">Customers</SideLink>}
             {can('monitoring.manage') || can('facility.view.assigned') ? <SideLink to="/work/monitoring">Monitoring</SideLink> : null}
+            {can('identity.review') && <SideLink to="/work/identity-reviews">Identity reviews</SideLink>}
             {can('report.view') && <><div className="section-label">Insight</div><SideLink to="/work/reports" end>SLM dashboard</SideLink><SideLink to="/work/reports/drop-off">Drop-off analytics</SideLink><SideLink to="/work/reports/exports">Report exports</SideLink></>}
             {(can('config.view') || can('user.manage') || can('audit.view') || can('system.health')) && <div className="section-label">Control centre</div>}
             {can('config.view') && <SideLink to="/admin/config">Configuration</SideLink>}

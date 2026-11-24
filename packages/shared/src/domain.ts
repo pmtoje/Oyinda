@@ -30,6 +30,7 @@ export const DOCUMENT_STATUS_LABEL: Record<string, string> = {
 
 export const APPLICATION_STEPS = [
   { key: 'PRODUCT', label: 'Product' },
+  { key: 'IDENTITY', label: 'Verify identity' },
   { key: 'DETAILS', label: 'Facility details' },
   { key: 'PRODUCT_INFO', label: 'Product information' },
   { key: 'SECURITY', label: 'Security' },

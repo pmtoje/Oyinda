@@ -17,7 +17,8 @@ import { portalUserRoutes } from '../modules/profile/portal-users.js';
 import { notificationRoutes } from '../modules/notifications/routes.js';
 import { reportRoutes } from '../modules/reports/routes.js';
 import { aiRoutes } from '../modules/ai/routes.js';
+import { identityVerificationRoutes } from '../modules/identity/verification-routes.js';
 
 export async function registerRoutes(app: FastifyInstance) {
-  for (const r of [identityRoutes, profileRoutes, facilityRoutes, documentRoutes, workflowRoutes, threadRoutes, financialRoutes, statementRoutes, creditRoutes, docgenRoutes, offerRoutes, servicingRoutes, adminRoutes, userImportRoutes, portalUserRoutes, notificationRoutes, reportRoutes, aiRoutes]) await app.register(r);
+  for (const r of [identityRoutes, profileRoutes, facilityRoutes, documentRoutes, workflowRoutes, threadRoutes, financialRoutes, statementRoutes, creditRoutes, docgenRoutes, offerRoutes, servicingRoutes, adminRoutes, userImportRoutes, portalUserRoutes, notificationRoutes, reportRoutes, aiRoutes, identityVerificationRoutes]) await app.register(r);
 }

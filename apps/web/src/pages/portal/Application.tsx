@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { IdentityPanel } from './parts/Identity';
 import { APPLICATION_STEPS } from '@gazelle/shared';
 import { Alert, Button, Check, ErrorAlert, KV, Loading, PageHeader, Panel, Status, TextArea, useAction } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
@@ -11,6 +12,7 @@ import { EmailVerifyCard } from './parts/EmailVerify';
 import { BankStatementsStep, DetailsStep, FinancialsStep, ProductStep, SecurityStep } from './parts/ApplicationSteps';
 
 const STEP_HELP: Record<string, string> = {
+  IDENTITY: 'Confirm the identity of your directors and significant shareholders.',
   DETAILS: 'Tell us how much you need, for how long and how it will be paid.',
   PRODUCT_INFO: 'Details specific to this product, used to structure the transaction.',
   SECURITY: 'The security you propose. The credit team will confirm what is required.',
@@ -40,7 +42,9 @@ export default function Application() {
     const f = q.data.facility;
     rowVersion.current = f.rowVersion;
     setV({ currency: f.currency, amount: majorInput(f.amountMinor), tenorMonths: f.tenorMonths ?? '', purpose: f.purpose ?? '', paymentStructure: f.paymentStructure ?? '', paymentFrequency: f.paymentFrequency ?? '', sourceOfPayment: f.sourceOfPayment ?? '', supplierName: f.supplierName ?? '', underlyingAsset: f.underlyingAsset ?? '', projectDetails: f.projectDetails ?? '', proposedSecurity: f.proposedSecurity ?? '', productFields: f.productFields ?? {} });
-    setStep(f.status === 'RETURNED' ? 'REVIEW' : f.currentStep === 'PRODUCT' ? 'DETAILS' : f.currentStep);
+    // New requests open on identity verification only while a required promoter is still unverified.
+    const identityPending = (q.data.steps ?? []).some((x: any) => x.key === 'IDENTITY' && x.issues > 0);
+    setStep(f.status === 'RETURNED' ? 'REVIEW' : f.currentStep === 'PRODUCT' ? (identityPending ? 'IDENTITY' : 'DETAILS') : f.currentStep);
   }, [q.data, v]);
 
   const body = useCallback((extra: Record<string, unknown> = {}) => {
@@ -114,7 +118,8 @@ export default function Application() {
         <ol className="stepper">
           {APPLICATION_STEPS.filter((s) => s.key !== 'PRODUCT').map((s) => {
             const meta = d.steps.find((x: any) => x.key === s.key);
-            const cls = s.key === step ? 'current' : reworkSections.has(s.key) ? 'attention' : meta?.completed ? 'done' : '';
+            const done = s.key === 'IDENTITY' ? meta?.issues === 0 : meta?.completed;
+            const cls = s.key === step ? 'current' : reworkSections.has(s.key) || (s.key === 'IDENTITY' && meta?.issues > 0 && meta?.completed) ? 'attention' : done ? 'done' : '';
             return <li key={s.key} className={cls} aria-current={s.key === step ? 'step' : undefined}><button onClick={() => setStep(s.key)}>{s.label}</button></li>;
           })}
         </ol>
@@ -129,6 +134,7 @@ export default function Application() {
           <p className="muted small">{STEP_HELP[step]}</p>
           {next.error && !(next.error instanceof ApiError && next.error.code === 'STEP_INCOMPLETE') ? <ErrorAlert error={next.error} /> : null}
           {next.error instanceof ApiError && next.error.code === 'STEP_INCOMPLETE' && <Alert tone="danger" title="Some fields in this section need attention." />}
+          {step === 'IDENTITY' && <IdentityPanel customerId={f.customerId} />}
           {step === 'DETAILS' && <DetailsStep v={v} set={set} product={d.product} error={next.error} />}
           {step === 'PRODUCT_INFO' && <ProductStep v={v} set={set} setField={setField} product={d.product} error={next.error} />}
           {step === 'SECURITY' && <SecurityStep v={v} set={set} error={next.error} />}

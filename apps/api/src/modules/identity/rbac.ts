@@ -2,6 +2,7 @@
 export const PERMISSIONS: Record<string, string> = {
   'customer.view.assigned': 'View customers in own portfolio / business unit',
   'customer.view.all': 'View all customers',
+  'identity.review': 'Review promoter identity discrepancies (BVN/NIN); proposer and approver must differ',
   'customer.manage': 'Edit customer profiles on behalf of customers',
   'facility.view.assigned': 'View facilities of portfolio customers',
   'facility.view.all': 'View all submitted facilities',
@@ -65,6 +66,7 @@ export const ROLES: { code: string; name: string; privileged?: boolean; perms: s
   { code: 'LEGAL', name: 'Legal Officer', perms: ['facility.view.all', 'task.work', 'condition.legal', 'document.verify', 'thread.participate'] },
   { code: 'SHARIAH', name: 'Shariah Compliance Officer', perms: ['facility.view.all', 'task.work', 'condition.shariah', 'document.verify', 'thread.participate'] },
   { code: 'CREDIT_OPS', name: 'Credit Operations Officer', perms: ['facility.view.all', 'task.work', 'condition.creditops', 'document.verify', 'offer.make', 'offer.check', 'facility.activate', 'disbursement.make', 'disbursement.check', 'monitoring.manage', 'thread.participate'] },
+  { code: 'KYC_OFFICER', name: 'KYC / Compliance Officer', perms: ['identity.review', 'customer.view.all', 'task.work'] },
   { code: 'ADMIN', name: 'Administrator', privileged: true, perms: ['config.view', 'config.edit', 'config.approve', 'user.manage', 'customer.block', 'report.view', 'system.health', 'task.reassign'] },
   { code: 'SUPER_ADMIN', name: 'Super Administrator', privileged: true, perms: ['config.view', 'config.edit', 'config.approve', 'user.manage', 'customer.block', 'audit.view', 'report.view', 'system.health', 'task.reassign'] },
   { code: 'AUDITOR', name: 'Internal Audit (read-only)', perms: ['audit.view', 'report.view', 'customer.view.all', 'facility.view.all'] },

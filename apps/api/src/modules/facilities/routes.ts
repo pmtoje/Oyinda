@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { identityIssues } from '../identity/verification.js';
 import { APPLICATION_STEPS, FACILITY_STATUS_LABEL } from '@gazelle/shared';
 import { getPool, maybe, one, q, tx } from '../../db/pool.js';
 import { actorOf, ok, parse, requireStaff , requireCustomerRight } from '../../http/context.js';
@@ -139,7 +140,7 @@ export async function facilityRoutes(app: FastifyInstance) {
     const rework = await q(db, `SELECT id, section, target_ref AS "targetRef", message, customer_response AS "customerResponse", raised_at AS "raisedAt", resolved_at AS "resolvedAt" FROM rework_item WHERE facility_id=$1 ORDER BY raised_at DESC`, [f.id]);
     const history = await q(db, `SELECT h.from_status, h.to_status, h.created_at, h.customer_visible_note, h.reason, h.actor_type, COALESCE(u.display_name, cu.full_name, 'Credit360') AS actor_name
       FROM facility_status_history h LEFT JOIN app_user u ON u.id=h.actor_id LEFT JOIN customer_user cu ON cu.id=h.actor_id WHERE h.facility_id=$1 ORDER BY h.created_at`, [f.id]);
-    const issues = EDITABLE.has(f.status) ? validateFacility(product.payload, f) : [];
+    const issues = EDITABLE.has(f.status) ? [...validateFacility(product.payload, f), ...(await identityIssues(db, f.customer_id))] : [];
     return ok(reply, {
       facility: { ...facilitySummary({ ...f, product_name: product.payload.name }), purpose: f.purpose, paymentStructure: f.payment_structure, paymentFrequency: f.payment_frequency, sourceOfPayment: f.source_of_payment, supplierName: f.supplier_name, underlyingAsset: f.underlying_asset, projectDetails: f.project_details, proposedSecurity: f.proposed_security, productFields: f.product_fields },
       product: { configId: product.id, version: product.version, ...product.payload },
@@ -229,6 +230,7 @@ export async function facilityRoutes(app: FastifyInstance) {
       for (const m of missing) issues.push({ step: 'DOCUMENTS', field: 'documents', message: `${m.title} is required.` });
       const openRework = await q<any>(c, 'SELECT section, message FROM rework_item WHERE facility_id=$1 AND resolved_at IS NULL AND customer_response IS NULL', [f.id]);
       if (f.status === 'RETURNED' && openRework.length) issues.push(...openRework.map((r) => ({ step: 'REVIEW', field: 'rework', message: `Respond to: ${r.message}` })));
+      issues.push(...(await identityIssues(c, f.customer_id))); // promoters' BVN/NIN verification (policy-controlled)
       if (issues.length) throw unprocessable('INCOMPLETE', 'Your request is not yet complete.', issues);
       const elig = await runEligibility(c, f.id, { type: actor.type, id: actor.id });
       if (elig.outcome === 'INELIGIBLE') {

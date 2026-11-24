@@ -1,3 +1,4 @@
+import { IdentityPanel } from './parts/Identity';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, Check, Drawer, Empty, ErrorAlert, KV, Loading, MoneyInput, PageHeader, Panel, SelectInput, Status, TextArea, TextInput, fieldError, useAction } from '../../components/ui';
@@ -109,6 +110,10 @@ export default function Profile({ customerId }: { customerId?: string }) {
                 <td>{x.isPep && <Status value="WARNING" label="PEP" />} {x.isInsider && <Status value="WARNING" label="Insider" />}</td>
                 <td className="num"><Button size="sm" variant="ghost" onClick={() => remove('parties', x.id)} aria-label={`Remove ${x.fullName}`}>Remove</Button></td></tr>))}</tbody></table></div>
         )}
+      </Panel>
+
+      <Panel title="Verify your identity" id="identity">
+        <IdentityPanel customerId={cid} />
       </Panel>
 
       <div className="grid cols-2">

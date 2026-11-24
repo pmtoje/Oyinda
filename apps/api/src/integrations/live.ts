@@ -41,9 +41,9 @@ export class ClamdAntivirus implements AntivirusAdapter {
 const notProvisioned = (system: string) => () => {
   throw new IntegrationError(system, 'live integration is not provisioned in this environment (gateway endpoint and credentials required)', false);
 };
-export const unprovisionedCba: CoreBankingAdapter = { mode: 'LIVE', findByAccountNumber: notProvisioned('CBA'), getExposure: notProvisioned('CBA'), bookFacility: notProvisioned('CBA'), postDisbursement: notProvisioned('CBA'), getStatement: notProvisioned('CBA') };
+export const unprovisionedCba: CoreBankingAdapter = { mode: 'LIVE', findByAccountNumber: notProvisioned('CBA'), getExposure: notProvisioned('CBA'), bookFacility: notProvisioned('CBA'), postDisbursement: notProvisioned('CBA'), getStatement: notProvisioned('CBA'), findPersonByBvn: notProvisioned('CBA') };
 export const unprovisionedDirectory: DirectoryAdapter = { mode: 'LIVE', authenticate: notProvisioned('ActiveDirectory') };
 export const unprovisionedBureau: BureauAdapter = { mode: 'LIVE', provider: 'UNPROVISIONED', businessReport: notProvisioned('CreditBureau'), individualReport: notProvisioned('CreditBureau') };
 export const unprovisionedRarorac: RaroracAdapter = { mode: 'LIVE', provider: 'RAPP', compute: notProvisioned('RARORAC') };
 export const unprovisionedMessaging: MessagingAdapter = { mode: 'LIVE', sendSms: notProvisioned('SMS'), sendEmail: notProvisioned('Email') };
-export const unprovisionedIdentity: IdentityAdapter = { mode: 'LIVE', verifyBvn: notProvisioned('Identity') };
+export const unprovisionedIdentity: IdentityAdapter = { mode: 'LIVE', provider: 'Not provisioned', lookupBvn: notProvisioned('Identity'), lookupNin: notProvisioned('Identity') };

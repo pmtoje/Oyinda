@@ -96,7 +96,7 @@ describe('request limits', () => {
       expect(limited.body.error.code).toBe('RATE_LIMITED');
       expect(limited.raw.headers['retry-after']).toBeDefined();
       // Another user on the same IP is unaffected
-      const other = await staffLogin(app, 'demo.auditor');
+      const other = await staffLogin(app, 'demo.board1'); // not used by any other test file, so its per-minute count starts at zero
       expect((await other.get('/api/notifications?limit=1')).status).toBe(200);
     } finally {
       (env() as any).USER_RATE_LIMIT_PER_MIN = before;

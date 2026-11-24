@@ -507,6 +507,13 @@ const policies: BaselineItem[] = [
   // Session timeout — DEFAULT pending the Bank's Information Security standard (OQ-21); administrators change it with maker-checker.
   { kind: 'session_policy', key: 'CUSTOMER_PORTAL', title: 'Customer portal session timeout', payload: { idleMinutes: 15, absoluteHours: 8, warningSeconds: 120 } },
   { kind: 'session_policy', key: 'STAFF', title: 'Staff session timeout', payload: { idleMinutes: 15, absoluteHours: 10, warningSeconds: 120 } },
+  // Promoter BVN/NIN verification — DEFAULT pending Compliance / Legal sign-off (decisions C-04, C-05).
+  { kind: 'identity_policy', key: 'STANDARD', title: 'Promoter identity verification policy', payload: {
+    requiredPartyTypes: ['PROMOTER', 'DIRECTOR', 'SHAREHOLDER'], shareholderMinOwnershipPct: 5,
+    requireBvn: true, requireNin: true, acceptPartialNameWhenDobMatches: true, compareWithBankRecord: true,
+    blockSubmissionUntilVerified: true, maxChecksPerPartyPerDay: 5, reuseVerifiedWithinDays: 365, consentWordingVersion: '2026.1',
+    consentText: 'I confirm that I am authorised to provide this person’s Bank Verification Number and National Identification Number, and that they have agreed to The Alternative Bank checking them with approved verification services and the Bank’s own records, solely to confirm their identity for this business’s financing request.',
+  } },
   { kind: 'rarorac_threshold', key: 'STANDARD', title: 'RARORAC pricing threshold', payload: { hurdlePct: 15, minProfitRatePct: 18, minFeePct: 1, exceptionApproverRole: 'GH_CREDIT_RISK', justificationMinLength: 50 } },
   { kind: 'legal_terms', key: 'CUSTOMER_PORTAL', title: 'Customer portal terms & privacy notice', payload: {
     version: '2026.1',
@@ -591,7 +598,7 @@ export const BASELINE: BaselineItem[] = [
 ];
 
 /** Current baseline revision. Bump when the baseline changes so existing environments are reconciled. */
-export const BASELINE_RELEASE = '2026.11-SWR.4';
+export const BASELINE_RELEASE = '2026.11-C360.1';
 /** Keys removed from the baseline (SWR §4 collateral clean-up; authority matrices split by workflow type; BCC renamed BRMC). */
 export const BASELINE_RETIRED: { kind: ConfigKind; key: string }[] = [
   { kind: 'collateral_type', key: 'ISLAMIC_CIS' },

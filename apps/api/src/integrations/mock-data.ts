@@ -79,3 +79,26 @@ export const DEMO_EXPOSURE: Record<string, { lines: CbaExposureLine[]; groupLine
     ],
   },
 };
+
+/**
+ * SANDBOX identity registry — synthetic test identities only (no real people). Used by the sandbox BVN/NIN
+ * adapter in non-production; every result it produces is recorded and shown as SANDBOX, never as a live check.
+ *  - 2229 9999 999 / NIN 1009 9999 999 make the provider "unavailable" (outage testing).
+ */
+export const SANDBOX_IDENTITIES: { bvn?: string; nin?: string; fullName: string; dateOfBirth: string }[] = [
+  { bvn: '22212345678', nin: '10012345678', fullName: 'Ade Johnson', dateOfBirth: '1974-03-18' },
+  { bvn: '22287654321', nin: '10087654321', fullName: 'Hauwa Garba', dateOfBirth: '1981-11-02' },
+  { bvn: '22211122233', nin: '10011122233', fullName: 'Ngozi Peters', dateOfBirth: '1986-06-25' },
+  { bvn: '22233344455', nin: '10033344455', fullName: 'Kemi Adeyemi', dateOfBirth: '1979-09-09' },
+  { bvn: '22255566677', nin: '10055566677', fullName: 'Bello Musa', dateOfBirth: '1968-01-30' },
+  { bvn: '22266677788', nin: '10066677788', fullName: 'Tobiloba Ajayi', dateOfBirth: '1972-07-14' },
+  // BVN and NIN records that disagree with each other (date of birth), for discrepancy testing
+  { bvn: '22244455566', fullName: 'Ifeoma Chukwu', dateOfBirth: '1990-04-04' },
+  { nin: '10044455566', fullName: 'Ifeoma Chukwu', dateOfBirth: '1991-04-04' },
+];
+export const SANDBOX_UNAVAILABLE = { bvn: '22299999999', nin: '10099999999' };
+/** SANDBOX: people the (mock) core banking system already knows, keyed by BVN. */
+export const DEMO_CBA_PEOPLE: { bvn: string; cbaCustomerId: string; fullName: string; dateOfBirth: string }[] = [
+  { bvn: '22212345678', cbaCustomerId: 'CBA-IND-000101', fullName: 'Ade Johnson', dateOfBirth: '1974-03-18' },
+  { bvn: '22255566677', cbaCustomerId: 'CBA-IND-000102', fullName: 'Bello Musa', dateOfBirth: '1968-02-28' }, // bank DOB differs
+];

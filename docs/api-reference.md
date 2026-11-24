@@ -11,7 +11,7 @@ _Generated from the route source by `pnpm --filter @gazelle/api docs:api`; a tes
 * **Access** below is the check made by the handler. "Staff + MFA" means a staff session that completed the second factor; permissions are listed in `docs/security-model.md`. Facility-scoped routes additionally enforce row-level visibility (own customer, assigned relationship manager, or a role that sees all).
 * **Idempotency:** facility creation, workflow actions and disbursements take an `idempotencyKey`; optimistic concurrency uses `rowVersion`.
 
-**184 endpoints** in 15 modules.
+**192 endpoints** in 15 modules.
 
 ## admin
 
@@ -149,15 +149,15 @@ _Generated from the route source by `pnpm --filter @gazelle/api docs:api`; a tes
 
 | Method | Path | Access | Purpose | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/facilities` | Staff + MFA | — | `modules/facilities/routes.ts:109` |
-| POST | `/api/facilities` | Staff + MFA · `facility.initiate` | — | `modules/facilities/routes.ts:82` |
-| GET | `/api/facilities/:id` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:131` |
-| PATCH | `/api/facilities/:id` | Staff + MFA · `facility.initiate` | — | `modules/facilities/routes.ts:158` |
-| POST | `/api/facilities/:id/eligibility` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:202` |
-| POST | `/api/facilities/:id/rework/:itemId/respond` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:271` |
-| POST | `/api/facilities/:id/submit` | Staff + MFA · `facility.initiate` | — | `modules/facilities/routes.ts:214` |
-| POST | `/api/facilities/:id/withdraw` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:255` |
-| GET | `/api/products` | Staff + MFA | — | `modules/facilities/routes.ts:74` |
+| GET | `/api/facilities` | Staff + MFA | — | `modules/facilities/routes.ts:110` |
+| POST | `/api/facilities` | Staff + MFA · `facility.initiate` | — | `modules/facilities/routes.ts:83` |
+| GET | `/api/facilities/:id` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:132` |
+| PATCH | `/api/facilities/:id` | Staff + MFA · `facility.initiate` | — | `modules/facilities/routes.ts:159` |
+| POST | `/api/facilities/:id/eligibility` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:203` |
+| POST | `/api/facilities/:id/rework/:itemId/respond` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:273` |
+| POST | `/api/facilities/:id/submit` | Staff + MFA · `facility.initiate` | — | `modules/facilities/routes.ts:215` |
+| POST | `/api/facilities/:id/withdraw` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:257` |
+| GET | `/api/products` | Staff + MFA | — | `modules/facilities/routes.ts:75` |
 
 ## identity
 
@@ -181,6 +181,14 @@ _Generated from the route source by `pnpm --filter @gazelle/api docs:api`; a tes
 | POST | `/api/auth/staff/password/forgot` | Public · no session (own challenge / rate limits) | Self-service reset. Identical response whether or not the username exists. | `modules/identity/routes.ts:411` |
 | GET | `/api/auth/staff/password/link` | Public · no session (own challenge / rate limits) | — | `modules/identity/routes.ts:394` |
 | POST | `/api/auth/staff/password/set` | Public · no session (own challenge / rate limits) | — | `modules/identity/routes.ts:403` |
+| GET | `/api/customers/:customerId/identity` | Signed in · further checks in the handler | — | `modules/identity/verification-routes.ts:19` |
+| POST | `/api/customers/:customerId/parties/:partyId/identity/review` | Customer user with portal right `SUBMIT_REQUESTS` | Customer asks the Bank to review a difference (e.g. a known name change) instead of re-entering details. | `modules/identity/verification-routes.ts:39` |
+| POST | `/api/customers/:customerId/parties/:partyId/identity/verify` | Customer user with portal right `SUBMIT_REQUESTS` | "Verify your identity": BVN and/or NIN with date of birth and consent; runs the checks server-side. | `modules/identity/verification-routes.ts:25` |
+| GET | `/api/identity-reviews` | Staff + MFA · `identity.review` | Staff review queue (KYC / Compliance): maker proposes, a different checker decides ---- | `modules/identity/verification-routes.ts:49` |
+| GET | `/api/identity-reviews/:id` | Staff + MFA · `identity.review` | — | `modules/identity/verification-routes.ts:58` |
+| POST | `/api/identity-reviews/:id/decide` | Staff + MFA · `identity.review` | — | `modules/identity/verification-routes.ts:76` |
+| POST | `/api/identity-reviews/:id/propose` | Staff + MFA · `identity.review` | — | `modules/identity/verification-routes.ts:68` |
+| POST | `/api/identity-reviews/:id/reveal` | Staff + MFA · `identity.review` | — | `modules/identity/verification-routes.ts:63` |
 | PUT | `/api/me/preferences` | Signed in · further checks in the handler | Display preferences saved on the user's account (theme follows the user between devices). | `modules/identity/routes.ts:490` |
 | POST | `/api/onboarding/complete` | Public · no session (own challenge / rate limits) | — | `modules/identity/routes.ts:175` |
 | GET | `/api/onboarding/password-policy` | Public · no session (own challenge / rate limits) | — | `modules/identity/routes.ts:64` |
@@ -214,11 +222,11 @@ _Generated from the route source by `pnpm --filter @gazelle/api docs:api`; a tes
 
 | Method | Path | Access | Purpose | Source |
 | --- | --- | --- | --- | --- |
-| POST | `/api/customers/:customerId/parties` | Signed in · further checks in the handler | Parties | `modules/profile/routes.ts:148` |
-| PUT | `/api/customers/:customerId/parties/:partyId` | Signed in · further checks in the handler | — | `modules/profile/routes.ts:173` |
-| DELETE | `/api/customers/:customerId/parties/:partyId` | Signed in · further checks in the handler | — | `modules/profile/routes.ts:191` |
-| GET | `/api/customers/:customerId/profile` | Signed in · further checks in the handler | — | `modules/profile/routes.ts:119` |
-| PUT | `/api/customers/:customerId/profile` | Signed in · further checks in the handler | — | `modules/profile/routes.ts:124` |
+| POST | `/api/customers/:customerId/parties` | Signed in · further checks in the handler | Parties | `modules/profile/routes.ts:147` |
+| PUT | `/api/customers/:customerId/parties/:partyId` | Signed in · further checks in the handler | — | `modules/profile/routes.ts:169` |
+| DELETE | `/api/customers/:customerId/parties/:partyId` | Signed in · further checks in the handler | — | `modules/profile/routes.ts:187` |
+| GET | `/api/customers/:customerId/profile` | Signed in · further checks in the handler | — | `modules/profile/routes.ts:118` |
+| PUT | `/api/customers/:customerId/profile` | Signed in · further checks in the handler | — | `modules/profile/routes.ts:123` |
 | GET | `/api/portal-invites` | Public · no session (own challenge / rate limits) | — | `modules/profile/portal-users.ts:119` |
 | POST | `/api/portal-invites/accept` | Public · no session (own challenge / rate limits) | — | `modules/profile/portal-users.ts:141` |
 | POST | `/api/portal-invites/phone` | Public · no session (own challenge / rate limits) | — | `modules/profile/portal-users.ts:128` |
@@ -226,7 +234,7 @@ _Generated from the route source by `pnpm --filter @gazelle/api docs:api`; a tes
 | PATCH | `/api/portal/users/:uid` | Customer user with portal right `MANAGE_USERS` | Change another user's rights or status. The business always keeps at least one active user who can manage users. | `modules/profile/portal-users.ts:88` |
 | POST | `/api/portal/users/invites` | Customer user with portal right `MANAGE_USERS` | — | `modules/profile/portal-users.ts:52` |
 | POST | `/api/portal/users/invites/:iid/revoke` | Customer user with portal right `MANAGE_USERS` | — | `modules/profile/portal-users.ts:78` |
-| GET | `/api/reference/sectors` | Public · no session (own challenge / rate limits) | — | `modules/profile/routes.ts:232` |
+| GET | `/api/reference/sectors` | Public · no session (own challenge / rate limits) | — | `modules/profile/routes.ts:228` |
 
 ## reports
 

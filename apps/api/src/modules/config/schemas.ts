@@ -340,6 +340,24 @@ export const schemas = {
     if (v.idleMinutes > v.absoluteHours * 60) ctx.addIssue({ code: 'custom', path: ['idleMinutes'], message: 'The inactivity timeout cannot be longer than the maximum session length.' });
   }),
 
+  /**
+   * Promoter identity verification policy (Credit360 §13). Which parties must be verified, with which
+   * identifiers, how names and dates of birth are compared, and whether unverified promoters block submission.
+   */
+  identity_policy: z.object({
+    requiredPartyTypes: z.array(z.enum(['SHAREHOLDER', 'DIRECTOR', 'PROMOTER', 'PRINCIPAL_OFFICER', 'BOARD_MEMBER', 'KEY_EXECUTIVE'])).min(1),
+    shareholderMinOwnershipPct: z.number().min(0).max(100),
+    requireBvn: z.boolean(),
+    requireNin: z.boolean(),
+    acceptPartialNameWhenDobMatches: z.boolean(),
+    compareWithBankRecord: z.boolean(),
+    blockSubmissionUntilVerified: z.boolean(),
+    maxChecksPerPartyPerDay: z.number().int().min(1).max(20),
+    reuseVerifiedWithinDays: z.number().int().min(0).max(730),
+    consentWordingVersion: z.string().min(1).max(20),
+    consentText: z.string().min(40).max(2000),
+  }),
+
   committee: z.object({
     code,
     name: z.string(),
@@ -416,6 +434,7 @@ export const KIND_LABEL: Record<ConfigKind, string> = {
   committee: 'Committees',
   password_policy: 'Password policies',
   session_policy: 'Session timeout',
+  identity_policy: 'Promoter identity verification',
   offer_signoff: 'Offer letter sign-off',
   facility_efficiency_ratio: 'Facility efficiency ratio',
   sla_policy: 'SLA policies',

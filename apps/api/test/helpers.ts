@@ -160,6 +160,25 @@ export async function completeKanoProfile(c: Client, customerId: string) {
     await c.post(`/api/customers/${customerId}/parties`, { partyType: 'DIRECTOR', fullName: 'Hauwa Garba', designation: 'Managing Director', bvn: '22287654321', yearsExperience: 18 });
     await c.post(`/api/customers/${customerId}/parties`, { partyType: 'SHAREHOLDER', fullName: 'Hauwa Garba', ownershipPct: 100, bvn: '22287654321' });
   }
+  await verifyPromoters(c, customerId);
+}
+
+/** SANDBOX identities (synthetic) used by the demo and test businesses' promoters. */
+export const SANDBOX_PEOPLE: Record<string, { bvn: string; nin: string; dateOfBirth: string }> = {
+  'Ade Johnson': { bvn: '22212345678', nin: '10012345678', dateOfBirth: '1974-03-18' },
+  'Hauwa Garba': { bvn: '22287654321', nin: '10087654321', dateOfBirth: '1981-11-02' },
+  'Hon. Tobiloba Ajayi': { bvn: '22266677788', nin: '10066677788', dateOfBirth: '1972-07-14' },
+  'Kemi Adeyemi': { bvn: '22233344455', nin: '10033344455', dateOfBirth: '1979-09-09' },
+};
+/** Verify every promoter the identity policy requires, through the real endpoint (sandbox provider). */
+export async function verifyPromoters(c: Client, customerId: string) {
+  const o = (await c.get(`/api/customers/${customerId}/identity`)).body.data;
+  for (const p of o.people.filter((x: any) => x.required && x.state !== 'VERIFIED')) {
+    const id = SANDBOX_PEOPLE[p.name];
+    if (!id) throw new Error(`no sandbox identity for ${p.name}`);
+    const r = await c.post(`/api/customers/${customerId}/parties/${p.partyId}/identity/verify`, { bvn: id.bvn, nin: id.nin, dateOfBirth: id.dateOfBirth, consent: true });
+    if (r.status !== 200 || r.body.data.state !== 'VERIFIED') throw new Error('identity ' + JSON.stringify(r.body));
+  }
 }
 
 /** Complete ABC's profile to a realistic standard. */
@@ -172,6 +191,7 @@ export async function completeAbcProfile(c: Client, customerId: string) {
     await c.post(`/api/customers/${customerId}/parties`, { partyType: 'SHAREHOLDER', entityKind: 'CORPORATE', fullName: 'Johnson Holdings Ltd', ownershipPct: 40 });
     await c.post(`/api/customers/${customerId}/parties`, { partyType: 'KEY_EXECUTIVE', fullName: 'Ngozi Peters', designation: 'Chief Financial Officer', yearsExperience: 15 });
   }
+  await verifyPromoters(c, customerId);
 }
 
 /** Create and fill a Murabaha request (₦150m, 36 months) up to document upload. */
