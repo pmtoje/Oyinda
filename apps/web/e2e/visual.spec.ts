@@ -186,7 +186,7 @@ for (const theme of THEMES) {
       await staffSignIn(page, 'demo.admin');
       await setTheme(page, theme, { table: 'app_user', key: 'ad_username', value: 'demo.admin' });
       const [cfg] = await sql(`SELECT id FROM config_item WHERE kind='approval_authority' AND key='APPROVED_LINE_DIRECT' AND status='ACTIVE'`);
-      for (const [path, name] of [['/admin/config', 'admin-config'], [`/admin/config/${cfg.id}`, 'admin-authority-matrix'], ['/admin/users', 'admin-users'], ['/admin/audit', 'admin-audit'], ['/admin/health', 'admin-health']] as const) {
+      for (const [path, name] of [['/admin/config', 'admin-config'], [`/admin/config/${cfg.id}`, 'admin-authority-matrix'], ['/admin/users', 'admin-users'], ['/admin/audit', 'admin-audit'], ['/admin/health', 'admin-health'], ['/work/reports', 'executive-dashboard']] as const) {
         await page.goto(path);
         await audit(page, name, theme);
       }

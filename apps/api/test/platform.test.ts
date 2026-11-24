@@ -356,3 +356,24 @@ describe('facility efficiency ratio (set on management / Board direction)', () =
     expect(JSON.stringify(sec)).toMatch(/version 2/);
   });
 });
+
+describe('executive dashboard (§36)', () => {
+  it('reports pipeline, conversion, risk, region, bottlenecks and conditions from live records, consistently', async () => {
+    const r = await s.admin!.get('/api/reports/slm');
+    expect(r.status).toBe(200);
+    const d = r.body.data;
+    for (const k of ['pipeline', 'byRiskGrade', 'byBusinessUnit', 'bottlenecks', 'conditions', 'conversion']) expect(d).toHaveProperty(k);
+    const c = d.conversion;
+    expect(c.approved).toBeGreaterThanOrEqual(c.accepted);
+    expect(c.accepted).toBeGreaterThanOrEqual(c.activated);
+    expect(c.approved).toBe(d.totals.approved);
+    // Pipeline counts add up to the received total (drafts are excluded from both)
+    expect(d.pipeline.filter((p: any) => p.status !== 'DRAFT').reduce((a: number, p: any) => a + p.count, 0)).toBe(d.totals.received);
+    expect(d.byRiskGrade.reduce((a: number, g: any) => a + g.count, 0)).toBe(d.totals.received);
+    for (const b of d.bottlenecks) expect(b.open).toBeGreaterThan(0);
+    // Filters apply to the new breakdowns too
+    const none = (await s.admin!.get('/api/reports/slm?product=NO_SUCH_PRODUCT')).body.data;
+    expect(none.pipeline).toEqual([]);
+    expect(none.conversion.approved).toBe(0);
+  });
+});

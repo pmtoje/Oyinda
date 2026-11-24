@@ -82,8 +82,34 @@ export async function reportRoutes(app: FastifyInstance) {
     const by = async (expr: string, label: string, extraJoin = '') => { const vv: unknown[] = []; return q(db, `SELECT ${expr} AS ${label}, count(*)::int AS count, COALESCE(sum(f.amount_minor),0)::bigint AS amount_minor, count(*) FILTER (WHERE f.status IN ${APPROVED})::int AS approved ${BASE} ${extraJoin} WHERE ${where(fl, vv)} GROUP BY 1 ORDER BY count DESC`, vv); };
     const byAnalyst = await (async () => { const vv: unknown[] = []; return q(db, `SELECT u.display_name AS analyst, count(DISTINCT f.id)::int AS count, round(avg(extract(epoch from (t.completed_at - t.created_at))/3600)::numeric,1) AS avg_hours ${BASE} JOIN workflow_task t ON t.facility_id=f.id AND t.stage_key='CREDIT_ANALYSIS' AND t.completed_by IS NOT NULL JOIN app_user u ON u.id=t.completed_by WHERE ${where(fl, vv)} GROUP BY 1 ORDER BY count DESC`, vv); })();
     const byStage = await (async () => { const vv: unknown[] = []; return q(db, `SELECT t.stage_name AS stage, count(*)::int AS count, count(*) FILTER (WHERE t.breached_at IS NOT NULL)::int AS breached ${BASE} JOIN workflow_task t ON t.facility_id=f.id AND t.status IN ('OPEN','CLAIMED') WHERE ${where(fl, vv)} GROUP BY 1 ORDER BY count DESC`, vv); })();
+    // §36 additions — every figure is computed from live records under the same filters (no fabricated metrics).
+    const vS: unknown[] = []; const wS = where(fl, vS);
+    const pipeline = await q(db, `SELECT f.status, count(*)::int AS count, COALESCE(sum(f.amount_minor),0)::bigint AS amount_minor ${BASE} WHERE ${wS} GROUP BY f.status`, vS);
+    const vR: unknown[] = []; const wR = where(fl, vR);
+    const byRiskGrade = await q(db, `SELECT COALESCE(g.grade, 'Not yet rated') AS grade, count(*)::int AS count, COALESCE(sum(f.amount_minor),0)::bigint AS amount_minor
+      ${BASE} LEFT JOIN LATERAL (SELECT grade FROM risk_assessment r WHERE r.facility_id=f.id AND r.kind='COMBINED' AND r.status='SUBMITTED' ORDER BY r.submitted_at DESC LIMIT 1) g ON true
+      WHERE ${wR} GROUP BY 1 ORDER BY 1`, vR);
+    const vB: unknown[] = []; const wB = where(fl, vB);
+    const bottlenecks = await q(db, `SELECT t.stage_name AS stage,
+        count(*) FILTER (WHERE t.status IN ('OPEN','CLAIMED'))::int AS open,
+        count(*) FILTER (WHERE t.status IN ('OPEN','CLAIMED') AND t.breached_at IS NOT NULL)::int AS open_breached,
+        round(avg(extract(epoch from (now() - t.created_at))/3600) FILTER (WHERE t.status IN ('OPEN','CLAIMED'))::numeric, 1) AS avg_open_hours,
+        round(avg(extract(epoch from (t.completed_at - t.created_at))/3600) FILTER (WHERE t.completed_at IS NOT NULL)::numeric, 1) AS avg_done_hours
+      ${BASE} JOIN workflow_task t ON t.facility_id=f.id WHERE ${wB} GROUP BY t.stage_name
+      HAVING count(*) FILTER (WHERE t.status IN ('OPEN','CLAIMED')) > 0 ORDER BY avg_open_hours DESC NULLS LAST LIMIT 12`, vB);
+    const vC: unknown[] = []; const wC = where(fl, vC);
+    const conditions = await q(db, `SELECT ci2.owner_team AS team, count(*)::int AS outstanding, count(*) FILTER (WHERE ci2.mandatory AND ci2.category='PRECEDENT')::int AS blocking,
+        count(*) FILTER (WHERE ci2.next_due_date < current_date)::int AS overdue
+      ${BASE} JOIN condition_item ci2 ON ci2.facility_id=f.id WHERE ${wC} AND ci2.status='PENDING' GROUP BY ci2.owner_team ORDER BY outstanding DESC`, vC);
+    const vV: unknown[] = []; const wV = where(fl, vV);
+    const conversion = await one<any>(db, `SELECT count(*) FILTER (WHERE f.status IN ${APPROVED})::int AS approved,
+        count(*) FILTER (WHERE f.status IN ('OFFER_ACCEPTED','FULFILMENT','READY_FOR_ACTIVATION','ACTIVE','CLOSED'))::int AS accepted,
+        count(*) FILTER (WHERE f.status IN ('ACTIVE','CLOSED'))::int AS activated,
+        count(*) FILTER (WHERE EXISTS (SELECT 1 FROM disbursement d WHERE d.facility_id=f.id AND d.status='POSTED'))::int AS disbursed
+      ${BASE} WHERE ${wV}`, vV);
     return ok(reply, {
-      totals, sla, byStage, byAnalyst,
+      totals, sla, byStage, byAnalyst, pipeline, byRiskGrade, bottlenecks, conditions, conversion,
+      byBusinessUnit: await by(`COALESCE(bu.name,'Unassigned')`, 'unit'),
       bySector: await by(`COALESCE((SELECT name FROM sector WHERE code=bp.sector_code),'Unspecified')`, 'sector'),
       byProduct: await by(`ci.payload->>'name'`, 'product'),
       byDirectorate: await by(`COALESCE((SELECT name FROM directorate WHERE code=bu.directorate_code),'Unassigned')`, 'directorate'),

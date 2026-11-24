@@ -240,9 +240,9 @@ _Generated from the route source by `pnpm --filter @gazelle/api docs:api`; a tes
 
 | Method | Path | Access | Purpose | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/reports` | Staff + MFA · `report.view` | — | `modules/reports/routes.ts:111` |
-| GET | `/api/reports/:key` | Staff + MFA · `report.view` | — | `modules/reports/routes.ts:113` |
-| GET | `/api/reports/dropoff` | Staff + MFA · `report.view` | Where customers abandon the application journey. | `modules/reports/routes.ts:96` |
+| GET | `/api/reports` | Staff + MFA · `report.view` | — | `modules/reports/routes.ts:137` |
+| GET | `/api/reports/:key` | Staff + MFA · `report.view` | — | `modules/reports/routes.ts:139` |
+| GET | `/api/reports/dropoff` | Staff + MFA · `report.view` | Where customers abandon the application journey. | `modules/reports/routes.ts:122` |
 | GET | `/api/reports/slm` | Staff + MFA · `report.view` | Service Level Management dashboard. | `modules/reports/routes.ts:66` |
 
 ## servicing
