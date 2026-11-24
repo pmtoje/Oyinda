@@ -77,7 +77,7 @@ function UploadButton({ doc, flow, disabled, highlight }: { doc: Doc; flow: Retu
       {canUpload && <Button size="sm" variant={highlight || doc.status === 'REQUIRED' || doc.status === 'REJECTED' ? 'primary' : undefined} onClick={() => ref.current?.click()}>{doc.current ? 'Replace' : 'Upload'}</Button>}
       {canUpload && <span className="xs muted drop-hint">or drop a file on this row</span>}
       {flow.warn && <span className="xs muted">{flow.warn}</span>}
-      {flow.problem && <span className="xs" role="alert" style={{ color: 'var(--danger-text)', maxWidth: 260, textAlign: 'right' }}>{flow.problem}</span>}
+      {flow.problem && <span className="xs" role="alert" style={{ color: 'var(--danger-text)', maxWidth: 260, textAlign: 'right', whiteSpace: 'normal' }}>{flow.problem}</span>}
       {flow.dialog}
     </div>
   );

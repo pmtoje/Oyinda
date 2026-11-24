@@ -57,6 +57,7 @@ export default function App() {
         <Route path="audit" element={L(() => import('./pages/admin/Audit'))} />
         <Route path="health" element={L(() => import('./pages/admin/Health'))} />
         <Route path="data-quality" element={L(() => import('./pages/admin/DataQuality'))} />
+        <Route path="design-system" element={L(() => import('./pages/work/DesignSystem'))} />
       </Route>
       <Route path="*" element={<div className="portal-main"><h1>Page not found</h1><p><a href="/">Return to Credit360</a></p></div>} />
     </Routes>

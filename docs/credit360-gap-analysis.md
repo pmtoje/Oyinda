@@ -35,19 +35,19 @@ The repository already holds a working, tested platform, built as "Gazelle". Per
 | IV §14 Eligibility / FIPG | **Built** | Configurable rule engine with maker-checker; outcomes explained; no policy in UI code. |
 | IV §15 Application journey | **Built** | Stage navigator adapted by product; summary before submission; customer- and RM-initiated. Promoter verification will become a stage once §13 is built. |
 | V §16 Non-interest product engine | **Built** | Murabaha, Ijarah, Istisna, Salam, Qard, Musharaka, Mudaraba, Wakalah Bil Istithmar, Kafalah guarantees, investment structures — each with its own fields, Shariah structure, limits, pricing basis (profit rate or fee), documents, conditions. All templates require Bank Legal / Risk / Shariah sign-off before production (C-06). |
-| VI §17 Documents | **Built** | Versioning, malware scan, review / reject / resubmit, expiry, role-based access, single-use download grants. Gaps: drag-and-drop zone and inline preview polish (Phase 6). |
+| VI §17 Documents | **Built** | Versioning, malware scan, review / reject / resubmit, expiry, role-based access, single-use download grants. Drop a file on any document row or use Upload; type and size are checked on the device first; the file is previewed (image or PDF) before anything is sent; upload shows real progress. |
 | VI §18–19 Financial and statement analysis | **Built** | Three-year statements, ratios with documented formulas, statement turnover, FX, analyst adjustments. |
 | VI §20 Bureau and exposure | **Built (mock adapters)** | Aggregate exposure with CCF, de-duplicated pipeline; bureau via adapter (mock, labelled). Live providers await contracts (OQ-10). |
 | VII §21–24 Risk, collateral, E&S, memo | **Built** | Versioned models with maker-checker; 110% cash-backed test; E&S at ₦100m+ in HEART / Oil & Gas / Mining / Aviation (configurable); editable, versioned memo and term sheet. |
 | VIII §25–29 Workflow, authority, SLA, collaboration | **Built** | See `workflow-model.md`; scenarios (PEP, insider, SOL, cash-backed) run through the live workflow in tests. |
 | IX §30–33 Offers, post-approval, disbursement | **Built** | Offer maker-checker and sign-off bands; negotiation creates new terms versions; Legal ∥ Shariah → Credit Ops; disbursement idempotent and maker-checker; core-banking posting via adapter (mock). |
-| X §34–36 Dashboards | **Partial** | Customer, staff and SLM dashboards exist; executive dashboard coverage to be checked against §36's list (drop-off and SLA done; regional/directorate breakdown to confirm). |
+| X §34–36 Dashboards | **Built** | Customer, staff and executive (SLM) dashboards. The executive view covers pipeline by stage, approval-to-disbursement conversion, risk-grade distribution, business unit (region), product and sector, stage bottlenecks with SLA breaches, outstanding conditions, drop-off and SLA compliance. |
 | XI §37 Administration | **Built** | Maker-checker for every critical configuration with reason, versions and effective dates. |
 | XII–XIII Architecture, security | **Built** | See `architecture-assessment.md`, `security-model.md`. |
 | XIV §43 AI | **Built (mock)** | Drafts only, cites sources, human review recorded; private model deployment open (OQ-12). |
-| XV §44–45 Design system and tokens | **Partial** | Tokens centralised (three layers, no raw colours in components). Component states exist; a living component catalogue page is a Phase 2 follow-up. |
+| XV §44–45 Design system and tokens | **Built** | Tokens centralised (three layers, no raw colours in components). Living catalogue at **Control centre → Design system** (`/admin/design-system`): logo system, every semantic colour token with its live value, type scale, buttons in every variant and state, form fields with hint / error / disabled, statuses and SLA badges, alerts in every tone, metrics, label/value lists, bars, tables, tabs, stepper, empty and loading states, and an open drawer and dialog. It renders the real components, so it cannot drift from the product. |
 | XVI §46–47 Performance, accessibility | **Built / ongoing** | p95 budgets in CI; axe WCAG AA in both themes; target raised to WCAG 2.2 AA (manual audit recommended). |
-| XVIII §48–50 Testing | **Built / ongoing** | Functional, scenario (PEP, insider, SOL, cash-backed), identity (BVN/NIN states, review, gate), visual at the eight §49 widths, accessibility and performance suites in CI. Open: open-drawer and modal states in the visual suite. |
+| XVIII §48–50 Testing | **Built / ongoing** | Functional, scenario (PEP, insider, SOL, cash-backed), identity (BVN/NIN states, review, gate), visual at the eight §49 widths, accessibility and performance suites in CI. Open drawers and dialogs (catalogue drawer and dialog, customer invitation drawer, document upload preview), validation errors and a refused upload are now audited in both themes at every width; with a dialog open, the checks look only at the dialog and also require it to fit the viewport. |
 
 ## 3. Decisions requiring Bank approval
 
@@ -76,7 +76,7 @@ The repository already holds a working, tested platform, built as "Gazelle". Per
 
 1. **Done this phase:** identity rename, provisional brand tokens, typography, light/dark on the new palette, document template, table overflow hardening, customer dashboard hierarchy.
 2. **Done — Phase 4: promoter BVN/NIN verification** (§13), with a sandbox provider until live contracts are in place.
-3. **Done:** logo system from the supplied sheet. Remaining Phase 2: component catalogue page and a design review with the brand team.
-4. **Done:** visual checks at all eight §49 widths (zoom covered by width). Remaining: open drawers and modals as visual states.
-5. Phase 12 / 6 polish: drag-and-drop uploads with previews; executive dashboard breakdowns (§36).
+3. **Done:** logo system from the supplied sheet and the living component catalogue. Remaining: a design review with the AltBank brand team (needs C-01).
+4. **Done:** visual checks at all eight §49 widths (zoom covered by width), including open drawers, dialogs and error states.
+5. **Done:** drag-and-drop uploads with previews; executive dashboard breakdowns (§36); a browser test of a full customer application through to submission.
 6. Live integrations as the Bank supplies contracts and credentials (CAC, tax, BVN, NIN, bureau, statements, AD).

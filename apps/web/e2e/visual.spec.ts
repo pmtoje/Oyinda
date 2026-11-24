@@ -45,7 +45,9 @@ async function layoutDefects(page: Page) {
     const issues: string[] = [];
     const de = document.documentElement;
     if (de.scrollWidth > de.clientWidth + 1) issues.push(`horizontal page overflow: ${de.scrollWidth}px content in ${de.clientWidth}px viewport`);
-    const visible = (el: Element) => { const cs = getComputedStyle(el); return cs.visibility !== 'hidden' && cs.display !== 'none' && Number(cs.opacity) > 0.05 && !el.closest('.sr-only, [aria-hidden="true"], .overlay, .skip-link, details:not([open]) > :not(summary)'); };
+    // With a drawer or dialog open, only its content is in view (the page behind it is covered by the overlay)
+    const modal = Array.from(document.querySelectorAll('.overlay [role="dialog"]')).pop() ?? null;
+    const visible = (el: Element) => { const cs = getComputedStyle(el); return cs.visibility !== 'hidden' && cs.display !== 'none' && Number(cs.opacity) > 0.05 && (modal ? modal.contains(el) : !el.closest('.overlay')) && !el.closest('.sr-only, [aria-hidden="true"], .skip-link, details:not([open]) > :not(summary)'); };
     type R = { l: number; r: number; t: number; b: number; node: Node; text: string; scroller: Element | null };
     const rects: R[] = [];
     const scrollerOf = (el: Element) => { let e: Element | null = el; while (e && e !== document.body) { const o = getComputedStyle(e).overflowX; if (o === 'auto' || o === 'scroll') return e; e = e.parentElement; } return null; };
@@ -91,6 +93,8 @@ async function layoutDefects(page: Page) {
       if (!visible(el) || !el.value) continue;
       if (el.scrollWidth > el.clientWidth + 2) issues.push(`clipped field value: "${String(el.value).slice(0, 40)}"`);
     }
+    // An open drawer or dialog must fit the viewport
+    if (modal) { const r = modal.getBoundingClientRect(); if (r.left < -1 || r.right > window.innerWidth + 1 || r.top < -1 || r.bottom > window.innerHeight + 1) issues.push(`dialog exceeds the viewport: ${Math.round(r.width)}×${Math.round(r.height)}`); }
     // Content must stay inside its panel unless the panel scrolls it
     for (const panel of Array.from(document.querySelectorAll('.panel, .metric, .level-card, .dialog, .drawer'))) {
       if (!visible(panel)) continue;
@@ -186,10 +190,49 @@ for (const theme of THEMES) {
       await staffSignIn(page, 'demo.admin');
       await setTheme(page, theme, { table: 'app_user', key: 'ad_username', value: 'demo.admin' });
       const [cfg] = await sql(`SELECT id FROM config_item WHERE kind='approval_authority' AND key='APPROVED_LINE_DIRECT' AND status='ACTIVE'`);
-      for (const [path, name] of [['/admin/config', 'admin-config'], [`/admin/config/${cfg.id}`, 'admin-authority-matrix'], ['/admin/users', 'admin-users'], ['/admin/audit', 'admin-audit'], ['/admin/health', 'admin-health'], ['/work/reports', 'executive-dashboard']] as const) {
+      for (const [path, name] of [['/admin/config', 'admin-config'], [`/admin/config/${cfg.id}`, 'admin-authority-matrix'], ['/admin/users', 'admin-users'], ['/admin/audit', 'admin-audit'], ['/admin/health', 'admin-health'], ['/work/reports', 'executive-dashboard'], ['/admin/design-system', 'design-system']] as const) {
         await page.goto(path);
         await audit(page, name, theme);
       }
+    });
+
+    test('open drawers and dialogs, validation and upload errors', async ({ page, browser }) => {
+      // Component catalogue: open drawer and centred dialog (both themes, every width)
+      await staffSignIn(page, 'demo.admin');
+      await setTheme(page, theme, { table: 'app_user', key: 'ad_username', value: 'demo.admin' });
+      await page.goto('/admin/design-system');
+      await expect(page.getByText('Enter the 10-digit account number.')).toBeVisible(); // validation error state
+      await page.getByRole('button', { name: 'Open drawer' }).click();
+      await expect(page.getByRole('dialog', { name: 'Invite a colleague' })).toBeVisible();
+      await audit(page, 'ds-drawer', theme);
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: 'Open dialog' }).click();
+      await expect(page.getByRole('dialog', { name: 'Confirm acceptance' })).toBeVisible();
+      await audit(page, 'ds-dialog', theme);
+
+      // Customer: invitation drawer, upload preview dialog and a refused upload
+      const ctx = await browser.newContext();
+      const cp = await ctx.newPage();
+      await cp.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+      await customerSignIn(cp, 'treasury@abc-manufacturing.demo', '08030000001');
+      await setTheme(cp, theme, { table: 'customer_user', key: 'email', value: 'treasury@abc-manufacturing.demo' });
+      await cp.goto('/portal/users');
+      await cp.getByRole('button', { name: 'Invite a colleague' }).click();
+      await expect(cp.getByRole('dialog', { name: 'Invite a colleague' })).toBeVisible();
+      await audit(cp, 'portal-invite-drawer', theme);
+      await cp.keyboard.press('Escape');
+      const [ij] = await sql(`SELECT id FROM facility_request WHERE facility_ref='GZ-FAC-2026-000002'`);
+      await cp.goto(`/portal/facilities/${ij.id}/apply`);
+      await cp.getByRole('button', { name: 'Documents' }).click();
+      const row = cp.locator('tr').filter({ hasText: 'Not uploaded' }).first();
+      await row.locator('input[type="file"]').setInputFiles({ name: 'board-resolution-signed-by-all-directors-and-company-secretary-2026.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF\n') });
+      await expect(cp.getByRole('dialog')).toBeVisible();
+      await audit(cp, 'portal-upload-dialog', theme);
+      await cp.getByRole('button', { name: 'Choose another file' }).click();
+      await row.locator('input[type="file"]').setInputFiles({ name: 'payload.exe', mimeType: 'application/octet-stream', buffer: Buffer.from('MZ') });
+      await expect(row.getByRole('alert')).toBeVisible();
+      await audit(cp, 'portal-upload-error', theme);
+      await ctx.close();
     });
   });
 }

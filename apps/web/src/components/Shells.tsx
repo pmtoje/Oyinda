@@ -129,6 +129,7 @@ export function WorkShell() {
             {can('audit.view') && <SideLink to="/admin/audit">Audit log</SideLink>}
             {can('system.health') && <SideLink to="/admin/health">System health</SideLink>}
             {(can('system.health') || can('report.view')) && <SideLink to="/admin/data-quality">Data quality</SideLink>}
+            {can('config.view') && <SideLink to="/admin/design-system">Design system</SideLink>}
             <div className="section-label">You</div>
             <SideLink to="/work/delegations">Delegations</SideLink>
             <SideLink to="/work/notifications">Notifications</SideLink>

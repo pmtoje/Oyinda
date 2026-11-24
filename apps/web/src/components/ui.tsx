@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode, type ButtonHTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import { createPortal } from 'react-dom';
 import { ApiError } from '../lib/api';
 import { humanize } from '../lib/format';
 
@@ -77,7 +78,7 @@ export const Empty = ({ title, children, action }: { title: string; children?: R
   <div className="empty"><div className="title">{title}</div>{children && <div className="small">{children}</div>}{action && <div style={{ marginTop: 12 }}>{action}</div>}</div>
 );
 export const Loading = ({ rows = 3, label = 'Loading' }: { rows?: number; label?: string }) => (
-  <div className="stack" style={{ ['--gap' as any]: '10px', padding: 8 }} aria-busy="true" aria-label={label}>{Array.from({ length: rows }).map((_, i) => <div key={i} className="skeleton" style={{ width: `${90 - i * 12}%` }} />)}</div>
+  <div className="stack" style={{ ['--gap' as any]: '10px', padding: 8 }} role="status" aria-busy="true" aria-label={label}>{Array.from({ length: rows }).map((_, i) => <div key={i} className="skeleton" style={{ width: `${90 - i * 12}%` }} />)}</div>
 );
 
 export function KV({ items }: { items: [ReactNode, ReactNode][] }) {
@@ -101,14 +102,18 @@ export function Drawer({ title, onClose, children, footer, center }: { title: Re
     window.addEventListener('keydown', onKey);
     return () => { window.removeEventListener('keydown', onKey); prev?.focus(); };
   }, [onClose]);
-  return (
+  // Rendered at the document root so a dialog opened from inside a table cell or panel never inherits its layout
+  // (nowrap, alignment, overflow clipping).
+  return createPortal(
     <div className={center ? 'overlay center' : 'overlay'} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={center ? 'dialog' : 'drawer'} role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : 'Dialog'} ref={ref}>
         <div className={center ? 'dialog-head' : 'drawer-head'}><h3>{title}</h3><Button variant="ghost" size="sm" onClick={onClose} aria-label="Close">Close</Button></div>
-        <div className={center ? 'dialog-body' : 'drawer-body'}>{children}</div>
+        {/* focusable so keyboard users can scroll long content (WCAG 2.1.1) */}
+        <div className={center ? 'dialog-body' : 'drawer-body'} tabIndex={0}>{children}</div>
         {footer && <div className={center ? 'dialog-foot' : 'drawer-foot'}>{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

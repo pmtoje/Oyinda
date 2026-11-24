@@ -168,7 +168,7 @@ a:hover { color: var(--link-hover); }
 .choice .desc { font-size: var(--fs-sm); color: var(--ink-500); margin-top: 2px; }
 
 /* ---------- tables ---------- */
-.table-wrap { overflow-x: auto; }
+.table-wrap { overflow-x: auto; position: relative; } /* contains visually-hidden labels, which would otherwise escape the scroller */
 .table-wrap:focus-visible { outline: none; box-shadow: var(--focus); border-radius: var(--radius); }
 table.data { width: 100%; border-collapse: collapse; font-size: var(--fs-md); }
 table.data th { text-align: left; font-weight: 500; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-500); padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--surface-muted); white-space: nowrap; }
@@ -239,8 +239,8 @@ table.data .primary-cell { font-weight: 500; color: var(--ink-900); }
 /* ---------- drawer / dialog ---------- */
 .overlay { position: fixed; inset: 0; background: var(--overlay); z-index: 50; display: flex; justify-content: flex-end; }
 .overlay.center { justify-content: center; align-items: center; padding: 16px; }
-.drawer { width: min(560px, 100%); height: 100%; background: var(--surface); display: flex; flex-direction: column; box-shadow: var(--shadow); }
-.dialog { width: min(520px, 100%); background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow); display: flex; flex-direction: column; max-height: 90vh; }
+.drawer { min-width: 0; width: min(560px, 100%); height: 100%; background: var(--surface); display: flex; flex-direction: column; box-shadow: var(--shadow); }
+.dialog { min-width: 0; width: min(520px, 100%); background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow); display: flex; flex-direction: column; max-height: 90vh; }
 .drawer-head, .dialog-head { padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
 .drawer-body, .dialog-body { padding: 18px 20px; overflow-y: auto; flex: 1; }
 .drawer-foot, .dialog-foot { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
@@ -408,3 +408,19 @@ tr.drop-active { background: var(--accent-bg); box-shadow: inset 0 0 0 2px var(-
 .upload-progress span { display: block; height: 100%; background: var(--accent); transition: width var(--dur) var(--ease); }
 @media (prefers-reduced-motion: reduce) { .upload-progress span { transition: none; } }
 .section-title { font-size: var(--fs-lg); margin: 8px 0 -4px; }
+
+/* Design system catalogue (/admin/design-system) */
+.ds-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.ds-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--space-3); }
+.ds-swatch { display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: var(--space-2); align-items: center; min-width: 0; }
+.ds-swatch > .mono { grid-column: 2; overflow-wrap: anywhere; }
+.ds-chip { grid-row: span 2; width: 36px; height: 36px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); }
+.ds-logos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-3); }
+.ds-logo { margin: 0; padding: var(--space-4); border-radius: var(--radius); border: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--space-2); justify-content: space-between; min-width: 0; }
+.ds-logo img { max-width: 100%; height: 56px; object-fit: contain; object-position: left center; }
+.ds-logo.on-light { background: var(--p-cream-100); color: var(--p-char-900); }
+.ds-logo.on-dark { background: var(--p-char-900); color: #f4f1ea; }
+.ds-logo figcaption { color: inherit; }
+.ds-display { font-family: var(--font-display); font-size: var(--fs-3xl); font-weight: var(--fw-heavy); line-height: 1.15; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.ds-type h1, .ds-type h2, .ds-type h3, .ds-type h4 { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 420px) { .ds-display { font-size: var(--fs-2xl); } }
