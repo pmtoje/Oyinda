@@ -199,12 +199,12 @@ export function EsTriggerEditor({ value, onChange }: P) {
         {qn.map((q, i) => (
           <div key={i} className="panel auto-grid-host" style={{ padding: 12 }}>
             <div className="auto-grid"><TextInput label="Code" value={q.code} onChange={(e) => set({ questionnaire: upd(qn, i, { code: e.target.value.toUpperCase() }) })} /><div style={{ gridColumn: 'span 2' }}><TextInput label="Question" value={q.text} onChange={(e) => set({ questionnaire: upd(qn, i, { text: e.target.value }) })} /></div></div>
-            <table className="data" style={{ marginTop: 8 }}><thead><tr><th>Option code</th><th>Label</th><th>Weight</th><th /></tr></thead>
+            <div className="table-wrap"><table className="data" style={{ marginTop: 8 }}><thead><tr><th>Option code</th><th>Label</th><th>Weight</th><th /></tr></thead>
               <tbody>{q.options.map((o: any, j: number) => <tr key={j}>
                 <td><input className="input" aria-label="Option code" value={o.code} onChange={(e) => set({ questionnaire: upd(qn, i, { options: upd(q.options, j, { code: e.target.value.toUpperCase() }) }) })} /></td>
                 <td><input className="input" aria-label="Option label" value={o.label} onChange={(e) => set({ questionnaire: upd(qn, i, { options: upd(q.options, j, { label: e.target.value }) }) })} /></td>
                 <td><input className="input" aria-label="Weight" type="number" value={o.weight} onChange={(e) => set({ questionnaire: upd(qn, i, { options: upd(q.options, j, { weight: Number(e.target.value) }) }) })} /></td>
-                <td><Button size="sm" variant="ghost" onClick={() => set({ questionnaire: upd(qn, i, { options: del(q.options, j) }) })}>Remove</Button></td></tr>)}</tbody></table>
+                <td><Button size="sm" variant="ghost" onClick={() => set({ questionnaire: upd(qn, i, { options: del(q.options, j) }) })}>Remove</Button></td></tr>)}</tbody></table></div>
             <div className="row between" style={{ marginTop: 8 }}>
               <Button size="sm" onClick={() => set({ questionnaire: upd(qn, i, { options: [...q.options, { code: 'OPTION', label: 'Option', weight: 0 }] }) })}>Add option</Button>
               <Button size="sm" variant="danger" onClick={() => set({ questionnaire: del(qn, i) })}>Remove question</Button>
@@ -246,7 +246,7 @@ export function EfficiencyRatioEditor({ value, onChange }: P) {
           <div className="row between"><strong className="small">Preview</strong><input className="input" style={{ maxWidth: 240 }} aria-label="Facility reference for preview" placeholder="Facility reference (optional)" value={ref} onChange={(e) => setRef(e.target.value)} /></div>
           <div className="small" style={{ marginTop: 6 }}>{!v.formula.trim() ? <span className="muted">Enter a formula.</span> : preview.isLoading ? 'Checking…' : preview.error ? <span style={{ color: 'var(--danger-700)' }}>{(preview.error as any).message}</span> : !preview.data?.valid ? <span style={{ color: 'var(--danger-700)' }}>{preview.data?.error}</span> : preview.data.value === undefined ? 'Formula is valid. Enter a facility reference to see its value.' : preview.data.value === null ? `Cannot compute for this facility: missing ${preview.data.missing.join(', ') || preview.data.error}.` : <>Value for {ref}: <strong>{Number(preview.data.value).toLocaleString('en-NG', { maximumFractionDigits: 4 })}</strong></>}</div>
         </div>
-        <details className="small"><summary>Available variables</summary><table className="data"><tbody>{(vars.data ?? []).map((x) => <tr key={x.key}><td className="mono">{x.key}</td><td>{x.description}</td></tr>)}</tbody></table></details>
+        <details className="small"><summary>Available variables</summary><div className="table-wrap"><table className="data"><tbody>{(vars.data ?? []).map((x) => <tr key={x.key}><td className="mono">{x.key}</td><td>{x.description}</td></tr>)}</tbody></table></div></details>
       </Section>
       <Section title="Assessment bands" intro="Optional. Lower bound inclusive, upper bound exclusive; leave a bound empty for open-ended.">
         <div className="table-wrap"><table className="data"><thead><tr><th>From</th><th>To</th><th>Label</th><th>Assessment</th><th /></tr></thead>

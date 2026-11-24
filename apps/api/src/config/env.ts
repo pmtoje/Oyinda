@@ -41,7 +41,7 @@ const schema = z.object({
   CLAMD_HOST: z.string().optional(),
   CLAMD_PORT: z.coerce.number().int().optional(),
   LDAP_URL: z.string().optional(),
-  /** Staff sign-in: `directory` (Active Directory + MFA, the target state) or `local` (interim Gazelle password + MFA). */
+  /** Staff sign-in: `directory` (Active Directory + MFA, the target state) or `local` (interim Credit360 password + MFA). */
   STAFF_AUTH_MODE: z.enum(['directory', 'local']).default('directory'),
   /** Required to run `local` staff sign-in in production: reference of the Information Security approval / waiver. */
   STAFF_LOCAL_AUTH_APPROVAL_REF: z.string().trim().min(3).optional(),

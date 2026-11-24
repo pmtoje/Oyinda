@@ -153,7 +153,7 @@ export async function adminRoutes(app: FastifyInstance) {
   /** Interim local sign-in: send an activation or reset link to the user's work e-mail. Administrators never see or set passwords. */
   app.post('/api/admin/users/:uid/credential-link', async (req, reply) => {
     const s = requireStaff(req, 'user.manage');
-    if (!localStaffAuth()) throw conflict('DIRECTORY_AUTH', 'Staff sign in with Active Directory; Gazelle passwords are not in use.');
+    if (!localStaffAuth()) throw conflict('DIRECTORY_AUTH', 'Staff sign in with Active Directory; Credit360 passwords are not in use.');
     const { uid } = parse(z.object({ uid: z.uuid() }), req.params);
     const b = parse(z.object({ purpose: z.enum(['ACTIVATE', 'RESET']) }), req.body);
     if (uid === s.id) throw forbidden('Use “Change password” or the sign-in page for your own account.');
@@ -315,7 +315,7 @@ export async function adminRoutes(app: FastifyInstance) {
       FROM app_user u ORDER BY u.display_name`);
     const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'Gazelle by Alternative Bank';
+    wb.creator = 'Credit360 by AltBank';
     const ws = wb.addWorksheet('Users');
     ws.columns = [
       { header: 'Username (AD)', key: 'ad_username', width: 22 }, { header: 'Name', key: 'display_name', width: 32 }, { header: 'E-mail', key: 'email', width: 30 },

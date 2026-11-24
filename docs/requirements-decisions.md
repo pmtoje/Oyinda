@@ -1,5 +1,7 @@
 # Requirements Decisions & Conflicts
 
+> **Product name:** this platform is now **Credit360 by AltBank** (product owner direction, 24-Nov-2026). "Gazelle" below is its original working name, kept where it traces to the source PRD/BRD/SWR and to earlier decisions.
+
 Each entry records a source requirement, any conflict or gap, and the decision taken.
 
 **Sources and precedence.** `SWR` = Software Work Request "Enhancing the Gazelle Workflow…", 27-Oct-2026 (latest, authoritative). `PRD` = the combined Gazelle PRD/BRD, including its embedded approval grid, facility-type list, Credit Approval Memo template and offer-letter template. `MBP` = the master build prompt. Where sources conflict, the latest approved SWR direction is implemented unless noted, and the conflict is recorded below. D-01 to D-20 were taken before the SWR and PRD arrived; entries marked **Superseded** have been replaced by a later decision.

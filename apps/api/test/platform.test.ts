@@ -255,7 +255,7 @@ describe('staff directory by spreadsheet (interim, until AD sync)', () => {
   it('rejects files with invalid rows, explaining each problem, and they cannot be approved', async () => {
     const buf = await xlsx([
       { ...rm, roles: 'RM, WIZARD' }, { ...rm, businessUnit: 'EXECUTIVE' }, { ...ed, limits: 'MD=1' },
-      { username: 'demo.admin', name: 'Gazelle Admin (DEMO)', email: 'demo.admin@altbank.demo', directorate: 'TECH', businessUnit: 'GAZELLE-ADMIN', roles: 'ADMIN, SUPER_ADMIN' },
+      { username: 'demo.admin', name: 'Credit360 Admin (DEMO)', email: 'demo.admin@altbank.demo', directorate: 'TECH', businessUnit: 'GAZELLE-ADMIN', roles: 'ADMIN, SUPER_ADMIN' },
     ]);
     const up = await upload(s.admin!, '/api/admin/user-imports', 'staff.xlsx', buf, XLSX);
     expect(up.status).toBe(201);

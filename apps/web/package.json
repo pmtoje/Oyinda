@@ -13,6 +13,7 @@
     "e2e:local": "node e2e/prepare.mjs && E2E_STAFF_AUTH_MODE=local playwright test e2e/local-auth.spec.ts --trace off"
   },
   "dependencies": {
+    "@fontsource/plus-jakarta-sans": "^5.3.0",
     "@gazelle/shared": "workspace:*",
     "@tanstack/react-query": "^5.108.0",
     "react": "^19.3.1",

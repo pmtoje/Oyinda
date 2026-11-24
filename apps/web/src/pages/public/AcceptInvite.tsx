@@ -18,7 +18,7 @@ function unmet(p: any, pw: string): string[] {
   return out;
 }
 
-/** A colleague's invitation to join their business on Gazelle. */
+/** A colleague's invitation to join their business on Credit360. */
 export default function AcceptInvite() {
   const [sp, setSp] = useSearchParams();
   const nav = useNavigate();
@@ -38,7 +38,7 @@ export default function AcceptInvite() {
   const submit = () => { if (issues.length) return setPopup(issues); if (f.password !== f.confirm) return setPopup(['The two passwords do not match']); void accept.run(); };
   const d = info.data;
   return (
-    <AuthLayout heading="Join your business on Gazelle." text="A colleague has invited you. Verify your mobile number and set a password to get started.">
+    <AuthLayout heading="Join your business on Credit360." text="A colleague has invited you. Verify your mobile number and set a password to get started.">
       {info.isLoading ? <Loading rows={3} /> : info.error ? (
         <Alert tone="danger" title="This invitation is invalid or has expired">Ask your colleague to send a new invitation. <Link to="/login">Sign in</Link></Alert>
       ) : (

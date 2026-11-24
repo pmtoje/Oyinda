@@ -1,5 +1,7 @@
 # Operations Runbook
 
+> **Product name:** this platform is now **Credit360 by AltBank** (product owner direction, 24-Nov-2026). "Gazelle" below is its original working name, kept where it traces to the source PRD/BRD/SWR and to earlier decisions.
+
 ## Processes
 
 | Process | Command | Scale |

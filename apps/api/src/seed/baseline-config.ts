@@ -501,7 +501,7 @@ const policies: BaselineItem[] = [
     { maxAmountMinor: 9_000_000_000_000_000, label: 'Relationship / Branch Manager + RBE or Group Head countersign', signRoles: ['RM', 'BM'], countersignRoles: ['RBE', 'DH'], signerMustBeAssignedRm: true },
   ] } },
   // DEFAULT pending the Bank's Information Security password standard (OQ-21).
-  // Interim staff sign-in (Gazelle password + authenticator) until AD authentication; DEFAULT pending the InfoSec standard (OQ-21).
+  // Interim staff sign-in (Credit360 password + authenticator) until AD authentication; DEFAULT pending the InfoSec standard (OQ-21).
   { kind: 'password_policy', key: 'STAFF_INTERIM', title: 'Staff password policy (interim, until Active Directory)', payload: { minLength: 14, maxLength: 128, requireUpper: true, requireLower: true, requireDigit: true, requireSymbol: true, disallowPersonalInfo: true, maxFailedAttempts: 5, lockMinutes: 30, maxAgeDays: 90, historyCount: 5 } },
   { kind: 'password_policy', key: 'CUSTOMER_PORTAL', title: 'Customer portal password policy', payload: { minLength: 12, maxLength: 128, requireUpper: true, requireLower: true, requireDigit: true, requireSymbol: true, disallowPersonalInfo: true, maxFailedAttempts: 5, lockMinutes: 30 } },
   // Session timeout — DEFAULT pending the Bank's Information Security standard (OQ-21); administrators change it with maker-checker.
@@ -510,7 +510,7 @@ const policies: BaselineItem[] = [
   { kind: 'rarorac_threshold', key: 'STANDARD', title: 'RARORAC pricing threshold', payload: { hurdlePct: 15, minProfitRatePct: 18, minFeePct: 1, exceptionApproverRole: 'GH_CREDIT_RISK', justificationMinLength: 50 } },
   { kind: 'legal_terms', key: 'CUSTOMER_PORTAL', title: 'Customer portal terms & privacy notice', payload: {
     version: '2026.1',
-    termsText: 'These terms govern your use of Gazelle by Alternative Bank. Information you submit is used to assess requests for non-interest (Islamic) financing facilities. Submitting a request does not constitute an offer or commitment by the Bank. Any facility is subject to credit approval, Shariah compliance, documentation and the conditions stated in an offer letter accepted by you. You confirm that the information you provide is true and complete and that you are authorised to act for the business.',
+    termsText: 'These terms govern your use of Credit360 by AltBank. Information you submit is used to assess requests for non-interest (Islamic) financing facilities. Submitting a request does not constitute an offer or commitment by the Bank. Any facility is subject to credit approval, Shariah compliance, documentation and the conditions stated in an offer letter accepted by you. You confirm that the information you provide is true and complete and that you are authorised to act for the business.',
     privacyText: 'The Bank processes personal data of your directors, shareholders, signatories and contacts in line with the Nigeria Data Protection Act 2023. Data is used for credit assessment, regulatory reporting, credit bureau enquiries and fraud prevention, and is retained for the period required by law. You may request access to or correction of personal data by contacting the Bank’s Data Protection Officer.',
   } },
 ];
@@ -553,7 +553,7 @@ const templates: BaselineItem[] = [
     { heading: 'Conditions precedent to drawdown', body: '{{terms.conditionsPrecedent}}' },
     { heading: 'Other conditions and covenants', body: '{{terms.otherConditions}}' },
     { heading: 'Shariah compliance', body: 'This facility is structured in accordance with the principles of non-interest banking and has been reviewed by the Bank’s Shariah compliance function. The Bank will not charge or accept any return that is not permissible under the approved structure.' },
-    { heading: 'Acceptance', body: 'This offer is valid for 30 days from {{date}}. To accept, respond through Gazelle. Acceptance is subject to the conditions precedent above being satisfied before any drawdown.' },
+    { heading: 'Acceptance', body: 'This offer is valid for 30 days from {{date}}. To accept, respond through Credit360. Acceptance is subject to the conditions precedent above being satisfied before any drawdown.' },
   ] } },
 ];
 const conditionTemplates: BaselineItem[] = [

@@ -1,5 +1,7 @@
 # Implementation Plan
 
+> **Product name:** this platform is now **Credit360 by AltBank** (product owner direction, 24-Nov-2026). "Gazelle" below is its original working name, kept where it traces to the source PRD/BRD/SWR and to earlier decisions.
+
 Gazelle is built in the phase order set by the master build prompt (MBP). Every phase follows the same loop: implement → test → security check → fix → retest → UX review → requirements check → docs → commit.
 
 | # | Phase | Main deliverables | Status |

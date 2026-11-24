@@ -58,7 +58,7 @@ export async function buildFacts(db: Db, facilityId: string) {
       category: customer.customer_category,
       sector: profile?.sector_code ?? undefined,
       yearsInOperation: yearsBetween(profile?.incorporation_date),
-      // Relationship tenure comes from the core banking 'customer since' date, not the Gazelle onboarding date.
+      // Relationship tenure comes from the core banking 'customer since' date, not the Credit360 onboarding date.
       yearsWithBank: customer.bank_relationship_since ? Math.max(yearsBetween(customer.bank_relationship_since)!, 0) : undefined,
       hasRcNumber: !!profile?.rc_number,
       hasTin: !!profile?.tin,

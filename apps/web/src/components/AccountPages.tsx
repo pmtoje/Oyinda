@@ -74,7 +74,7 @@ function Appearance() {
   );
 }
 
-/** Interim staff sign-in only: change the Gazelle password (signs out everywhere). */
+/** Interim staff sign-in only: change the Credit360 password (signs out everywhere). */
 function ChangeStaffPassword() {
   const { me, meta, refresh } = useAuth();
   const nav = useNavigate();
@@ -82,7 +82,7 @@ function ChangeStaffPassword() {
   const go = useAction(async () => { await api.post('/api/auth/staff/password/change', { currentPassword: f.currentPassword, newPassword: f.newPassword }); await refresh(); nav('/staff/login', { replace: true }); });
   if (me?.type !== 'STAFF' || meta?.staffAuthMode !== 'local') return null;
   return (
-    <Panel title="Change Gazelle password">
+    <Panel title="Change Credit360 password">
       <form className="stack" style={{ maxWidth: 420 }} onSubmit={(e) => { e.preventDefault(); void go.run(); }}>
         <TextInput label="Current password" type="password" autoComplete="current-password" required value={f.currentPassword} onChange={(e) => setF({ ...f, currentPassword: e.target.value })} />
         <TextInput label="New password" type="password" autoComplete="new-password" required value={f.newPassword} onChange={(e) => setF({ ...f, newPassword: e.target.value })} />

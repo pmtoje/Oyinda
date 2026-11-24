@@ -137,7 +137,7 @@ export async function facilityRoutes(app: FastifyInstance) {
     const docs = await q(db, `${DOC_SELECT} WHERE d.facility_id=$1 AND d.deleted_at IS NULL ${isCustomer ? 'AND d.customer_visible' : ''} ORDER BY d.mandatory DESC, d.created_at`, [f.id]);
     const ev = await maybe<{ id: string }>(db, 'SELECT id FROM eligibility_evaluation WHERE facility_id=$1 ORDER BY created_at DESC LIMIT 1', [f.id]);
     const rework = await q(db, `SELECT id, section, target_ref AS "targetRef", message, customer_response AS "customerResponse", raised_at AS "raisedAt", resolved_at AS "resolvedAt" FROM rework_item WHERE facility_id=$1 ORDER BY raised_at DESC`, [f.id]);
-    const history = await q(db, `SELECT h.from_status, h.to_status, h.created_at, h.customer_visible_note, h.reason, h.actor_type, COALESCE(u.display_name, cu.full_name, 'Gazelle') AS actor_name
+    const history = await q(db, `SELECT h.from_status, h.to_status, h.created_at, h.customer_visible_note, h.reason, h.actor_type, COALESCE(u.display_name, cu.full_name, 'Credit360') AS actor_name
       FROM facility_status_history h LEFT JOIN app_user u ON u.id=h.actor_id LEFT JOIN customer_user cu ON cu.id=h.actor_id WHERE h.facility_id=$1 ORDER BY h.created_at`, [f.id]);
     const issues = EDITABLE.has(f.status) ? validateFacility(product.payload, f) : [];
     return ok(reply, {

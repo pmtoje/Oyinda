@@ -1,5 +1,7 @@
 # Production Readiness
 
+> **Product name:** this platform is now **Credit360 by AltBank** (product owner direction, 24-Nov-2026). "Gazelle" below is its original working name, kept where it traces to the source PRD/BRD/SWR and to earlier decisions.
+
 Assessment of the current build against MBP Phase 72. **PASS** means implemented and verified by automated tests in this repository. **CONDITIONAL** means the platform side is complete, but go-live depends on an external dependency or a bank process listed next to it. Nothing is marked PASS on the strength of UI alone.
 
 | Area | Verdict | Evidence | Condition for go-live |

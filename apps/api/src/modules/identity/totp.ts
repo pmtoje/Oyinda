@@ -50,4 +50,4 @@ export function verifyTotp(secret: string, code: string, lastUsedStep: number | 
 }
 
 export const otpauthUri = (secret: string, account: string) =>
-  `otpauth://totp/${encodeURIComponent('Gazelle by Alternative Bank')}:${encodeURIComponent(account)}?secret=${secret}&issuer=${encodeURIComponent('Gazelle by Alternative Bank')}&algorithm=SHA1&digits=6&period=30`;
+  `otpauth://totp/${encodeURIComponent('Credit360 by AltBank')}:${encodeURIComponent(account)}?secret=${secret}&issuer=${encodeURIComponent('Credit360 by AltBank')}&algorithm=SHA1&digits=6&period=30`;

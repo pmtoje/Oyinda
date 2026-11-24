@@ -31,9 +31,9 @@ function setSessionCookie(reply: FastifyReply, token: string) {
 }
 
 async function dispatchOtp(channel: 'SMS' | 'EMAIL', to: string, code: string, purpose: string) {
-  const text = `Your Gazelle by Alternative Bank ${purpose} code is ${code}. It expires in ${Math.round(env().OTP_TTL_SECONDS / 60)} minutes. Never share this code; the Bank will never ask for it.`;
+  const text = `Your Credit360 by AltBank ${purpose} code is ${code}. It expires in ${Math.round(env().OTP_TTL_SECONDS / 60)} minutes. Never share this code; the Bank will never ask for it.`;
   if (channel === 'SMS') await integrations().messaging.sendSms(to, text);
-  else await integrations().messaging.sendEmail(to, `Your Gazelle ${purpose} code`, text);
+  else await integrations().messaging.sendEmail(to, `Your Credit360 ${purpose} code`, text);
 }
 
 export async function identityRoutes(app: FastifyInstance) {
@@ -82,7 +82,7 @@ export async function identityRoutes(app: FastifyInstance) {
       throw unprocessable('ACCOUNT_NOT_VERIFIED', 'We could not verify this account. Check the number, or contact your relationship manager.');
     }
     if (cba.customerType !== 'CORPORATE') {
-      throw unprocessable('NOT_CORPORATE', 'Gazelle serves corporate, commercial and institutional customers. You must have an Alternative Bank business account to sign up.');
+      throw unprocessable('NOT_CORPORATE', 'Credit360 serves corporate, commercial and institutional customers. You must have an Alternative Bank business account to sign up.');
     }
     if (account.status === 'PND' || account.status === 'DORMANT') {
       throw unprocessable('ACCOUNT_RESTRICTED', 'This account has a restriction. Please contact your relationship manager before continuing.');
@@ -166,7 +166,7 @@ export async function identityRoutes(app: FastifyInstance) {
       applicant: { name: j.applicant_name, roleInCompany: j.applicant_role },
       // The username is the company e-mail on the core banking record. Shown in full only now that the OTP sent to it has been entered.
       username: cba.registeredEmail ?? null,
-      alreadyOnGazelle: !!registered,
+      alreadyRegistered: !!registered,
       passwordPolicy: policy,
       terms: terms ? { version: terms.payload.version, termsText: terms.payload.termsText, privacyText: terms.payload.privacyText } : null,
     });
@@ -192,7 +192,7 @@ export async function identityRoutes(app: FastifyInstance) {
     // Tell a second person straight away that the business is already registered (they need an invitation).
     const existingBiz = await maybe<{ id: string }>(db, 'SELECT id FROM customer WHERE cba_customer_id=$1', [cba.cbaCustomerId]);
     if ((existingBiz && (await maybe(db, 'SELECT 1 FROM customer_user WHERE customer_id=$1', [existingBiz.id]))) || (await maybe(db, 'SELECT 1 FROM customer_user WHERE lower(email)=$1', [email]))) {
-      throw conflict('ALREADY_REGISTERED', 'This business is already registered on Gazelle. Sign in, or ask a colleague who manages your business’s Gazelle users to invite you.');
+      throw conflict('ALREADY_REGISTERED', 'This business is already registered on Credit360. Sign in, or ask a colleague who manages your business’s Credit360 users to invite you.');
     }
     const policy = (await getActive(db, 'password_policy', 'CUSTOMER_PORTAL'))?.payload as PasswordPolicy | undefined;
     if (!policy) throw conflict('NO_PASSWORD_POLICY', 'Sign-up is temporarily unavailable. Please try again later.');
@@ -201,8 +201,8 @@ export async function identityRoutes(app: FastifyInstance) {
     const passwordHash = await hashPassword(body.password);
     const result = await tx(async (c) => {
       let customer = await maybe<any>(c, 'SELECT * FROM customer WHERE cba_customer_id=$1 FOR UPDATE', [cba.cbaCustomerId]);
-      if (customer && (await maybe(c, 'SELECT 1 FROM customer_user WHERE customer_id=$1', [customer.id]))) throw conflict('ALREADY_REGISTERED', 'This business is already registered on Gazelle. Sign in, or ask a colleague who manages your business’s Gazelle users to invite you.');
-      if (await maybe(c, 'SELECT 1 FROM customer_user WHERE lower(email)=$1', [email])) throw conflict('ALREADY_REGISTERED', 'This business is already registered on Gazelle. Sign in, or ask a colleague who manages your business’s Gazelle users to invite you.');
+      if (customer && (await maybe(c, 'SELECT 1 FROM customer_user WHERE customer_id=$1', [customer.id]))) throw conflict('ALREADY_REGISTERED', 'This business is already registered on Credit360. Sign in, or ask a colleague who manages your business’s Credit360 users to invite you.');
+      if (await maybe(c, 'SELECT 1 FROM customer_user WHERE lower(email)=$1', [email])) throw conflict('ALREADY_REGISTERED', 'This business is already registered on Credit360. Sign in, or ask a colleague who manages your business’s Credit360 users to invite you.');
       const actor = actorOf(req);
       if (!customer) {
         const rm = cba.relationshipManagerStaffNumber ? await maybe<{ id: string }>(c, `SELECT id FROM app_user WHERE staff_number=$1 AND status='ACTIVE'`, [cba.relationshipManagerStaffNumber]) : undefined;
@@ -255,8 +255,8 @@ export async function identityRoutes(app: FastifyInstance) {
     return `${env().WEB_ORIGIN}/verify-email?token=${token}`;
   }
   async function sendWelcomeEmail(user: any, link: string) {
-    const text = `Welcome to Gazelle by Alternative Bank, ${user.full_name}.\n\nYour username is ${user.email}. Confirm this e-mail address and open the portal using this link (valid for 48 hours):\n${link}\n\nIf you did not sign up, contact your relationship manager. The Bank will never ask for your password or a verification code.`;
-    await integrations().messaging.sendEmail(user.email, 'Welcome to Gazelle by Alternative Bank — confirm your e-mail', text);
+    const text = `Welcome to Credit360 by AltBank, ${user.full_name}.\n\nYour username is ${user.email}. Confirm this e-mail address and open the portal using this link (valid for 48 hours):\n${link}\n\nIf you did not sign up, contact your relationship manager. The Bank will never ask for your password or a verification code.`;
+    await integrations().messaging.sendEmail(user.email, 'Welcome to Credit360 by AltBank — confirm your e-mail', text);
   }
 
   app.post('/api/auth/customer/email/send', { config: AUTH_LIMIT }, async (req, reply) => {
@@ -305,7 +305,7 @@ export async function identityRoutes(app: FastifyInstance) {
       } else await audit(db, actorOf(req), { action: 'LOGIN_START_REJECTED', entityType: 'customer_user', entityId: user?.id ?? null, outcome: 'FAILURE', metadata: { reason: !user ? 'unknown' : 'inactive' } });
       throw generic();
     }
-    if (user.customer_status === 'SUSPENDED') throw forbidden('Access to Gazelle for this business has been suspended. Please contact your relationship manager.');
+    if (user.customer_status === 'SUSPENDED') throw forbidden('Access to Credit360 for this business has been suspended. Please contact your relationship manager.');
     await q(db, 'UPDATE customer_user SET failed_password_count=0 WHERE id=$1', [user.id]);
     const otp = await issueOtp(db, { purpose: 'LOGIN', subjectKey: hmac(body.email, 'login'), channel: 'SMS', destinationMasked: maskPhone(user.phone), ip: req.ip });
     await dispatchOtp('SMS', user.phone, otp.code, 'sign-in');
@@ -338,7 +338,7 @@ export async function identityRoutes(app: FastifyInstance) {
     });
     if ('error' in result) {
       if (result.error === 'LOCKED_ACCOUNT') throw new AppError(423, 'ACCOUNT_LOCKED', 'Too many failed attempts. Your sign-in is locked for 30 minutes.');
-      if (result.error === 'SUSPENDED') throw forbidden('Access to Gazelle for this business has been suspended. Please contact your relationship manager.');
+      if (result.error === 'SUSPENDED') throw forbidden('Access to Credit360 for this business has been suspended. Please contact your relationship manager.');
       throw unprocessable('OTP_INVALID', OTP_MESSAGES[(result.error === 'INVALID' ? 'NOT_FOUND' : result.error) as keyof typeof OTP_MESSAGES] ?? OTP_MESSAGES.INVALID);
     }
     setSessionCookie(reply, result.session.token);
@@ -350,10 +350,10 @@ export async function identityRoutes(app: FastifyInstance) {
   // ---------------------------------------------------------------------------
   app.post('/api/auth/staff/login', { config: AUTH_LIMIT }, async (req, reply) => {
     const body = parse(z.object({ username: z.string().trim().min(2).max(100), password: z.string().min(1).max(200) }), req.body);
-    const generic = () => unauthorized('The username or password is incorrect, or your account is not enabled for Gazelle.');
+    const generic = () => unauthorized('The username or password is incorrect, or your account is not enabled for Credit360.');
     const user = await maybe<any>(db, `SELECT * FROM app_user WHERE lower(ad_username)=lower($1)`, [body.username]);
     if (user?.locked_until && new Date(user.locked_until) > new Date()) throw new AppError(423, 'ACCOUNT_LOCKED', 'Too many failed attempts. Sign-in is locked for 30 minutes.');
-    // Directory (AD) sign-in is the target; `local` is the interim Gazelle password until AD authentication is available.
+    // Directory (AD) sign-in is the target; `local` is the interim Credit360 password until AD authentication is available.
     const local = localStaffAuth();
     const policy = local ? await staffPolicy(db) : { maxFailedAttempts: 5, lockMinutes: 30, maxAgeDays: 0 };
     const verified = local ? await verifyPassword(body.password, user?.password_hash) : !!(await integrations().directory.authenticate(body.username, body.password));

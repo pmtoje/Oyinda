@@ -25,7 +25,7 @@ export async function docgenRoutes(app: FastifyInstance) {
     requireStaff(req);
     const { id, kind } = parse(z.object({ id: z.string(), kind: z.enum(['CREDIT_MEMO', 'TERM_SHEET', 'OFFER_LETTER']) }), req.params);
     const f = await loadFacility(db, req, id);
-    const rows = await q<any>(db, `SELECT g.id, g.version_no, g.content, g.rendered_document_id, g.based_on_version, g.edit_reason, g.created_at, COALESCE(u.display_name, 'Gazelle') AS generated_by FROM generated_document g LEFT JOIN app_user u ON u.id=g.generated_by_id WHERE g.facility_id=$1 AND g.kind=$2 ORDER BY g.version_no DESC`, [f.id, kind]);
+    const rows = await q<any>(db, `SELECT g.id, g.version_no, g.content, g.rendered_document_id, g.based_on_version, g.edit_reason, g.created_at, COALESCE(u.display_name, 'Credit360') AS generated_by FROM generated_document g LEFT JOIN app_user u ON u.id=g.generated_by_id WHERE g.facility_id=$1 AND g.kind=$2 ORDER BY g.version_no DESC`, [f.id, kind]);
     return ok(reply, rows.map((r, i) => ({ id: r.id, version: r.version_no, documentId: r.rendered_document_id, basedOn: r.based_on_version, editReason: r.edit_reason, generatedBy: r.generated_by, createdAt: r.created_at, ...(i === 0 ? { content: r.content } : {}) })));
   });
 

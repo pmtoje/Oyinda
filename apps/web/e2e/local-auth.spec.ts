@@ -33,13 +33,13 @@ test('Interim sign-in: the first administrator activates, sets a password, enrol
   await page.getByRole('link', { name: 'Go to sign-in' }).click();
   await expect(page.getByText(/Interim sign-in until Active Directory/)).toBeVisible();
   await page.getByLabel('Username').fill('demo.admin');
-  await page.getByLabel('Gazelle password').fill(PASSWORD);
+  await page.getByLabel('Credit360 password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('heading', { name: 'Set up your authenticator' })).toBeVisible();
   await otpBox(page).fill(totp((await staffSecret('demo.admin'))!));
   await page.getByRole('button', { name: /verify|sign in|continue/i }).last().click();
   await page.waitForURL(/\/work/);
-  await expect(page.getByText('Interim staff sign-in (Gazelle passwords) until Active Directory')).toBeVisible();
+  await expect(page.getByText('Interim staff sign-in (Credit360 passwords) until Active Directory')).toBeVisible();
 
   // The administrator sends a colleague their activation link; nobody sees the password.
   await page.goto('/admin/users');

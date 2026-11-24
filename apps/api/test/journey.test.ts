@@ -79,7 +79,7 @@ describe('Phase 77 — end-to-end Murabaha journey for ABC Manufacturing Ltd', (
     expect(sa.summary.walletSharePct).toBeCloseTo((260e6 * 3.15 / 3) / (260e6 * 3.15 / 3 + 40e3 * 3.15 / 3 * 1520.5) * 100, 0);
     const ex = (await staff.analyst!.get(`/api/facilities/${facilityId}/exposure`)).body.data;
     expect(ex.solBreached).toBe(false);
-    // CBA direct + 50% CCF on the APG + related-party Ijarah + this request + any approved-but-unbooked Gazelle pipeline
+    // CBA direct + 50% CCF on the APG + related-party Ijarah + this request + any approved-but-unbooked Credit360 pipeline
     const pipeline = ex.lines.pipeline.reduce((a: number, l: any) => a + (l.kind === 'CONTINGENT' ? l.outstandingMinor / 2 : l.outstandingMinor), 0);
     expect(ex.aggregateMinor).toBe(180_000_000_00 + 30_000_000_00 + 22_500_000_00 + 150_000_000_00 + pipeline);
     const flags = (await staff.analyst!.get(`/api/facilities/${facilityId}/risk-flags`)).body.data;
@@ -298,7 +298,7 @@ describe('workflow controls', () => {
     expect(await q(db(), `SELECT 1 FROM workflow_task WHERE facility_id=$1 AND stage_key='RM_REVIEW' AND status='OPEN'`, [f.id])).toHaveLength(1);
   });
 
-  it('clarification thread keeps the conversation inside Gazelle', async () => {
+  it('clarification thread keeps the conversation inside Credit360', async () => {
     const f = (await q(db(), `SELECT t.facility_id FROM workflow_task t JOIN facility_request fr ON fr.id=t.facility_id WHERE t.stage_key='RM_REVIEW' AND t.status='OPEN' AND fr.customer_id=$1 LIMIT 1`, [customerId]))[0].facility_id;
     const r = await act(staff.rm!, f, 'RM_REVIEW', 'REQUEST_CLARIFICATION', { comment: 'Please confirm the supplier delivery timeline.', clarification: { toCustomer: true, subject: 'Supplier delivery timeline' } });
     expect(r.status).toBe(200);

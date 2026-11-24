@@ -122,7 +122,7 @@ export async function upload(c: Client, url: string, filename: string, content: 
   return c.req('POST', url, Buffer.concat(parts), { 'content-type': `multipart/form-data; boundary=${boundary}` });
 }
 
-export const pdf = (text = 'Gazelle test document') => Buffer.from(`%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\n% ${text} ${Math.random()}\ntrailer << /Root 1 0 R >>\n%%EOF\n`);
+export const pdf = (text = 'Credit360 test document') => Buffer.from(`%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\n% ${text} ${Math.random()}\ntrailer << /Root 1 0 R >>\n%%EOF\n`);
 
 export const ABC = { account: '0100000001', phone: '08030000001' };
 

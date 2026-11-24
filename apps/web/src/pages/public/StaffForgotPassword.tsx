@@ -9,7 +9,7 @@ export default function StaffForgotPassword() {
   const [done, setDone] = useState<string | null>(null);
   const go = useAction(async () => setDone((await api.post<any>('/api/auth/staff/password/forgot', { username })).message));
   return (
-    <AuthLayout heading="Reset your Gazelle password." text="A single-use link is sent to the work e-mail address the Bank holds for you. Nobody at the Bank will ask for your password.">
+    <AuthLayout heading="Reset your Credit360 password." text="A single-use link is sent to the work e-mail address the Bank holds for you. Nobody at the Bank will ask for your password.">
       {done ? <Alert tone="ok" title="Check your work e-mail">{done} The link is valid for one hour. <Link to="/staff/login">Back to sign-in</Link></Alert> : (
         <form className="stack" onSubmit={(e) => { e.preventDefault(); void go.run(); }}>
           <div><h2>Forgotten password</h2></div>

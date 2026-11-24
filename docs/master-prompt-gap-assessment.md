@@ -1,5 +1,7 @@
 # Gap assessment — Master Enterprise Product Prompt (§0–§100)
 
+> **Product name:** this platform is now **Credit360 by AltBank** (product owner direction, 24-Nov-2026). "Gazelle" below is its original working name, kept where it traces to the source PRD/BRD/SWR and to earlier decisions.
+
 Assessed 19-Nov-2026 against branch `claude/gazelle-platform-build-1iq76a`. Each section of the master prompt is marked:
 
 * **Met**: implemented and covered by automated tests (named).

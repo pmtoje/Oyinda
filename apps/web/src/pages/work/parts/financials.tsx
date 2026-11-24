@@ -160,7 +160,7 @@ export function StatementsTab({ id }: { id: string }) {
               <tbody>{totals.map((t) => <tr key={t.month}><td className="mono small">{t.month}</td><td className="num">{money(t.debitNgnMinor, 'NGN')}</td><td className="num">{money(t.creditNgnMinor, 'NGN')}</td><td className="num">{t.closingBalanceNgnMinor === null || t.closingBalanceNgnMinor === undefined ? '—' : money(t.closingBalanceNgnMinor, 'NGN')}</td><td className="num">{pct(t.walletSharePct)}</td></tr>)}</tbody>
               <tfoot><tr><th>Total</th><th className="num">{money(a.summary.totalDebitNgnMinor, 'NGN')}</th><th className="num">{money(a.summary.totalCreditNgnMinor, 'NGN')}</th><th /><th className="num">{pct(a.summary.walletSharePct)}</th></tr></tfoot></table></div>
           </Panel>
-          {a.fxRates?.length > 0 && <Panel title="FX rates applied" flush><table className="data"><thead><tr><th>Pair</th><th className="num">Rate</th><th>Rate date</th><th>Source</th></tr></thead><tbody>{a.fxRates.map((r: any) => <tr key={r.id}><td>{r.base_ccy}/NGN</td><td className="num">{Number(r.rate).toLocaleString('en-NG')}</td><td>{date(r.rate_date)}</td><td className="small">{r.source ?? '—'}</td></tr>)}</tbody></table></Panel>}
+          {a.fxRates?.length > 0 && <Panel title="FX rates applied" flush><div className="table-wrap"><table className="data"><thead><tr><th>Pair</th><th className="num">Rate</th><th>Rate date</th><th>Source</th></tr></thead><tbody>{a.fxRates.map((r: any) => <tr key={r.id}><td>{r.base_ccy}/NGN</td><td className="num">{Number(r.rate).toLocaleString('en-NG')}</td><td>{date(r.rate_date)}</td><td className="small">{r.source ?? '—'}</td></tr>)}</tbody></table></div></Panel>}
         </>
       )}
       {uploading && <UploadStatementDrawer id={id} onClose={() => setUploading(false)} onDone={async () => { setUploading(false); await refresh(); }} />}
@@ -196,11 +196,11 @@ function TransactionsDrawer({ stmt, onClose, onChanged }: { stmt: any; onClose: 
       <div className="stack">
         <label className="check"><input type="checkbox" checked={onlyUncertain} onChange={(e) => setOnly(e.target.checked)} /><span>Show only uncertain transactions</span></label>
         <QueryState q={q} empty={<Empty title="Nothing to show" />}>{() => (
-          <table className="data"><thead><tr><th>Line</th><th>Date & description</th><th className="num">Debit / credit</th><th /></tr></thead>
+          <div className="table-wrap"><table className="data"><thead><tr><th>Line</th><th>Date & description</th><th className="num">Debit / credit</th><th /></tr></thead>
             <tbody>{q.data!.map((t) => (
               <tr key={t.id}><td className="xs muted">{t.lineNo}</td><td className="small">{t.date ?? <em>unreadable</em>} · {t.description}<div className="xs muted">{humanize(t.category)}</div>{t.uncertain && <div className="xs" style={{ color: 'var(--warn-700)' }}>{t.uncertainReason}</div>}{t.correctedAt && <div className="xs muted">Corrected {dateTime(t.correctedAt)}</div>}</td>
                 <td className="num small">{t.debitMinor ? `-${money(t.debitMinor, stmt.currency)}` : ''}{t.creditMinor ? money(t.creditMinor, stmt.currency) : ''}<div className="xs muted">bal {money(t.balanceMinor, stmt.currency)}</div></td>
-                <td>{t.uncertain && <Button size="sm" onClick={() => setEdit(t)}>Correct</Button>}</td></tr>))}</tbody></table>)}</QueryState>
+                <td>{t.uncertain && <Button size="sm" onClick={() => setEdit(t)}>Correct</Button>}</td></tr>))}</tbody></table></div>)}</QueryState>
         {edit && <CorrectForm stmt={stmt} t={edit} onDone={async () => { setEdit(null); await q.refetch(); onChanged(); }} onCancel={() => setEdit(null)} />}
       </div>
     </Drawer>

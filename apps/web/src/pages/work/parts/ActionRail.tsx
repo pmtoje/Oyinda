@@ -13,7 +13,7 @@ const ACTION_HELP: Record<string, string> = {
   COMPLETE: 'Mark this stage complete. All prerequisites must be met.',
   DECLINE: 'Decline the request. A reason is required and is recorded permanently.',
   RETURN: 'Return for rework. Say exactly what needs attention.',
-  REQUEST_CLARIFICATION: 'Ask a question without leaving Gazelle. The task stays with you.',
+  REQUEST_CLARIFICATION: 'Ask a question without leaving Credit360. The task stays with you.',
   COMMENT: 'Add a comment to the record without moving the task.',
   VOTE: 'Cast your committee vote. Each member votes once.',
   RECORD_DECISION: 'Record the decision taken at the committee meeting. Cite the signed minutes; the record is permanent.',
@@ -93,7 +93,7 @@ function CommitteePanel({ c }: { c: any }) {
       <div className="small stack" style={{ ['--gap' as any]: '8px' }}>
         <div>Quorum {c.rules.quorum} · approvals required {c.rules.requiredApprovals}{c.rules.requiredRoles?.length ? ` · must include ${c.rules.requiredRoles.join(', ')}` : ''} · {humanize(c.rules.voting)} voting</div>
         <div><strong>{c.votes.length}</strong> of {c.memberCount} members voted · <strong>{approvals}</strong> approve</div>
-        {c.votes.length > 0 && <table className="data"><thead><tr><th>Member</th><th>Vote</th></tr></thead><tbody>{c.votes.map((v: any, i: number) => <tr key={i}><td>{v.member}<div className="xs muted">{roleLabel(v.role)} · {dateTime(v.at)}</div>{v.comment && <div className="xs">{v.comment}</div>}</td><td><Status value={v.vote === 'APPROVE' ? 'APPROVED' : v.vote === 'DECLINE' ? 'DECLINED' : 'PENDING'} label={humanize(v.vote)} /></td></tr>)}</tbody></table>}
+        {c.votes.length > 0 && <div className="table-wrap"><table className="data"><thead><tr><th>Member</th><th>Vote</th></tr></thead><tbody>{c.votes.map((v: any, i: number) => <tr key={i}><td>{v.member}<div className="xs muted">{roleLabel(v.role)} · {dateTime(v.at)}</div>{v.comment && <div className="xs">{v.comment}</div>}</td><td><Status value={v.vote === 'APPROVE' ? 'APPROVED' : v.vote === 'DECLINE' ? 'DECLINED' : 'PENDING'} label={humanize(v.vote)} /></td></tr>)}</tbody></table></div>}
       </div>
     </Panel>
   );

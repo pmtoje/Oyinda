@@ -30,7 +30,7 @@ export function CreditTab({ id, customerId }: { id: string; customerId: string }
                   <td className="num">{money(b.totalOutstandingMinor, 'NGN', { compact: true })}</td><td className="small">{dateTime(b.requestedAt)}{b.reportReference && <div className="xs muted mono">{b.reportReference}</div>}</td></tr>))}</tbody></table></div>)}</QueryState>
         </Panel>
       </Section>
-      <Section title="Aggregate exposure & Single Obligor Limit" sub="Computed and enforced by the server from core banking and approved Gazelle pipeline."
+      <Section title="Aggregate exposure & Single Obligor Limit" sub="Computed and enforced by the server from core banking and approved Credit360 pipeline."
         actions={can('exposure.compute') && <Button size="sm" variant="primary" onClick={() => compute.run()} loading={compute.loading}>{e ? 'Recompute' : 'Compute exposure'}</Button>}>
         <ErrorAlert error={compute.error} />
         <QueryState q={exposure} empty={<Panel><Empty title="Exposure not yet computed" /></Panel>}>{() => (
@@ -142,10 +142,10 @@ export function RiskTab({ id }: { id: string }) {
               </div>) : <p className="muted small">Submit ORR, FRR, industry and collateral assessments, then compute the combined rating. Each assessment keeps the exact scorecard version used.</p>}
           </Panel>
           <Panel title="Scorecards" flush>
-            <table className="data"><thead><tr><th>Scorecard</th><th>Version</th><th>Latest</th><th /></tr></thead>
+            <div className="table-wrap"><table className="data"><thead><tr><th>Scorecard</th><th>Version</th><th>Latest</th><th /></tr></thead>
               <tbody>{q.data.scorecards.map((s: any) => { const a = by(s.kind) ?? draft(s.kind); return (
                 <tr key={s.configId}><td className="primary-cell">{s.name}<div className="xs muted">{s.sections.length} {s.sections.length === 1 ? "section" : "sections"}</div></td><td>v{s.version}</td><td>{a ? <><Status value={a.status} /> {a.grade} ({a.score})</> : '—'}</td>
-                  <td className="num">{can('risk.assess') && <Button size="sm" onClick={() => setCard(s)}>{a ? 'Reassess' : 'Assess'}</Button>}</td></tr>); })}</tbody></table>
+                  <td className="num">{can('risk.assess') && <Button size="sm" onClick={() => setCard(s)}>{a ? 'Reassess' : 'Assess'}</Button>}</td></tr>); })}</tbody></table></div>
           </Panel>
           {card && <ScorecardDrawer id={id} card={card} prior={draft(card.kind) ?? by(card.kind)} suggestion={q.data.suggestions} onClose={() => setCard(null)} onDone={async () => { setCard(null); await refresh(); }} />}
         </div>
@@ -218,7 +218,7 @@ export function PricingTab({ id, product }: { id: string; product: any }) {
                 <div className="stack"><Alert tone="warn">Pricing is outside the configured threshold. A written justification is required, and the approval route will escalate to at least the configured authority.</Alert>
                   <TextArea label="Justification" value={just} onChange={(e) => setJust(e.target.value)} /><div><Button variant="primary" onClick={() => justify.run(latest.id)} loading={justify.loading}>Record justification</Button></div><ErrorAlert error={justify.error} /></div>) : <p className="muted">Awaiting justification by an authorised officer.</p>}
             </Panel>)}
-          <Panel title="History" flush><table className="data"><thead><tr><th>Computed</th><th className="num">Rate</th><th className="num">RARORAC</th><th>Result</th></tr></thead><tbody>{q.data!.map((r) => <tr key={r.id}><td className="small">{dateTime(r.computedAt)} <MockTag mode={r.mode} /></td><td className="num">{pct(r.proposedProfitRatePct, 2)}</td><td className="num">{pct(r.raroracPct, 2)}</td><td>{r.status === 'COMPLETED' ? <Status value={r.withinThreshold ? 'OK' : 'WARNING'} label={r.withinThreshold ? 'Within threshold' : 'Exception'} /> : <Status value="FAILED" />}</td></tr>)}</tbody></table></Panel>
+          <Panel title="History" flush><div className="table-wrap"><table className="data"><thead><tr><th>Computed</th><th className="num">Rate</th><th className="num">RARORAC</th><th>Result</th></tr></thead><tbody>{q.data!.map((r) => <tr key={r.id}><td className="small">{dateTime(r.computedAt)} <MockTag mode={r.mode} /></td><td className="num">{pct(r.proposedProfitRatePct, 2)}</td><td className="num">{pct(r.raroracPct, 2)}</td><td>{r.status === 'COMPLETED' ? <Status value={r.withinThreshold ? 'OK' : 'WARNING'} label={r.withinThreshold ? 'Within threshold' : 'Exception'} /> : <Status value="FAILED" />}</td></tr>)}</tbody></table></div></Panel>
         </>)}</QueryState>
     </div>
   );

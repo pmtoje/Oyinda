@@ -1,5 +1,7 @@
 # Gazelle by Alternative Bank — Architecture Assessment
 
+> **Product name:** this platform is now **Credit360 by AltBank** (product owner direction, 24-Nov-2026). "Gazelle" below is its original working name, kept where it traces to the source PRD/BRD/SWR and to earlier decisions.
+
 _Phase 0 deliverable. Assessed 19-Nov-2026._
 
 ## 1. Repository inspection findings

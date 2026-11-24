@@ -15,7 +15,7 @@ interface Verified {
   business: { name: string; accountName: string; rcNumber: string | null; tin: string | null; incorporationDate: string | null; address: string; accounts: { account: string; currency: string; product: string }[]; registeredPhone: string };
   applicant: { name: string; roleInCompany: string };
   username: string | null;
-  alreadyOnGazelle: boolean;
+  alreadyRegistered: boolean;
   passwordPolicy: Policy | null;
   terms: { version: string; termsText: string; privacyText: string } | null;
 }
@@ -68,7 +68,7 @@ export default function Onboarding() {
 
   const idx = STAGES.findIndex(([s]) => s === stage);
   return (
-    <AuthLayout heading="Set up Gazelle for your business." text="We verify your business against the Bank's records. Your registered details come directly from core banking, so you do not need to re-enter them.">
+    <AuthLayout heading="Set up Credit360 for your business." text="We verify your business against the Bank's records. Your registered details come directly from core banking, so you do not need to re-enter them.">
       <ol className="stepper" aria-label="Onboarding progress" style={{ marginBottom: 24 }}>
         {STAGES.map(([s, l], i) => <li key={s} className={i < idx ? 'done' : i === idx ? 'current' : ''} aria-current={i === idx ? 'step' : undefined}>{l}</li>)}
       </ol>
@@ -102,7 +102,7 @@ export default function Onboarding() {
       {stage === 'PASSWORD' && verified && (
         <form className="stack" onSubmit={(e) => { e.preventDefault(); submitPassword(); }}>
           <div><h2>{verified.business.accountName}</h2><p className="muted">Account verified. These details are held on the Bank's core banking record and cannot be edited here.</p></div>
-          {verified.alreadyOnGazelle && <Alert tone="info" title="This business is already registered on Gazelle">Sign in with the company e-mail address. <Link to="/login">Go to sign in</Link></Alert>}
+          {verified.alreadyRegistered && <Alert tone="info" title="This business is already registered on Credit360">Sign in with the company e-mail address. <Link to="/login">Go to sign in</Link></Alert>}
           <div className="panel"><div className="panel-body">
             <KV items={[
               ['Account name', <strong key="n">{verified.business.accountName}</strong>],
@@ -117,7 +117,7 @@ export default function Onboarding() {
             <Alert tone="warn" title="No company e-mail on record">The Bank does not hold a company e-mail address for this account. Ask your relationship manager or branch to update it, then start again.</Alert>
           ) : (
             <>
-              <h3>Create your Gazelle account</h3>
+              <h3>Create your Credit360 account</h3>
               <TextInput label="Username (company e-mail on the Bank's record)" value={verified.username} readOnly hint="You will sign in with this e-mail address." />
               <TextInput label="Password" type="password" autoComplete="new-password" required value={pw.password} onChange={(e) => setPw({ ...pw, password: e.target.value })} />
               {verified.passwordPolicy && (
@@ -136,7 +136,7 @@ export default function Onboarding() {
                 </>
               ) : <Alert tone="warn">The terms are temporarily unavailable. Please try again shortly.</Alert>}
               <ErrorAlert error={complete.error} />
-              <Button type="submit" variant="primary" size="lg" loading={complete.loading} disabled={!verified.terms || !pw.acceptTerms || !pw.privacyConsent || !pw.password || !pw.confirm || verified.alreadyOnGazelle}>Create account</Button>
+              <Button type="submit" variant="primary" size="lg" loading={complete.loading} disabled={!verified.terms || !pw.acceptTerms || !pw.privacyConsent || !pw.password || !pw.confirm || verified.alreadyRegistered}>Create account</Button>
             </>
           )}
         </form>

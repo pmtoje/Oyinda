@@ -21,7 +21,7 @@ export const BUSINESS_UNITS = [
   { code: 'LEGAL-SERV', name: 'Legal Services', directorate: 'LEGAL' },
   { code: 'SHARIAH-COMP', name: 'Shariah Compliance', directorate: 'SHARIAH' },
   { code: 'EXECUTIVE', name: 'Executive Office', directorate: 'EXEC' },
-  { code: 'GAZELLE-ADMIN', name: 'Gazelle Administration', directorate: 'TECH' },
+  { code: 'GAZELLE-ADMIN', name: 'Credit360 Administration', directorate: 'TECH' },
 ];
 
 export const SECTORS = [

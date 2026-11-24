@@ -1,30 +1,43 @@
 /*
- * Gazelle by Alternative Bank — design tokens.
+ * Credit360 by AltBank — design tokens.
  *
  * Three layers:
- *   1. Palette  — raw brand values. PLACEHOLDER (deep green, brass) until the approved Alternative Bank palette is
- *                 supplied (OQ-09). Replacing the palette here re-themes the whole product.
+ *   1. Palette  — raw brand values: deep charcoal, warm golden yellow, cream and warm neutrals.
+ *                 PROVISIONAL: derived from the Credit360 brand description (charcoal "Credit", golden "360",
+ *                 cream supporting surfaces) pending (a) the supplied logo file and (b) reconciliation with
+ *                 AltBank's approved corporate colour codes. Not certified corporate hex values. Replacing the
+ *                 palette here re-themes the whole product. See docs/credit360-gap-analysis.md §Brand.
  *   2. Semantic — what a colour is FOR (text, surface, border, action, status…), defined per theme.
- *   3. Aliases  — older scale names (--ink-900, --brand-700…) mapped onto semantic roles, so every component
- *                 follows the theme. New code should use the semantic names.
+ *   3. Aliases  — older scale names (--ink-900, --brand-700…) mapped onto semantic roles.
  * Components never use raw colour values. Light and dark are both deliberate designs, not an inversion.
+ * Gold is reserved for meaningful emphasis (primary actions, the active item, the "360" of the wordmark).
  */
 
 /* ---------- 1. Palette (shared by both themes) ---------- */
 :root {
-  --p-green-950: #071f19; --p-green-900: #0a2a22; --p-green-800: #0e3b30; --p-green-700: #145040; --p-green-600: #1b6652;
-  --p-green-400: #4f9a80; --p-green-300: #84c2aa; --p-green-200: #b9dccd; --p-green-100: #e4efe9; --p-green-50: #f1f6f3;
-  --p-brass-700: #7d5d29; --p-brass-600: #9c7638; --p-brass-500: #b88d4b; --p-brass-300: #d9b77f; --p-brass-100: #f5ecdc;
-  --p-stone-950: #0f1513; --p-stone-900: #16201c; --p-stone-850: #1b2522; --p-stone-800: #212d29; --p-stone-750: #283530; --p-stone-700: #36423d;
-  --p-stone-600: #4a5751; --p-stone-500: #5d6964; --p-stone-400: #808a85; --p-stone-300: #a9b1ad; --p-stone-200: #cfccc2; --p-stone-150: #e2e0d9;
-  --p-stone-100: #eeece5; --p-stone-50: #f6f5f1; --p-white: #ffffff;
+  /* Charcoal — "Credit" in the wordmark, primary type and dark surfaces */
+  --p-char-1000: #0b0c0f; --p-char-950: #111317; --p-char-900: #16181d; --p-char-850: #1a1d23; --p-char-800: #20242b;
+  --p-char-750: #262a32; --p-char-700: #2e333c; --p-char-600: #3a3f49; --p-char-500: #4b515c;
+  /* Warm gold — "360" and the orbit; warm and modern, not metallic */
+  --p-gold-200: #ffe7a3; --p-gold-300: #ffd66b; --p-gold-400: #ffc93c; --p-gold-500: #f5b700; --p-gold-600: #e0a500;
+  --p-gold-700: #a87700; --p-gold-800: #8a5f00; --p-gold-900: #6b4a00;
+  /* Cream and warm neutrals — supporting surfaces, borders and secondary text */
+  --p-cream-50: #fffdf8; --p-cream-100: #fffaf0; --p-cream-200: #fbf4e4; --p-cream-300: #f4ecda;
+  --p-warm-50: #faf9f6; --p-warm-100: #f3f1ec; --p-warm-150: #e9e5dc; --p-warm-200: #d9d3c6; --p-warm-300: #b5afa3;
+  --p-warm-400: #8f8a80; --p-warm-500: #6a6f78; --p-warm-600: #555b66; --p-warm-700: #3c414b;
+  --p-white: #ffffff;
 
-  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-serif: 'IBM Plex Serif', Georgia, serif;
+  /* Plus Jakarta Sans: rounded, softly geometric, matches the friendly rounded wordmark (SIL OFL 1.1, self-hosted). */
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: var(--font-display); /* legacy alias: headings no longer use a serif */
   --font-mono: ui-monospace, 'SFMono-Regular', Menlo, monospace;
-  --fs-xs: 0.75rem; --fs-sm: 0.8125rem; --fs-md: 0.875rem; --fs-base: 0.9375rem; --fs-lg: 1.0625rem; --fs-xl: 1.375rem; --fs-2xl: 1.75rem;
+  /* Type scale: marketing headline, greeting, page title, section, body, label, legal */
+  --fs-xs: 0.75rem; --fs-sm: 0.8125rem; --fs-md: 0.875rem; --fs-base: 0.9375rem; --fs-lg: 1.0625rem; --fs-xl: 1.375rem; --fs-2xl: 1.75rem; --fs-3xl: 2.25rem;
+  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700; --fw-heavy: 800;
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px;
-  --radius-sm: 3px; --radius: 5px; --radius-lg: 8px;
+  /* Rounded, consistent corners (friendlier than the earlier square styling) */
+  --radius-sm: 6px; --radius: 10px; --radius-lg: 14px; --radius-pill: 999px;
   --sidebar-w: 236px;
   --bp-tablet: 900px; --bp-phone: 640px;
   --dur-fast: 120ms; --dur: 180ms; --ease: cubic-bezier(0.2, 0, 0, 1);
@@ -33,94 +46,108 @@
 /* ---------- 2. Semantic tokens — light theme (default) ---------- */
 :root, [data-theme='light'] {
   color-scheme: light;
-  --bg: var(--p-stone-50);            /* page canvas */
-  --bg-sunken: var(--p-stone-100);    /* wells, skeleton base */
+  --bg: var(--p-warm-50);             /* page canvas: off-white */
+  --bg-sunken: var(--p-warm-100);     /* wells, skeleton base */
   --surface: var(--p-white);          /* panels, cards, inputs */
   --surface-raised: var(--p-white);   /* drawers, dialogs */
-  --surface-muted: #fbfaf7;           /* panel footers, table heads */
-  --surface-hover: var(--p-green-50);
-  --surface-selected: var(--p-green-100);
-  --text: var(--p-stone-900);
-  --text-2: var(--p-stone-700);
-  --text-3: var(--p-stone-500);
-  --text-4: #66706b;            /* ≥ 4.5:1 on surface and canvas (WCAG AA) */
-  --text-disabled: var(--p-stone-300);
-  --border: var(--p-stone-150);
-  --border-strong: var(--p-stone-200);
-  --link: var(--p-green-700);
-  --link-hover: var(--p-green-900);
-  --brand-text: var(--p-green-800);   /* brand-coloured text: active nav, current step, brand badge */
-  --accent: var(--p-brass-500);       /* emphasis rules, active markers */
-  --accent-text: var(--p-brass-700);
-  --accent-bg: var(--p-brass-100);
-  --action: var(--p-green-800);       /* primary buttons */
-  --action-hover: var(--p-green-900);
-  --action-text: var(--p-white);
-  --chrome: var(--p-green-900);       /* top bar, auth aside */
-  --chrome-text: #e8efe9;
-  --chrome-text-2: #b8c9be;
-  --chrome-text-3: #8fa69a;
-  --chrome-line: rgba(255, 255, 255, 0.18);
-  --focus-ring: rgba(184, 141, 75, 0.45);
-  --overlay: rgba(10, 30, 24, 0.35);
-  --skeleton-hi: #f5f4ef;
-  --shadow-color: 22, 32, 28;
+  --surface-muted: var(--p-cream-50); /* panel footers, table heads: soft cream */
+  --surface-hover: var(--p-cream-100);
+  --surface-selected: #fff3cc;        /* gold-tinted selection */
+  --text: var(--p-char-900);
+  --text-2: var(--p-warm-700);
+  --text-3: var(--p-warm-600);
+  --text-4: var(--p-warm-500);        /* ≥ 4.5:1 on surface and canvas (WCAG AA) */
+  --text-disabled: var(--p-warm-300);
+  --border: var(--p-warm-150);
+  --border-strong: var(--p-warm-200);
+  --link: var(--p-gold-800);          /* gold-brown text: 5.6:1 on white (pure gold text would fail contrast) */
+  --link-hover: var(--p-gold-900);
+  --brand-text: var(--p-char-900);    /* active nav, current step */
+  --accent: var(--p-gold-500);        /* emphasis rules, active markers, the "360" */
+  --accent-text: var(--p-gold-800);
+  --accent-bg: #fff4d1;
+  --action: var(--p-gold-500);        /* primary buttons: gold with charcoal text (≈10:1) */
+  --action-hover: var(--p-gold-400);
+  --action-text: var(--p-char-900);
+  --chrome: var(--p-char-900);        /* dark brand panels (sign-in aside) */
+  --chrome-text: #f4f1ea;
+  --chrome-text-2: #cfcabf;
+  --chrome-text-3: #a8a297;
+  --chrome-line: rgba(255, 255, 255, 0.16);
+  --header-bg: var(--p-white);        /* top bar: light, so the charcoal wordmark keeps its intended colours */
+  --header-text: var(--p-char-900);
+  --header-text-2: var(--p-warm-600);
+  --header-line: var(--p-warm-150);
+  --wordmark-credit: var(--p-char-900);
+  --wordmark-360: var(--p-gold-500);
+  --wordmark-sub: var(--p-warm-600);
+  --focus-ring: rgba(245, 183, 0, 0.55);
+  --overlay: rgba(17, 19, 23, 0.45);
+  --skeleton-hi: var(--p-cream-100);
+  --shadow-color: 22, 24, 29;
 
-  /* Status — the same meaning always has the same treatment (text, background, border) */
-  --ok-text: #17513a;     --ok: #1f6b46;     --ok-bg: #e3f1e8;     --ok-border: #bcdcc8;
-  --warn-text: #6c4700;   --warn: #8a5a00;   --warn-bg: #fbf0d9;   --warn-border: #e9d4a1;
-  --danger-text: #7e231f; --danger: #a12f2a; --danger-bg: #f9e4e2; --danger-border: #e9bcb8;
-  --info-text: #183d5d;   --info: #1d4f7a;   --info-bg: #e3edf6;   --info-border: #bfd3e6;
-  --neutral-text: var(--p-stone-700); --neutral-bg: var(--p-stone-100); --neutral-border: var(--p-stone-200);
+  /* Status — the same meaning always has the same treatment. Warning is orange (not gold) so it never reads as brand. */
+  --ok-text: #11573b;     --ok: #15803d;     --ok-bg: #e5f4ea;     --ok-border: #b9dfc6;
+  --warn-text: #8a3b07;   --warn: #b54708;   --warn-bg: #fdefe2;   --warn-border: #f5cfa9;
+  --danger-text: #8b1d1a; --danger: #b42318; --danger-bg: #fdeceb; --danger-border: #f3c2be;
+  --info-text: #1d3f6e;   --info: #1f5aa6;   --info-bg: #e8f0fb;   --info-border: #c3d6f0;
+  --neutral-text: var(--p-warm-700); --neutral-bg: var(--p-warm-100); --neutral-border: var(--p-warm-200);
 
   /* Charts (categorical, colour-blind aware order) */
-  --chart-1: var(--p-green-700); --chart-2: var(--p-brass-500); --chart-3: #3f6e9a; --chart-4: #8b5d7d; --chart-5: #6b8f3a; --chart-grid: var(--p-stone-150);
+  --chart-1: var(--p-char-700); --chart-2: var(--p-gold-500); --chart-3: #3f6e9a; --chart-4: #8b5d7d; --chart-5: #4f8a5b; --chart-grid: var(--p-warm-150);
 }
 
 /* ---------- 2b. Semantic tokens — dark theme ---------- */
-/* Deep green-grey, never pure black; softened text; status colours lifted for contrast on dark surfaces. */
+/* Deep charcoal, never pure black; soft warm-white text; gold controlled and slightly lifted for contrast. */
 [data-theme='dark'] {
   color-scheme: dark;
-  --bg: #0f1714;
-  --bg-sunken: #0b120f;
-  --surface: #151f1b;
-  --surface-raised: #1a2621;
-  --surface-muted: #131c18;
-  --surface-hover: #1c2a24;
-  --surface-selected: #1f3a30;
-  --text: #e6ece8;
-  --text-2: #c4cdc8;
-  --text-3: #98a49e;
-  --text-4: #7d8a84;
-  --text-disabled: #56625c;
-  --border: #26332e;
-  --border-strong: #34443d;
-  --link: #84c2aa;
-  --link-hover: #b9dccd;
-  --brand-text: #9fd3bb;
-  --accent: #d9b77f;
-  --accent-text: #e2c592;
-  --accent-bg: #2e2617;
-  --action: #2a7a60;
-  --action-hover: #33906f;
-  --action-text: #ffffff;
-  --chrome: #0a120f;
-  --chrome-text: #e6ece8;
-  --chrome-text-2: #a9b8b0;
-  --chrome-text-3: #7f9088;
-  --chrome-line: rgba(255, 255, 255, 0.14);
-  --focus-ring: rgba(217, 183, 127, 0.55);
-  --overlay: rgba(0, 0, 0, 0.55);
-  --skeleton-hi: #1d2925;
+  --bg: var(--p-char-950);
+  --bg-sunken: var(--p-char-1000);
+  --surface: var(--p-char-850);
+  --surface-raised: var(--p-char-800);
+  --surface-muted: #181b21;
+  --surface-hover: #242830;
+  --surface-selected: #332c14;
+  --text: #f4f1ea;
+  --text-2: #d6d1c7;
+  --text-3: #aca79d;
+  --text-4: #94908a;
+  --text-disabled: #5d5f64;
+  --border: #2b2f37;
+  --border-strong: #3b404a;
+  --link: var(--p-gold-300);
+  --link-hover: var(--p-gold-200);
+  --brand-text: var(--p-gold-300);
+  --accent: var(--p-gold-500);
+  --accent-text: var(--p-gold-300);
+  --accent-bg: #2f2710;
+  --action: var(--p-gold-500);
+  --action-hover: var(--p-gold-400);
+  --action-text: var(--p-char-900);
+  --chrome: var(--p-char-1000);
+  --chrome-text: #f4f1ea;
+  --chrome-text-2: #c5c0b6;
+  --chrome-text-3: #99948b;
+  --chrome-line: rgba(255, 255, 255, 0.12);
+  --header-bg: #14161b;
+  --header-text: #f4f1ea;
+  --header-text-2: #b3aea5;
+  --header-line: #262a31;
+  --wordmark-credit: #f4f1ea;
+  --wordmark-360: var(--p-gold-500);
+  --wordmark-sub: #b3aea5;
+  --focus-ring: rgba(255, 201, 60, 0.6);
+  --overlay: rgba(0, 0, 0, 0.6);
+  --skeleton-hi: #22262d;
   --shadow-color: 0, 0, 0;
 
-  --ok-text: #a6dcc0;     --ok: #6cc59a;     --ok-bg: #15302a;     --ok-border: #24503f;
-  --warn-text: #f0d29a;   --warn: #e0b45e;   --warn-bg: #2f2513;   --warn-border: #54431f;
-  --danger-text: #f3b8b3; --danger: #ec8a83; --danger-bg: #351b19; --danger-border: #5c2d29;
-  --info-text: #b4d0ea;   --info: #84b3de;   --info-bg: #152535;   --info-border: #2a4560;
-  --neutral-text: #c4cdc8; --neutral-bg: #1d2824; --neutral-border: #34443d;
+  --ok-text: #a7e1bd;     --ok: #4cc27a;     --ok-bg: #13291d;     --ok-border: #22513a;
+  --warn-text: #fbc79a;   --warn: #f79a4b;   --warn-bg: #2f1d0f;   --warn-border: #5c3a1d;
+  --danger-text: #f6b6b0; --danger: #ef7f76; --danger-bg: #351816; --danger-border: #5f2a26;
+  --info-text: #b7d0f2;   --info: #7eaee9;   --info-bg: #14233a;   --info-border: #2a4568;
+  --neutral-text: #d6d1c7; --neutral-bg: #23272e; --neutral-border: #3b404a;
 
-  --chart-1: #6cc59a; --chart-2: #d9b77f; --chart-3: #84b3de; --chart-4: #c79bbd; --chart-5: #a9c97a; --chart-grid: #26332e;
+  --chart-1: #d6d1c7; --chart-2: var(--p-gold-500); --chart-3: #7eaee9; --chart-4: #c79bbd; --chart-5: #7fc694; --chart-grid: #2b2f37;
 }
 
 /* ---------- 3. Aliases (legacy scale names → semantic roles) ---------- */
@@ -134,6 +161,6 @@
   --ok-700: var(--ok); --ok-100: var(--ok-bg); --warn-700: var(--warn); --warn-100: var(--warn-bg);
   --danger-700: var(--danger); --danger-100: var(--danger-bg); --info-700: var(--info); --info-100: var(--info-bg);
   --shadow-sm: 0 1px 2px rgba(var(--shadow-color), 0.06);
-  --shadow: 0 1px 3px rgba(var(--shadow-color), 0.08), 0 4px 12px rgba(var(--shadow-color), 0.04);
+  --shadow: 0 1px 3px rgba(var(--shadow-color), 0.08), 0 6px 16px rgba(var(--shadow-color), 0.05);
   --focus: 0 0 0 3px var(--focus-ring);
 }

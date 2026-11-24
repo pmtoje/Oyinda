@@ -13,7 +13,7 @@ export default function Welcome() {
         </div>
         <Link to="/onboarding" className="choice" style={{ textDecoration: 'none' }}>
           <div className="title">Yes, I have an account</div>
-          <div className="desc">Verify your business account number and set up access to Gazelle. Takes about 3 minutes.</div>
+          <div className="desc">Verify your business account number and set up access to Credit360. Takes about 3 minutes.</div>
         </Link>
         <a href={OPEN_ACCOUNT} className="choice" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
           <div className="title">No, open a business account</div>

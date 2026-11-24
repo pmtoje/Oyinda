@@ -32,7 +32,7 @@ export default function CustomerLogin() {
           <TextInput label="Company e-mail address" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
           <TextInput label="Password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           <Button type="submit" variant="primary" size="lg" loading={start.loading} disabled={!email || !password}>Continue</Button>
-          <p className="small muted">New to Gazelle? <Link to="/">Set up access</Link></p>
+          <p className="small muted">New to Credit360? <Link to="/">Set up access</Link></p>
         </form>
       ) : (
         <form className="stack" onSubmit={(e) => { e.preventDefault(); void verify.run(); }}>

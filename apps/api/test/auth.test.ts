@@ -119,7 +119,7 @@ describe('customer onboarding & OTP security (SWR §1)', () => {
     const c = new Client(app);
     await start(c, { fullName: 'Second Person', roleInCompany: 'Accountant' });
     const v = await c.post('/api/onboarding/verify-otp', { code: await lastOtp(PHONE) });
-    expect(v.body.data.alreadyOnGazelle).toBe(true);
+    expect(v.body.data.alreadyRegistered).toBe(true);
     const r = await c.post('/api/onboarding/complete', { password: 'Another#Secure2026', acceptTerms: true, privacyConsent: true, termsVersion: '2026.1' });
     expect(r.body.error.code).toBe('ALREADY_REGISTERED');
   });

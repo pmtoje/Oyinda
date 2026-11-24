@@ -1,5 +1,7 @@
 # Data Model
 
+> **Product name:** this platform is now **Credit360 by AltBank** (product owner direction, 24-Nov-2026). "Gazelle" below is its original working name, kept where it traces to the source PRD/BRD/SWR and to earlier decisions.
+
 PostgreSQL 16; migrations in `apps/api/src/db/migrations` (checksum-verified, never edited after application). Money is stored as **integer minor units** (`bigint`), rates as `numeric`. Primary keys are UUIDs; human references are `GZ-CUS-000001` and `GZ-FAC-2026-000001` (allocated transactionally).
 
 ## Domains

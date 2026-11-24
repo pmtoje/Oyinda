@@ -1,5 +1,7 @@
 # Requirements Traceability
 
+> **Product name:** this platform is now **Credit360 by AltBank** (product owner direction, 24-Nov-2026). "Gazelle" below is its original working name, kept where it traces to the source PRD/BRD/SWR and to earlier decisions.
+
 `MBP-n` = master build prompt phase; `SWR-n` = item n of the 27-Oct-2026 SWR process table (TC-n = technology control n); `PRD` = PRD/BRD section. Status: **Done** (implemented, tested, documented) · **Partial** (works; a named gap remains) · **Blocked** (needs an external dependency; interface plus labelled mock in place).
 Tests live in `apps/api/test/*.test.ts` (API, unit and journey) and `apps/web/e2e/*.spec.ts` (browser).
 

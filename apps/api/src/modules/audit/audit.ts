@@ -10,7 +10,7 @@ export interface Actor {
   requestId?: string | null;
 }
 
-export const SYSTEM: Actor = { type: 'SYSTEM', label: 'Gazelle system' };
+export const SYSTEM: Actor = { type: 'SYSTEM', label: 'Credit360 system' };
 
 export interface AuditEntry {
   action: string;

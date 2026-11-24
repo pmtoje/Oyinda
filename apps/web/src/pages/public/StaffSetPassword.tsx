@@ -35,7 +35,7 @@ export default function StaffSetPassword() {
   });
   const submit = () => { if (issues.length) return setPopup(issues); if (pw !== confirm) return setPopup(['The two passwords do not match']); void save.run(); };
   return (
-    <AuthLayout heading="Set your Gazelle password." text="Interim staff sign-in until Active Directory is connected. You will set up your authenticator app at your first sign-in.">
+    <AuthLayout heading="Set your Credit360 password." text="Interim staff sign-in until Active Directory is connected. You will set up your authenticator app at your first sign-in.">
       {info.isLoading ? <Loading rows={3} /> : info.error ? (
         <Alert tone="danger" title="This link is invalid or has expired">Ask for a new link from the <Link to="/staff/forgot-password">password reset page</Link> or from your administrator.</Alert>
       ) : done ? (

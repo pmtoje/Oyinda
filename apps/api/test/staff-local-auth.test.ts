@@ -18,7 +18,7 @@ const lastLink = async (email: string) => {
   if (!m) throw new Error(`no link for ${email}`);
   return m[1]!;
 };
-/** Sign in with a Gazelle password and complete (or enrol) the authenticator. */
+/** Sign in with a Credit360 password and complete (or enrol) the authenticator. */
 async function localLogin(username: string, password: string) {
   const c = new Client(app);
   const r = await c.post('/api/auth/staff/login', { username, password });
@@ -36,7 +36,7 @@ beforeAll(async () => {
 });
 afterAll(() => { (env() as any).STAFF_AUTH_MODE = 'directory'; });
 
-describe('interim staff sign-in: Gazelle password + authenticator (until AD)', () => {
+describe('interim staff sign-in: Credit360 password + authenticator (until AD)', () => {
   it('reports the mode and refuses unsafe production configuration', async () => {
     expect((await new Client(app).get('/api/meta')).body.data.staffAuthMode).toBe('local');
     const base = { APP_ENV: 'production', DATABASE_URL: 'postgres://x', HMAC_KEY: 'k'.repeat(44), DATA_KEY: 'k'.repeat(44), CBA_MODE: 'live', IDENTITY_MODE: 'live', MESSAGING_MODE: 'live', BUREAU_MODE: 'live', RARORAC_MODE: 'live', AV_MODE: 'live', AD_MODE: 'mock', STAFF_AUTH_MODE: 'local' } as any;
@@ -132,7 +132,7 @@ describe('interim staff sign-in: Gazelle password + authenticator (until AD)', (
     const csv = Buffer.from(`${COLUMNS.map((c) => c.header).join(',')}\nimported.${tag},Imported Local Officer,${email},,COMM,LAG-COMM-1,RM,,,,ACTIVE\n`);
     const up = await upload(admin, '/api/admin/user-imports', 'staff.csv', csv, 'text/csv');
     expect(up.body.data.status).toBe('PENDING_APPROVAL');
-    // The checker signs in through the directory (demo.superadmin has no Gazelle password).
+    // The checker signs in through the directory (demo.superadmin has no Credit360 password).
     (env() as any).STAFF_AUTH_MODE = 'directory';
     const checker = await staffLogin(app, 'demo.superadmin');
     (env() as any).STAFF_AUTH_MODE = 'local';

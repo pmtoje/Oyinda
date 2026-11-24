@@ -26,7 +26,7 @@ export default function PortalUsers() {
   const d = q.data;
   return (
     <div className="stack" style={{ ['--gap' as any]: '20px' }}>
-      <PageHeader title="Users" sub="People from your business who can use Gazelle. Each person signs in with their own e-mail, password and mobile number."
+      <PageHeader title="Users" sub="People from your business who can use Credit360. Each person signs in with their own e-mail, password and mobile number."
         actions={d?.canManage && <Button variant="primary" onClick={() => setInvite(true)}>Invite a colleague</Button>} />
       {q.isLoading ? <Loading /> : q.error ? <ErrorAlert error={q.error} /> : (
         <>
@@ -42,8 +42,8 @@ export default function PortalUsers() {
           {d.canManage && (
             <Panel title="Open invitations" flush>
               {!d.invites.length ? <Empty title="No open invitations" /> : (
-                <table className="data"><thead><tr><th>Invited</th><th>Access</th><th>Expires</th><th /></tr></thead>
-                  <tbody>{d.invites.map((i: any) => <tr key={i.id}><td className="primary-cell">{i.name}<div className="xs muted">{i.email} · by {i.invitedBy}</div></td><td className="small">{i.permissions.length ? i.permissions.map(label).join(', ') : 'Prepare only'}</td><td className="small">{i.expired ? <Status value="EXPIRED" label="Expired" /> : dateTime(i.expiresAt)}</td><td className="num"><Button size="sm" variant="ghost" onClick={() => revoke.run(i.id)}>Withdraw</Button></td></tr>)}</tbody></table>
+                <div className="table-wrap"><table className="data"><thead><tr><th>Invited</th><th>Access</th><th>Expires</th><th /></tr></thead>
+                  <tbody>{d.invites.map((i: any) => <tr key={i.id}><td className="primary-cell">{i.name}<div className="xs muted">{i.email} · by {i.invitedBy}</div></td><td className="small">{i.permissions.length ? i.permissions.map(label).join(', ') : 'Prepare only'}</td><td className="small">{i.expired ? <Status value="EXPIRED" label="Expired" /> : dateTime(i.expiresAt)}</td><td className="num"><Button size="sm" variant="ghost" onClick={() => revoke.run(i.id)}>Withdraw</Button></td></tr>)}</tbody></table></div>
               )}
               <ErrorAlert error={revoke.error} />
             </Panel>

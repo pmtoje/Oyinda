@@ -76,7 +76,7 @@ export function render(routes: Route[]): string {
   const byModule = new Map<string, Route[]>();
   for (const r of routes) byModule.set(r.module, [...(byModule.get(r.module) ?? []), r]);
   const parts = [
-    '# Gazelle API reference',
+    '# Credit360 API reference',
     '',
     '_Generated from the route source by `pnpm --filter @gazelle/api docs:api`; a test fails when this file is out of date. Do not edit by hand._',
     '',

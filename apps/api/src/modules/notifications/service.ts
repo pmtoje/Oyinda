@@ -65,8 +65,8 @@ registerJob('notification.deliver', async ({ deliveryId }) => {
   if (!who) { await q(db, `UPDATE notification_delivery SET status='SKIPPED', last_error='recipient missing' WHERE id=$1`, [deliveryId]); return { skipped: true }; }
   try {
     const m = integrations().messaging;
-    const text = `${d.body}\n\nSign in to Gazelle by Alternative Bank to view details. This message does not contain confidential information.`;
-    const r = d.channel === 'EMAIL' ? await m.sendEmail(who.email, d.title, text) : await m.sendSms(who.phone, `${d.title}. Sign in to Gazelle for details.`);
+    const text = `${d.body}\n\nSign in to Credit360 by AltBank to view details. This message does not contain confidential information.`;
+    const r = d.channel === 'EMAIL' ? await m.sendEmail(who.email, d.title, text) : await m.sendSms(who.phone, `${d.title}. Sign in to Credit360 for details.`);
     await q(db, `UPDATE notification_delivery SET status='SENT', provider=$2, provider_ref=$3, destination_masked=$4, attempts=attempts+1, sent_at=now() WHERE id=$1`, [deliveryId, m.mode, r.providerRef, maskEmail(who.email)]);
   } catch (e) {
     await q(db, `UPDATE notification_delivery SET attempts=attempts+1, last_error=$2 WHERE id=$1`, [deliveryId, (e as Error).message.slice(0, 500)]);

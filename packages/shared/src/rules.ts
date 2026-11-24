@@ -1,5 +1,5 @@
 /**
- * Gazelle condition language. Used by FIPG eligibility, E&S triggers, workflow routing,
+ * Credit360 condition language. Used by FIPG eligibility, E&S triggers, workflow routing,
  * special workflows, cash-backed classification and document requirements.
  * Pure data (JSON), evaluated without eval(); every evaluation returns an explanation trace.
  */

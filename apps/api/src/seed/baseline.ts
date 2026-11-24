@@ -52,8 +52,8 @@ export const DEMO_USERS: { username: string; name: string; roles: string[]; bu: 
   { username: 'demo.shariah', name: 'Mallam Usman Idris (DEMO Shariah)', roles: ['SHARIAH'], bu: 'SHARIAH-COMP' },
   { username: 'demo.creditops', name: 'Kemi Adeleke (DEMO Credit Ops)', roles: ['CREDIT_OPS'], bu: 'CREDIT-OPS' },
   { username: 'demo.creditops2', name: 'Sola Bakare (DEMO Credit Ops checker)', roles: ['CREDIT_OPS'], bu: 'CREDIT-OPS' },
-  { username: 'demo.admin', name: 'Gazelle Admin (DEMO)', roles: ['ADMIN'], bu: 'GAZELLE-ADMIN' },
-  { username: 'demo.superadmin', name: 'Gazelle Super Admin (DEMO)', roles: ['SUPER_ADMIN'], bu: 'GAZELLE-ADMIN' },
+  { username: 'demo.admin', name: 'Credit360 Admin (DEMO)', roles: ['ADMIN'], bu: 'GAZELLE-ADMIN' },
+  { username: 'demo.superadmin', name: 'Credit360 Super Admin (DEMO)', roles: ['SUPER_ADMIN'], bu: 'GAZELLE-ADMIN' },
   { username: 'demo.auditor', name: 'Internal Audit (DEMO)', roles: ['AUDITOR'], bu: 'GAZELLE-ADMIN' },
 ];
 

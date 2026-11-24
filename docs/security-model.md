@@ -1,5 +1,7 @@
 # Security Model
 
+> **Product name:** this platform is now **Credit360 by AltBank** (product owner direction, 24-Nov-2026). "Gazelle" below is its original working name, kept where it traces to the source PRD/BRD/SWR and to earlier decisions.
+
 Gazelle is treated as a banking system of record: security controls live in the server and the database, never only in the UI.
 
 ## 1. Identity

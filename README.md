@@ -1,4 +1,4 @@
-# Gazelle by Alternative Bank
+# Credit360 by AltBank
 
 Corporate, commercial and institutional **non-interest (Islamic) credit** origination, assessment, approval, fulfilment and monitoring platform.
 
@@ -45,7 +45,7 @@ pnpm dev:web                               # http://localhost:5173
 
 Staff directory: until Active Directory synchronisation is integrated, administrators load staff, roles, line managers, approval limits and sectors from a spreadsheet (Admin → Users & access → Import from spreadsheet; template provided). A second administrator approves each upload.
 
-Staff sign-in: Active Directory + authenticator by default. Until AD is connected, set `STAFF_AUTH_MODE=local` for the interim Gazelle password + authenticator (see `docs/operations-runbook.md`); bootstrap the first administrators with `pnpm --filter @gazelle/api staff:activation-link <username>`. Browser journeys for this mode: `pnpm --filter @gazelle/web e2e:local`.
+Staff sign-in: Active Directory + authenticator by default. Until AD is connected, set `STAFF_AUTH_MODE=local` for the interim Credit360 password + authenticator (see `docs/operations-runbook.md`); bootstrap the first administrators with `pnpm --filter @gazelle/api staff:activation-link <username>`. Browser journeys for this mode: `pnpm --filter @gazelle/web e2e:local`.
 
 Seeded state: a ₦150m Murabaha with Credit Analysis (Manufacturing is outside the E&S sectors), a draft Ijarah, and a ₦45m APG approved by the MD (request + outstanding exposure) with a signed offer awaiting the customer.
 

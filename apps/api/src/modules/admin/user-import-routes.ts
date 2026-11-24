@@ -24,7 +24,7 @@ export async function userImportRoutes(app: FastifyInstance) {
     requireStaff(req, 'user.manage');
     const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'Gazelle by Alternative Bank';
+    wb.creator = 'Credit360 by AltBank';
     const ws = wb.addWorksheet('Staff');
     ws.columns = COLUMNS.map((c) => ({ header: c.header, key: c.key, width: Math.max(16, c.header.length + 4) }));
     ws.getRow(1).font = { bold: true };

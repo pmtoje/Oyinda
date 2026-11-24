@@ -1,0 +1,1 @@
+{ "name": "Credit360 by AltBank", "short_name": "Credit360", "start_url": "/", "display": "standalone", "background_color": "#faf9f6", "theme_color": "#16181d", "icons": [{ "src": "/credit360-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }] }

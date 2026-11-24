@@ -58,7 +58,7 @@ export async function portalUserRoutes(app: FastifyInstance) {
     await confirmPassword(db, cu.userId, b.currentPassword);
     const out = await tx(async (c) => {
       await q(c, `UPDATE customer_user_invite SET revoked_at=now() WHERE lower(email)=$1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at < now()`, [b.email]);
-      if (await maybe(c, 'SELECT 1 FROM customer_user WHERE lower(email)=$1', [b.email])) throw conflict('EMAIL_IN_USE', 'This e-mail address already has Gazelle access.');
+      if (await maybe(c, 'SELECT 1 FROM customer_user WHERE lower(email)=$1', [b.email])) throw conflict('EMAIL_IN_USE', 'This e-mail address already has Credit360 access.');
       if (await maybe(c, `SELECT 1 FROM customer_user_invite WHERE lower(email)=$1 AND accepted_at IS NULL AND revoked_at IS NULL`, [b.email])) throw conflict('ALREADY_INVITED', 'An invitation to this e-mail address is already open. Revoke it to send a new one.');
       const n = await one<{ n: number }>(c, `SELECT (SELECT count(*) FROM customer_user WHERE customer_id=$1 AND status='ACTIVE') + (SELECT count(*) FROM customer_user_invite WHERE customer_id=$1 AND accepted_at IS NULL AND revoked_at IS NULL) AS n`, [cu.customerId]);
       if (Number(n.n) >= MAX_USERS) throw unprocessable('USER_LIMIT', `A business can have at most ${MAX_USERS} portal users and open invitations.`);
@@ -70,8 +70,8 @@ export async function portalUserRoutes(app: FastifyInstance) {
       return { id: inv.id, token, business: biz.legal_name };
     });
     const link = `${env().WEB_ORIGIN}/invite?token=${out.token}`;
-    await integrations().messaging.sendEmail(b.email, `Invitation to Gazelle by Alternative Bank — ${out.business}`,
-      `Dear ${b.fullName},\n\n${cu.fullName} has invited you to use Gazelle by Alternative Bank for ${out.business}. Accept within ${INVITE_HOURS} hours using this link:\n${link}\n\nYou will verify your mobile number and set a password. If you did not expect this, ignore this e-mail. The Bank will never ask for your password or a verification code.`);
+    await integrations().messaging.sendEmail(b.email, `Invitation to Credit360 by AltBank — ${out.business}`,
+      `Dear ${b.fullName},\n\n${cu.fullName} has invited you to use Credit360 by AltBank for ${out.business}. Accept within ${INVITE_HOURS} hours using this link:\n${link}\n\nYou will verify your mobile number and set a password. If you did not expect this, ignore this e-mail. The Bank will never ask for your password or a verification code.`);
     return ok(reply, { id: out.id, sentTo: maskEmail(b.email), expiresInHours: INVITE_HOURS }, 201);
   });
 
@@ -134,7 +134,7 @@ export async function portalUserRoutes(app: FastifyInstance) {
       await q(c, 'UPDATE customer_user_invite SET phone=$2, otp_challenge_id=$3 WHERE id=$1', [i.id, b.phone, otp.challengeId]);
       return otp;
     });
-    await integrations().messaging.sendSms(b.phone, `Your Gazelle by Alternative Bank verification code is ${out.code}. It expires in ${Math.round(env().OTP_TTL_SECONDS / 60)} minutes. Never share this code; the Bank will never ask for it.`);
+    await integrations().messaging.sendSms(b.phone, `Your Credit360 by AltBank verification code is ${out.code}. It expires in ${Math.round(env().OTP_TTL_SECONDS / 60)} minutes. Never share this code; the Bank will never ask for it.`);
     return ok(reply, { otpSentTo: maskPhone(b.phone), expiresInSeconds: env().OTP_TTL_SECONDS });
   });
 
@@ -158,7 +158,7 @@ export async function portalUserRoutes(app: FastifyInstance) {
       if (!i.otp_challenge_id || !i.phone) throw conflict('PHONE_FIRST', 'Verify your mobile number first.');
       const r = await verifyOtp(c, { challengeId: i.otp_challenge_id, purpose: 'PHONE_VERIFY', subjectKey: hmac(i.id, 'portal-invite-phone'), code: b.code });
       if (!r.ok) return { error: r };
-      if (await maybe(c, 'SELECT 1 FROM customer_user WHERE lower(email)=lower($1)', [i.email])) throw conflict('EMAIL_IN_USE', 'This e-mail address already has Gazelle access.');
+      if (await maybe(c, 'SELECT 1 FROM customer_user WHERE lower(email)=lower($1)', [i.email])) throw conflict('EMAIL_IN_USE', 'This e-mail address already has Credit360 access.');
       const user = await one<any>(c, `INSERT INTO customer_user(customer_id, full_name, email, phone, designation, role_in_company, portal_role, permissions, invited_by, email_verified_at, phone_verified_at, password_hash, password_changed_at, terms_version, terms_accepted_at, privacy_consent_version, privacy_consent_at)
         VALUES ($1,$2,$3,$4,$5,$5,'DELEGATE',$6,$7, now(), now(), $8, now(), $9, now(), $9, now()) RETURNING *`, [i.customer_id, i.full_name, i.email.toLowerCase(), i.phone, i.role_in_company, i.permissions, i.invited_by, hash, b.termsVersion]);
       await q(c, 'UPDATE customer_user_invite SET accepted_at=now(), accepted_user_id=$2 WHERE id=$1', [i.id, user.id]);

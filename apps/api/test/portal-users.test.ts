@@ -113,7 +113,7 @@ describe('more than one portal user per business', () => {
     const c = new Client(app);
     await c.post('/api/onboarding/start', { accountNumber: '0100000003', fullName: 'Another Person', roleInCompany: 'Accountant' });
     const v = await c.post('/api/onboarding/verify-otp', { code: await lastOtp('08030000002') });
-    expect(v.body.data.alreadyOnGazelle).toBe(true);
+    expect(v.body.data.alreadyRegistered).toBe(true);
     const r = await c.post('/api/onboarding/complete', { password: 'Another#Secure2026', acceptTerms: true, privacyConsent: true, termsVersion: v.body.data.terms.version });
     expect(r.body.error.message).toMatch(/invite you/);
   });

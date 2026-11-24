@@ -18,7 +18,7 @@ export default function FxRates() {
       <PageHeader eyebrow="Control centre" title="FX rates" sub="Used to convert foreign-currency turnover, collateral and facilities to Naira. Each analysis records exactly which rate it used." />
       <div className="workspace">
         <Panel title="Recorded rates" flush>
-          {rates.isLoading ? <Loading /> : rates.error ? <ErrorAlert error={rates.error} /> : !rates.data?.length ? <Empty title="No rates recorded">Foreign-currency values cannot be converted until a rate is recorded. Gazelle never estimates a rate.</Empty> : (
+          {rates.isLoading ? <Loading /> : rates.error ? <ErrorAlert error={rates.error} /> : !rates.data?.length ? <Empty title="No rates recorded">Foreign-currency values cannot be converted until a rate is recorded. Credit360 never estimates a rate.</Empty> : (
             <div className="table-wrap"><table className="data"><thead><tr><th>Pair</th><th className="num">Rate</th><th>Rate date</th><th>Source</th><th>Recorded by</th><th>Recorded</th></tr></thead>
               <tbody>{rates.data.map((r) => <tr key={r.id}><td className="primary-cell">{r.base}/{r.quote}</td><td className="num">{Number(r.rate).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</td><td>{date(r.rateDate)}</td><td className="small">{r.source}</td><td className="small">{r.enteredBy ?? 'System'}</td><td className="small nowrap">{dateTime(r.createdAt)}</td></tr>)}</tbody></table></div>
           )}

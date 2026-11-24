@@ -26,7 +26,7 @@ export function OverviewTab({ id, detail }: { id: string; detail: any }) {
           <KV items={pf.filter((x) => f.productFields?.[x.key] !== undefined).map((x) => [x.label, x.type === 'money' ? money(f.productFields[x.key], f.currency) : typeof f.productFields[x.key] === 'boolean' ? (f.productFields[x.key] ? 'Yes' : 'No') : String(f.productFields[x.key])])} />
         </Panel>
       </div>
-      <Panel title="Risk flags" actions={<span className="xs muted">Every flag is computed from data in Gazelle and cites its evidence</span>}>
+      <Panel title="Risk flags" actions={<span className="xs muted">Every flag is computed from data in Credit360 and cites its evidence</span>}>
         <QueryState q={flags} empty={<Empty title="No risk flags raised">Flags appear once financials, statements, exposure, collateral and pricing are analysed.</Empty>}>{() => (
           <ul className="flag-list">{flags.data!.map((fl, i) => (
             <li key={i}><div className="row" style={{ ['--gap' as any]: '8px' }}><span className={`sev ${fl.severity}`}>{fl.severity}</span><strong className="small">{humanize(fl.code)}</strong></div>
@@ -143,7 +143,7 @@ function HistoryDrawer({ doc, onClose }: { doc: any; onClose: () => void }) {
       <QueryState q={q}>{() => (
         <div className="stack">
           <h4>Versions</h4>
-          {!q.data.versions.length ? <p className="muted small">No uploads yet.</p> : <table className="data"><tbody>{q.data.versions.map((v: any) => <tr key={v.id}><td>v{v.version}</td><td className="small">{v.filename}<div className="xs muted">{bytes(v.size)} · {humanize(v.uploadedByType)} · {dateTime(v.uploadedAt)}</div></td><td><Status value={v.scan} /></td></tr>)}</tbody></table>}
+          {!q.data.versions.length ? <p className="muted small">No uploads yet.</p> : <div className="table-wrap"><table className="data"><tbody>{q.data.versions.map((v: any) => <tr key={v.id}><td>v{v.version}</td><td className="small">{v.filename}<div className="xs muted">{bytes(v.size)} · {humanize(v.uploadedByType)} · {dateTime(v.uploadedAt)}</div></td><td><Status value={v.scan} /></td></tr>)}</tbody></table></div>}
           <h4>Events</h4>
           <ul className="timeline">{q.data.events.map((e: any, i: number) => <li key={i}><span className="when">{dateTime(e.at)}</span><span>{humanize(e.event)} {e.actor ? `by ${e.actor}` : `(${humanize(e.actorType)})`}{e.note && <div className="small muted">{e.note}</div>}</span></li>)}</ul>
         </div>)}</QueryState>

@@ -1,4 +1,4 @@
-/** Integration contracts. Gazelle depends only on these interfaces; providers are swappable. */
+/** Integration contracts. Credit360 depends only on these interfaces; providers are swappable. */
 export type Mode = 'MOCK' | 'LIVE';
 
 export interface CbaAccount {

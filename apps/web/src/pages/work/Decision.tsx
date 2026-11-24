@@ -55,7 +55,7 @@ export default function Decision() {
                   <div><Status value={s.recommendation === 'DECLINE' ? 'DECLINED' : 'APPROVED'} label={humanize(s.recommendation)} /></div>
                   {s.conditions?.length > 0 && <><div className="small" style={{ marginTop: 8 }}>Proposed conditions</div><ul className="small" style={{ margin: 0, paddingLeft: 18 }}>{s.conditions.map((c: string, i: number) => <li key={i}>{c}</li>)}</ul></>}
                 </div>
-                <table className="data"><tbody>{s.keyMetrics.map((m: any) => <tr key={m.label}><td className="small">{m.label}</td><td className="num">{m.value}</td></tr>)}</tbody></table>
+                <div className="table-wrap"><table className="data"><tbody>{s.keyMetrics.map((m: any) => <tr key={m.label}><td className="small">{m.label}</td><td className="num">{m.value}</td></tr>)}</tbody></table></div>
               </div>)}
           </Panel>
           <Panel title="Key risks" actions={<span className="xs muted">Each with the evidence behind it</span>}>

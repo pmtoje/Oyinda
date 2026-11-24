@@ -39,9 +39,9 @@ export async function issueStaffLink(db: Db, actor: Actor, userId: string, purpo
   await audit(db, actor, { action: purpose === 'ACTIVATE' ? 'STAFF_ACTIVATION_LINK_SENT' : 'STAFF_RESET_LINK_SENT', entityType: 'app_user', entityId: userId, metadata: { expiresInHours: TTL_HOURS[purpose] } });
   const link = `${env().WEB_ORIGIN}/staff/set-password?token=${token}`;
   const text = purpose === 'ACTIVATE'
-    ? `Dear ${u.display_name},\n\nA Gazelle by Alternative Bank staff account has been set up for you (username ${u.ad_username}). Set your password using this link, valid for ${TTL_HOURS.ACTIVATE} hours:\n${link}\n\nAt your first sign-in you will also set up the Bank-approved authenticator app. If you did not expect this, contact Information Security.`
-    : `Dear ${u.display_name},\n\nUse this link to set a new Gazelle password. It is valid for ${TTL_HOURS.RESET} hour and can be used once:\n${link}\n\nIf you did not ask for this, ignore this e-mail and tell Information Security. The Bank will never ask for your password.`;
-  return { send: () => integrations().messaging.sendEmail(u.email, purpose === 'ACTIVATE' ? 'Set up your Gazelle staff account' : 'Reset your Gazelle password', text), sentTo: maskEmail(u.email) };
+    ? `Dear ${u.display_name},\n\nA Credit360 by AltBank staff account has been set up for you (username ${u.ad_username}). Set your password using this link, valid for ${TTL_HOURS.ACTIVATE} hours:\n${link}\n\nAt your first sign-in you will also set up the Bank-approved authenticator app. If you did not expect this, contact Information Security.`
+    : `Dear ${u.display_name},\n\nUse this link to set a new Credit360 password. It is valid for ${TTL_HOURS.RESET} hour and can be used once:\n${link}\n\nIf you did not ask for this, ignore this e-mail and tell Information Security. The Bank will never ask for your password.`;
+  return { send: () => integrations().messaging.sendEmail(u.email, purpose === 'ACTIVATE' ? 'Set up your Credit360 staff account' : 'Reset your Credit360 password', text), sentTo: maskEmail(u.email) };
 }
 
 async function liveToken(db: Db, token: string, lock = false) {

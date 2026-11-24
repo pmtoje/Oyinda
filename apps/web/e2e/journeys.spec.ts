@@ -44,7 +44,8 @@ test('Journey 1: a new corporate customer onboards with their Alternative Bank a
   await expect(page.getByText('E-mail address confirmed')).toBeVisible();
   await page.getByRole('link', { name: 'Go to your dashboard' }).click();
   await page.waitForURL(/\/portal$/);
-  await expect(page.getByRole('heading', { name: 'Kano Agro-Allied Processing Ltd' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your financing journey' })).toBeVisible();
+  await expect(page.locator('.business-line')).toContainText('Kano Agro-Allied Processing Ltd');
   await expect(page.getByText("Your business on the Bank's records")).toBeVisible();
   await expect(page.getByText('RC7654321')).toBeVisible();
   await expect(page.getByRole('button', { name: /start new facility request/i }).or(page.getByRole('link', { name: /start new facility request/i })).first()).toBeVisible();

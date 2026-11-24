@@ -8,13 +8,18 @@ import { roleLabel } from '../lib/format';
 import { useAuth } from '../lib/auth';
 import { Loading } from './ui';
 
-export function Brand({ to = '/' }: { to?: string }) {
+/** Credit360 wordmark: "Credit" charcoal, "360" gold, "by AltBank" beneath. Typographic until the logo artwork is supplied. */
+export function Wordmark({ size }: { size?: 'lg' }) {
   return (
-    <Link to={to} className="brand" aria-label="Gazelle by Alternative Bank — home">
-      <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden><rect width="32" height="32" rx="6" fill="var(--p-green-700)" /><path d="M9 23c3-1 5-4 6-8l2-6 1 5c1 4 3 7 6 9" fill="none" stroke="var(--p-brass-300)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-      <span><span className="brand-name">Gazelle</span><span className="brand-sub">Alternative Bank</span></span>
-    </Link>
+    <span className={size === 'lg' ? 'wordmark lg' : 'wordmark'} aria-hidden>
+      <span className="wm-main"><span className="wm-credit">Credit</span><span className="wm-360">360</span></span>
+      <span className="wm-sub">by AltBank</span>
+    </span>
   );
+}
+
+export function Brand({ to = '/', size }: { to?: string; size?: 'lg' }) {
+  return <Link to={to} className="brand" aria-label="Credit360 by AltBank — home"><Wordmark size={size} /></Link>;
 }
 
 /** Persistent, honest indicator that integrations are mocked (never disguise mock data as live). */
@@ -24,7 +29,7 @@ export function ModeBanner() {
   const local = meta.staffAuthMode === 'local';
   const mocks = Object.entries(meta.integrationModes).filter(([k, m]) => m === 'mock' && !(local && k === 'activeDirectory')).map(([k]) => k);
   if (!meta.nonProduction && !mocks.length && !local) return null;
-  const parts = [...(meta.nonProduction ? [`${meta.environment.toUpperCase()} environment · DEMO / NON-PRODUCTION data`] : []), ...(mocks.length ? [`Mock integrations: ${mocks.join(', ')}`] : []), ...(local ? ['Interim staff sign-in (Gazelle passwords) until Active Directory'] : [])];
+  const parts = [...(meta.nonProduction ? [`${meta.environment.toUpperCase()} environment · DEMO / NON-PRODUCTION data`] : []), ...(mocks.length ? [`Mock integrations: ${mocks.join(', ')}`] : []), ...(local ? ['Interim staff sign-in (Credit360 passwords) until Active Directory'] : [])];
   return <div className="mode-banner" role="note">{parts.join(' · ')}</div>;
 }
 
@@ -130,9 +135,9 @@ export function AuthLayout({ heading, text, children }: { heading: string; text:
       <ModeBanner />
       <div className="auth-wrap">
         <aside className="auth-aside">
-          <Brand />
+          <Brand size="lg" />
           <div><h1>{heading}</h1><p>{text}</p></div>
-          <div className="fine">Alternative Bank Limited is licensed by the Central Bank of Nigeria as a non-interest bank. Gazelle never asks for your PIN, password or one-time code by phone or email.</div>
+          <div className="fine">The Alternative Bank Limited is licensed by the Central Bank of Nigeria as a non-interest bank. Credit360 never asks for your PIN, password or one-time code by phone or email.</div>
         </aside>
         <main className="auth-main" id="main"><div className="auth-theme"><ThemeSwitch /></div><div className="auth-card">{children}</div></main>
       </div>

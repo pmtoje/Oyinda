@@ -1,5 +1,7 @@
 # Open Questions
 
+> **Product name:** this platform is now **Credit360 by AltBank** (product owner direction, 24-Nov-2026). "Gazelle" below is its original working name, kept where it traces to the source PRD/BRD/SWR and to earlier decisions.
+
 Raised under MBP Phase 75. Nothing here blocks the build: each item has a configurable default that Credit Risk, Compliance or Technology can change without a release. Items marked **Resolved** were answered by the SWR (27-Oct-2026) or the PRD/BRD; see the referenced decision.
 
 | ID | Question | Why it matters | Current default | Owner |

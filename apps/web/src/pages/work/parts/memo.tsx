@@ -21,7 +21,7 @@ export function MemoTab({ id }: { id: string }) {
   return (
     <div className="stack">
       <EfficiencyPanel id={id} />
-      <Section title="Credit memorandum" sub="Assembled from the analysis in Gazelle; your recommendation and commentary are added. Each generation is a new, immutable version (Word)."
+      <Section title="Credit memorandum" sub="Assembled from the analysis in Credit360; your recommendation and commentary are added. Each generation is a new, immutable version (Word)."
         actions={can('memo.generate') && <Button size="sm" variant="primary" onClick={() => setMemoOpen(true)}>{latest ? 'Generate new version' : 'Generate memo'}</Button>}>
         <QueryState q={memos} empty={<Panel><Empty title="No credit memo yet">Complete the analysis tabs, then generate the memo.</Empty></Panel>}>{() => (
           <div className="stack">
@@ -35,12 +35,12 @@ export function MemoTab({ id }: { id: string }) {
                     <div className="small">RARORAC {es.rarorac}</div>
                     <div className="small">Recommendation: <Status value={es.recommendation === 'DECLINE' ? 'DECLINED' : 'APPROVED'} label={humanize(es.recommendation)} /></div>
                   </div>
-                  <div><h4>Key metrics</h4><table className="data"><tbody>{es.keyMetrics.map((m: any) => <tr key={m.label}><td className="small">{m.label}</td><td className="num">{m.value}</td></tr>)}</tbody></table></div>
+                  <div><h4>Key metrics</h4><div className="table-wrap"><table className="data"><tbody>{es.keyMetrics.map((m: any) => <tr key={m.label}><td className="small">{m.label}</td><td className="num">{m.value}</td></tr>)}</tbody></table></div></div>
                 </div>
                 {es.keyRisks.length > 0 && <><h4 style={{ marginTop: 12 }}>Key risks</h4><ul className="small">{es.keyRisks.map((r: string, i: number) => <li key={i}>{r}</li>)}</ul></>}
                 {es.conditions.length > 0 && <><h4>Conditions</h4><ul className="small">{es.conditions.map((r: string, i: number) => <li key={i}>{r}</li>)}</ul></>}
               </Panel>)}
-            <Panel title="Versions" flush><table className="data"><thead><tr><th>Version</th><th>Prepared by</th><th>Generated</th><th /></tr></thead><tbody>{memos.data!.map((m) => <tr key={m.id}><td>v{m.version}</td><td>{m.generatedBy}</td><td className="small">{dateTime(m.createdAt)}</td><td className="num"><Button size="sm" onClick={() => openDocument(m.documentId, 'attachment')}>Download</Button></td></tr>)}</tbody></table></Panel>
+            <Panel title="Versions" flush><div className="table-wrap"><table className="data"><thead><tr><th>Version</th><th>Prepared by</th><th>Generated</th><th /></tr></thead><tbody>{memos.data!.map((m) => <tr key={m.id}><td>v{m.version}</td><td>{m.generatedBy}</td><td className="small">{dateTime(m.createdAt)}</td><td className="num"><Button size="sm" onClick={() => openDocument(m.documentId, 'attachment')}>Download</Button></td></tr>)}</tbody></table></div></Panel>
           </div>)}</QueryState>
       </Section>
       <Section title="Combined term sheet" sub="ORR, FRR, financial analysis, collateral, E&S, approval workflow, votes, comments and decisions, with names and timestamps. Edits create a new version; earlier versions are kept."
@@ -48,8 +48,8 @@ export function MemoTab({ id }: { id: string }) {
         {sheets.data?.length ? <div className="row"><Button size="sm" onClick={() => setSheetView(true)}>View latest</Button><span className="xs muted">Updated automatically at submission and at every decision. Format: the Bank's Credit Approval Memo.</span></div> : null}
         <ErrorAlert error={genSheet.error} />
         <Panel flush><QueryState q={sheets} empty={<Empty title="No term sheet generated" />}>{() => (
-          <table className="data"><thead><tr><th>Version</th><th>Based on</th><th>Reason</th><th>By</th><th>Generated</th><th /></tr></thead>
-            <tbody>{sheets.data!.map((s) => <tr key={s.id}><td>v{s.version}</td><td>{s.basedOn ? `v${s.basedOn}` : '—'}</td><td className="small">{s.editReason ?? '—'}</td><td>{s.generatedBy}</td><td className="small">{dateTime(s.createdAt)}</td><td className="num"><Button size="sm" onClick={() => openDocument(s.documentId, 'attachment')}>Download .docx</Button></td></tr>)}</tbody></table>)}</QueryState></Panel>
+          <div className="table-wrap"><table className="data"><thead><tr><th>Version</th><th>Based on</th><th>Reason</th><th>By</th><th>Generated</th><th /></tr></thead>
+            <tbody>{sheets.data!.map((s) => <tr key={s.id}><td>v{s.version}</td><td>{s.basedOn ? `v${s.basedOn}` : '—'}</td><td className="small">{s.editReason ?? '—'}</td><td>{s.generatedBy}</td><td className="small">{dateTime(s.createdAt)}</td><td className="num"><Button size="sm" onClick={() => openDocument(s.documentId, 'attachment')}>Download .docx</Button></td></tr>)}</tbody></table></div>)}</QueryState></Panel>
       </Section>
       {memoOpen && <MemoDrawer id={id} onClose={() => setMemoOpen(false)} onDone={async () => { setMemoOpen(false); await refresh(); }} />}
       {sheetEdit && <SheetEditDrawer id={id} latest={sheets.data?.[0]} onClose={() => setSheetEdit(false)} onDone={async () => { setSheetEdit(false); await refresh(); }} />}
@@ -155,7 +155,7 @@ export function AiTab({ id }: { id: string }) {
   if (!can('ai.use')) return <Panel><Empty title="AI assistance is not enabled for your role" /></Panel>;
   return (
     <div className="stack">
-      <Alert tone="info" title="AI assists; people decide">Outputs use only data you can already see in Gazelle. Every statement cites its sources; statements that cannot be traced to a source, or that attempt a credit decision, are removed. Review each output before relying on it.</Alert>
+      <Alert tone="info" title="AI assists; people decide">Outputs use only data you can already see in Credit360. Every statement cites its sources; statements that cannot be traced to a source, or that attempt a credit decision, are removed. Review each output before relying on it.</Alert>
       <div className="grid cols-3">{USE_CASES.map((u) => <button key={u.key} className="choice" onClick={() => run.run(u.key)} disabled={run.loading}><div className="title">{u.label}</div><div className="desc">{u.desc}</div></button>)}</div>
       {run.loading && <p className="small muted"><span className="spinner" /> Generating…</p>}
       <ErrorAlert error={run.error ?? review.error} />

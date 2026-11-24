@@ -15,7 +15,7 @@ export default function Users() {
   const pending = reqs.data?.filter((r) => r.status === 'PENDING').length ?? 0;
   return (
     <>
-      <PageHeader eyebrow="Control centre" title="Users & access" sub="Staff sign in through Active Directory with multi-factor authentication. Gazelle controls roles, limits and portfolios. Every change is audited."
+      <PageHeader eyebrow="Control centre" title="Users & access" sub="Staff sign in through Active Directory with multi-factor authentication. Credit360 controls roles, limits and portfolios. Every change is audited."
         actions={<a className="btn" href="/api/admin/users/export.xlsx" download>Export users (Excel)</a>} />
       <Tabs value={tab} onChange={setTab} tabs={[{ key: 'users', label: 'Staff users' }, { key: 'requests', label: `Access requests${pending ? ` (${pending})` : ''}`, flag: pending > 0 }, { key: 'customers', label: 'Customer portfolios' }, { key: 'import', label: 'Import from spreadsheet' }]} />
       {tab === 'users' && <UserTable />}
@@ -108,7 +108,7 @@ function UserDrawer({ user, onClose }: { user: User; onClose: () => void }) {
         {notice && <Alert tone="ok">{notice}</Alert>}
         {localAuth && !self && (
           <div className="panel" style={{ padding: 12 }}>
-            <div className="small" style={{ fontWeight: 500 }}>Interim Gazelle sign-in</div>
+            <div className="small" style={{ fontWeight: 500 }}>Interim Credit360 sign-in</div>
             <p className="xs muted" style={{ margin: '4px 0 8px' }}>The user sets their own password from a single-use link sent to their work e-mail. Administrators never see or set passwords.</p>
             <div className="row"><Button size="sm" onClick={() => sendLink.run('ACTIVATE')} loading={sendLink.loading}>Send activation link</Button><Button size="sm" variant="danger" onClick={() => sendLink.run('RESET')} loading={sendLink.loading}>Reset password</Button></div>
             <ErrorAlert error={sendLink.error} />
@@ -129,10 +129,10 @@ function UserDrawer({ user, onClose }: { user: User; onClose: () => void }) {
 
         <hr className="divider" />
         <h4>Roles</h4>
-        <table className="data"><tbody>{user.roles.map((r) => (
+        <div className="table-wrap"><table className="data"><tbody>{user.roles.map((r) => (
           <tr key={r}><td>{roleInfo(r)?.name ?? r} <span className="xs muted mono">{r}</span>{roleInfo(r)?.privileged && <span className="tag" style={{ marginLeft: 6 }}>privileged</span>}</td>
             <td className="num"><Button size="sm" variant="danger" disabled={self || roleForm.reason.trim().length < 10} loading={changeRole.loading} onClick={() => changeRole.run('REVOKE_ROLE', r)}>Revoke</Button></td></tr>))}
-          {!user.roles.length && <tr><td className="muted">No roles granted.</td></tr>}</tbody></table>
+          {!user.roles.length && <tr><td className="muted">No roles granted.</td></tr>}</tbody></table></div>
         <div className="grid cols-2" style={{ alignItems: 'end' }}>
           <SelectInput label="Grant role" placeholder="Select a role" value={roleForm.role} disabled={self}
             options={(roles.data ?? []).filter((r) => !user.roles.includes(r.code)).map((r) => ({ value: r.code, label: `${r.name}${r.privileged ? ' — requires second approval' : ''}` }))}
@@ -215,9 +215,9 @@ function Portfolios() {
         <div className="panel-body">
           <h4>Unblock requests awaiting a second administrator</h4>
           <ErrorAlert error={decide.error} />
-          <table className="data"><thead><tr><th>Customer</th><th>Reason</th><th>Requested by</th><th /></tr></thead>
+          <div className="table-wrap"><table className="data"><thead><tr><th>Customer</th><th>Reason</th><th>Requested by</th><th /></tr></thead>
             <tbody>{pendingUnblocks.map((r) => <tr key={r.id}><td>{r.customerName}</td><td className="small">{r.reason}</td><td className="small">{r.requestedBy} · {dateTime(r.createdAt)}</td>
-              <td className="num"><div className="row end"><Button size="sm" onClick={() => decide.run(r.id, 'REJECT')}>Reject</Button><Button size="sm" variant="primary" onClick={() => decide.run(r.id, 'APPROVE')}>Approve unblock</Button></div></td></tr>)}</tbody></table>
+              <td className="num"><div className="row end"><Button size="sm" onClick={() => decide.run(r.id, 'REJECT')}>Reject</Button><Button size="sm" variant="primary" onClick={() => decide.run(r.id, 'APPROVE')}>Approve unblock</Button></div></td></tr>)}</tbody></table></div>
         </div>
       )}
       {blockTarget && (

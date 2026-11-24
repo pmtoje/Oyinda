@@ -27,8 +27,8 @@ export default function Health() {
       </div>
       <div className="grid cols-2">
         <Panel title="Integrations" flush>
-          <table className="data"><thead><tr><th>Integration</th><th>Mode</th><th>Status</th></tr></thead>
-            <tbody>{d.integrations.map((i: any) => <tr key={i.name}><td className="primary-cell">{i.name}</td><td className="mono small">{i.mode}</td><td><Status value={i.status === 'LIVE' ? 'ACTIVE' : i.status === 'MOCK' ? 'WARNING' : 'PENDING'} label={i.status} /></td></tr>)}</tbody></table>
+          <div className="table-wrap"><table className="data"><thead><tr><th>Integration</th><th>Mode</th><th>Status</th></tr></thead>
+            <tbody>{d.integrations.map((i: any) => <tr key={i.name}><td className="primary-cell">{i.name}</td><td className="mono small">{i.mode}</td><td><Status value={i.status === 'LIVE' ? 'ACTIVE' : i.status === 'MOCK' ? 'WARNING' : 'PENDING'} label={i.status} /></td></tr>)}</tbody></table></div>
         </Panel>
         <Panel title="Operations">
           <KV items={[
@@ -51,15 +51,15 @@ export default function Health() {
           )}
         </Panel>
         <Panel title="Database migrations" flush>
-          <table className="data"><thead><tr><th>Migration</th><th>Applied</th></tr></thead><tbody>{d.database.migrations.map((m: any) => <tr key={m.name}><td className="mono small">{m.name}</td><td className="small">{dateTime(m.appliedAt)}</td></tr>)}</tbody></table>
+          <div className="table-wrap"><table className="data"><thead><tr><th>Migration</th><th>Applied</th></tr></thead><tbody>{d.database.migrations.map((m: any) => <tr key={m.name}><td className="mono small">{m.name}</td><td className="small">{dateTime(m.appliedAt)}</td></tr>)}</tbody></table></div>
         </Panel>
         <Panel title="API latency (this instance, since start)" flush>
           {!d.http.routes.length ? <Empty title="No requests measured yet" /> : (
-            <div className="table-wrap" style={{ maxHeight: 360, overflowY: 'auto' }}><table className="data"><thead><tr><th>Route</th><th className="num">Requests</th><th className="num">Average</th><th className="num">p95 ≤</th></tr></thead>
+            <div className="table-wrap" style={{ maxHeight: 360, overflowY: 'auto' }}><div className="table-wrap"><table className="data"><thead><tr><th>Route</th><th className="num">Requests</th><th className="num">Average</th><th className="num">p95 ≤</th></tr></thead>
               <tbody>{[...d.http.routes].sort((a: any, b: any) => b.avgMs - a.avgMs).slice(0, 40).map((r: any) => {
                 const m = /route="([^"]*)",method="([^"]*)"/.exec(r.key);
                 return <tr key={r.key}><td className="mono xs">{m ? `${m[2]} ${m[1]}` : r.key}</td><td className="num">{r.count}</td><td className="num" style={{ color: r.avgMs > 1000 ? 'var(--danger-700)' : undefined }}>{r.avgMs} ms</td><td className="num">{r.p95Bucket ? `${r.p95Bucket} ms` : '> 5 s'}</td></tr>;
-              })}</tbody></table></div>
+              })}</tbody></table></div></div>
           )}
         </Panel>
       </div>

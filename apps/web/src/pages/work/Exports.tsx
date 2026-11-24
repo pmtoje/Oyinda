@@ -29,10 +29,10 @@ export default function Exports() {
         <Panel title={data.data?.title ?? 'Preview'} actions={key ? <a className="btn sm primary" href={`/api/reports/${key}.csv?${filters}`} download>Download CSV</a> : undefined} flush>
           {!key ? <Empty title="Choose a report">Select a report to preview it.</Empty> : data.isLoading ? <Loading rows={8} /> : data.error ? <ErrorAlert error={data.error} /> : !data.data!.rows.length ? <Empty title="No rows for these filters" /> : (
             <>
-              <div className="table-wrap" style={{ maxHeight: 560, overflow: 'auto' }}><table className="data">
+              <div className="table-wrap" style={{ maxHeight: 560, overflow: 'auto' }}><div className="table-wrap"><table className="data">
                 <thead><tr>{cols.map((c) => <th key={c}>{c.replace(/_/g, ' ')}</th>)}</tr></thead>
                 <tbody>{data.data!.rows.slice(0, 200).map((r, i) => <tr key={i}>{cols.map((c) => <td key={c} className={typeof r[c] === 'number' ? 'num small' : 'small'}>{cell(r[c])}</td>)}</tr>)}</tbody>
-              </table></div>
+              </table></div></div>
               <div className="panel-foot small muted">{data.data!.rows.length > 200 ? `Showing the first 200 of ${data.data!.rows.length} rows. Download the CSV for the full report.` : `${data.data!.rows.length} rows.`}</div>
             </>
           )}

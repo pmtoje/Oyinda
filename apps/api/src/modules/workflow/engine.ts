@@ -153,7 +153,7 @@ async function executiveSummaryLine(db: Db, facilityId: string) {
     FROM facility_request f JOIN config_item ci ON ci.id=f.product_config_id WHERE f.id=$1`, [facilityId]);
   if (!r) return '';
   const parts = [`${r.product}, ${r.tenor_months} months — ${r.purpose ?? ''}`.trim(), r.grade ? `risk grade ${r.grade}` : null, r.rarorac !== null && r.rarorac !== undefined ? `RARORAC ${Math.round(Number(r.rarorac) * 100) / 100}%` : null, r.aggregate ? `aggregate exposure ${formatMoney(Number(r.aggregate))}` : null, r.rec ? `analyst recommendation: ${String(r.rec).replace(/_/g, ' ').toLowerCase()}` : null].filter(Boolean);
-  return `\n\nExecutive summary: ${parts.join('; ')}. Open Gazelle for the full combined term sheet.`;
+  return `\n\nExecutive summary: ${parts.join('; ')}. Open Credit360 for the full combined term sheet.`;
 }
 
 async function openStage(db: Db, instance: any, route: Route, idx: number, actor: Actor): Promise<void> {
@@ -220,7 +220,7 @@ export async function recordAction(db: Db, instance: any, taskId: string | null,
   const f = await one<any>(db, 'SELECT amount_minor FROM facility_request WHERE id=$1', [instance.facility_id]);
   const row = await one<any>(db, `INSERT INTO workflow_action(instance_id, task_id, facility_id, actor_type, actor_id, actor_name, actor_role, on_behalf_of, action, comment, payload, amount_minor_at_action, idempotency_key, ip)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
-    [instance.id, taskId, instance.facility_id, actor.type === 'ANONYMOUS' ? 'SYSTEM' : actor.type, actor.id ?? null, actor.label ?? 'Gazelle system', extra.actorRole ?? null, extra.onBehalfOf ?? null, action, comment ?? null, JSON.stringify(payload), f.amount_minor, extra.idempotencyKey ?? null, actor.ip ?? null]);
+    [instance.id, taskId, instance.facility_id, actor.type === 'ANONYMOUS' ? 'SYSTEM' : actor.type, actor.id ?? null, actor.label ?? 'Credit360 system', extra.actorRole ?? null, extra.onBehalfOf ?? null, action, comment ?? null, JSON.stringify(payload), f.amount_minor, extra.idempotencyKey ?? null, actor.ip ?? null]);
   if (instance.kind === 'CREDIT_APPROVAL' && TERM_SHEET_EVENTS[action]) await enqueue(db, 'termsheet.refresh', { facilityId: instance.facility_id, reason: TERM_SHEET_EVENTS[action] }, { idempotencyKey: `termsheet:${row.id}` });
   return row;
 }

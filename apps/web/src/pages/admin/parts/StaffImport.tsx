@@ -66,11 +66,11 @@ function ImportDrawer({ id, myId, onClose, onDone }: { id: string; myId?: string
           {b.status === 'APPLIED' && <Alert tone="ok" title="Applied">{b.checker} approved on {dateTime(b.decidedAt)}{b.decisionNote ? ` — ${b.decisionNote}` : ''}.</Alert>}
           <div className="row">{(['CHANGES', 'ERROR', 'ALL'] as const).map((k) => <Button key={k} size="sm" variant={only === k ? 'primary' : undefined} onClick={() => setOnly(k)}>{k === 'CHANGES' ? 'Changes' : k === 'ERROR' ? 'Errors' : 'All rows'}</Button>)}</div>
           {!rows.length ? <Empty title="Nothing to show" /> : (
-            <table className="data"><thead><tr><th className="num">Row</th><th>Username</th><th>Result</th><th>Details</th></tr></thead>
+            <div className="table-wrap"><table className="data"><thead><tr><th className="num">Row</th><th>Username</th><th>Result</th><th>Details</th></tr></thead>
               <tbody>{rows.map((p: any) => (
                 <tr key={p.rowNo}><td className="num mono small">{p.rowNo}</td><td className="small"><span className="mono">{p.username || '—'}</span><div className="xs muted">{p.name}</div></td>
                   <td><Status value={p.action === 'ERROR' ? 'FAILED' : p.action === 'NO_CHANGE' ? 'INACTIVE' : 'OK'} label={ACTION_LABEL[p.action]} />{p.privileged && <div className="xs muted">Privileged</div>}</td>
-                  <td className="small"><ul style={{ margin: 0, paddingLeft: 16 }}>{[...p.errors, ...p.changes].map((x: string, i: number) => <li key={i}>{x}</li>)}</ul></td></tr>))}</tbody></table>
+                  <td className="small"><ul style={{ margin: 0, paddingLeft: 16 }}>{[...p.errors, ...p.changes].map((x: string, i: number) => <li key={i}>{x}</li>)}</ul></td></tr>))}</tbody></table></div>
           )}
           {b.status === 'PENDING_APPROVAL' && !mine && <TextArea label="Note (optional)" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />}
           <ErrorAlert error={decide.error ?? withdraw.error} />

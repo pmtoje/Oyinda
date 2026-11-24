@@ -18,7 +18,7 @@ export const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/auth/customer/login/start',
   'POST /api/auth/customer/login/verify',
   'POST /api/auth/customer/email/verify-link',
-  // Staff sign-in (directory or interim Gazelle password; MFA is completed with the pre-MFA session)
+  // Staff sign-in (directory or interim Credit360 password; MFA is completed with the pre-MFA session)
   'POST /api/auth/staff/login',
   'GET /api/auth/staff/password/link',
   'POST /api/auth/staff/password/set',

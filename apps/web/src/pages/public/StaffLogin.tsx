@@ -24,15 +24,15 @@ export default function StaffLogin() {
     nav(from && (from.startsWith('/work') || from.startsWith('/admin')) ? from : '/work', { replace: true });
   });
   return (
-    <AuthLayout heading="Gazelle staff workspace." text={local ? 'Sign in with your Gazelle username and password. A second factor from your authenticator app is required.' : 'Sign in with your Alternative Bank network (Active Directory) credentials. A second factor from your authenticator app is required.'}>
+    <AuthLayout heading="Credit360 staff workspace." text={local ? 'Sign in with your Credit360 username and password. A second factor from your authenticator app is required.' : 'Sign in with your Alternative Bank network (Active Directory) credentials. A second factor from your authenticator app is required.'}>
       {!mfa ? (
         <form className="stack" onSubmit={(e) => { e.preventDefault(); void login.run(); }}>
           <div><h2>Staff sign-in</h2><p className="muted">Restricted to authorised Alternative Bank staff. Activity is logged.</p></div>
           <SignedOutNotice reason={loc.state?.reason} />
           <ErrorAlert error={login.error} />
-          {local && <Alert tone="info">Interim sign-in until Active Directory is connected: use the Gazelle password you set from your activation e-mail.</Alert>}
+          {local && <Alert tone="info">Interim sign-in until Active Directory is connected: use the Credit360 password you set from your activation e-mail.</Alert>}
           <TextInput label={local ? 'Username' : 'Network username'} autoComplete="username" required value={username} onChange={(e) => setUsername(e.target.value)} />
-          <TextInput label={local ? 'Gazelle password' : 'Password'} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <TextInput label={local ? 'Credit360 password' : 'Password'} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           <Button type="submit" variant="primary" size="lg" loading={login.loading} disabled={!username || !password}>Continue</Button>
           {local && <p className="small muted"><Link to="/staff/forgot-password">Forgotten your password?</Link></p>}
         </form>
@@ -43,7 +43,7 @@ export default function StaffLogin() {
               <div><h2>Set up your authenticator</h2><p className="muted">Multi-factor authentication is required for all staff. This is a one-time setup.</p></div>
               <ol className="small" style={{ paddingLeft: 18, margin: 0 }}>
                 <li>Open the Bank-approved authenticator app on your work phone.</li>
-                <li>Choose <strong>Add account</strong> → <strong>Enter a setup key</strong>, account name “Gazelle”, time-based.</li>
+                <li>Choose <strong>Add account</strong> → <strong>Enter a setup key</strong>, account name “Credit360”, time-based.</li>
                 <li>Enter the key below, then type the 6-digit code the app shows.</li>
               </ol>
               <div className="panel"><div className="panel-body">

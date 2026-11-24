@@ -37,7 +37,7 @@ export default function Dashboard() {
 
   return (
     <div className="stack" style={{ ['--gap' as any]: '20px' }}>
-      <PageHeader eyebrow={me!.customer!.ref} title={me!.customer!.name} sub={profile.data?.customer.relationshipManager ? <>Relationship Manager: <strong>{profile.data.customer.relationshipManager.name}</strong> · <a href={`mailto:${profile.data.customer.relationshipManager.email}`}>{profile.data.customer.relationshipManager.email}</a></> : 'A relationship manager will be assigned to your business.'}
+      <PageHeader eyebrow={`Welcome back, ${(me!.user?.name ?? '').split(' ')[0] || 'there'}`} title="Your financing journey" sub={<><span className="business-line"><strong>{me!.customer!.name}</strong> · {me!.customer!.ref}</span>{' '}{profile.data?.customer.relationshipManager ? <>Relationship Manager: <strong>{profile.data.customer.relationshipManager.name}</strong> · <a href={`mailto:${profile.data.customer.relationshipManager.email}`}>{profile.data.customer.relationshipManager.email}</a></> : 'A relationship manager will be assigned to your business.'}</>}
         actions={<Button variant="primary" size="lg" onClick={() => nav('/portal/facilities/new')}>Start new facility request</Button>} />
       {!me!.user.emailVerified && <EmailVerifyCard />}
       {profile.data?.banking && (

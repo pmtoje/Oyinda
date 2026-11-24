@@ -28,7 +28,7 @@ const showScalar = (v: unknown) => (v === undefined || v === null ? '' : String(
 
 const kindOf = (c: Condition) => ('all' in c ? 'all' : 'any' in c ? 'any' : 'not' in c ? 'not' : 'always' in c ? 'always' : 'rule');
 
-/** Recursive visual editor for the Gazelle condition language. */
+/** Recursive visual editor for the Credit360 condition language. */
 export function ConditionBuilder({ value, onChange, depth = 0, label }: { value: Condition; onChange: (c: Condition) => void; depth?: number; label?: string }) {
   const facts = useFacts();
   const k = kindOf(value);
@@ -137,8 +137,8 @@ export function ConditionPreview({ condition }: { condition: unknown }) {
       {result && (
         <div className="panel" style={{ padding: 10 }}>
           <div className="row"><strong>Result:</strong> <span className={`badge ${result.result ? 'ok' : 'danger'}`}>{result.result ? 'Applies / passes' : 'Does not apply / fails'}</span>{result.incomplete && <span className="badge warn">Incomplete — some facts missing</span>}</div>
-          <table className="data" style={{ marginTop: 8 }}><thead><tr><th>Fact</th><th>Operator</th><th>Expected</th><th>Actual</th><th>Outcome</th></tr></thead>
-            <tbody>{result.trace.map((t: any, i: number) => <tr key={i}><td className="mono">{t.fact}</td><td>{OPS.find((o) => o.value === t.op)?.label ?? t.op}</td><td className="mono">{JSON.stringify(t.expected) ?? '—'}</td><td className="mono">{t.missing ? 'missing' : JSON.stringify(t.actual)}</td><td>{t.passed ? <span className="badge ok">pass</span> : <span className="badge danger">fail</span>}</td></tr>)}</tbody></table>
+          <div className="table-wrap"><table className="data" style={{ marginTop: 8 }}><thead><tr><th>Fact</th><th>Operator</th><th>Expected</th><th>Actual</th><th>Outcome</th></tr></thead>
+            <tbody>{result.trace.map((t: any, i: number) => <tr key={i}><td className="mono">{t.fact}</td><td>{OPS.find((o) => o.value === t.op)?.label ?? t.op}</td><td className="mono">{JSON.stringify(t.expected) ?? '—'}</td><td className="mono">{t.missing ? 'missing' : JSON.stringify(t.actual)}</td><td>{t.passed ? <span className="badge ok">pass</span> : <span className="badge danger">fail</span>}</td></tr>)}</tbody></table></div>
         </div>
       )}
     </div>

@@ -337,11 +337,11 @@ export async function computeExposure(c: any, facilityId: string, actor: any) {
   const conv = async (l: any, source: string): Promise<ExposureLine> => ({ reference: l.reference, product: l.product, kind: l.kind, outstandingMinor: (await toNgn(c, l.outstandingMinor, l.currency)).minor, approvedMinor: (await toNgn(c, l.approvedMinor, l.currency)).minor, relatedParty: l.relatedParty, source });
   const own = await Promise.all(ex.lines.map((l: any) => conv(l, `CBA (${cba.mode})`)));
   const group = await Promise.all(ex.groupLines.map((l: any) => conv(l, `CBA (${cba.mode})`)));
-  // Gazelle pipeline: other approved-but-not-yet-booked requests for the same customer
+  // Credit360 pipeline: other approved-but-not-yet-booked requests for the same customer
   const pipelineRows = await q<any>(c, `SELECT f.facility_ref, f.amount_minor, f.currency, f.is_contingent, ci.payload->>'name' AS name FROM facility_request f JOIN config_item ci ON ci.id=f.product_config_id
      WHERE f.customer_id=$1 AND f.id<>$2 AND f.status IN ('APPROVED','OFFER_ISSUED','IN_NEGOTIATION','OFFER_ACCEPTED','FULFILMENT','READY_FOR_ACTIVATION')`, [f.customer_id, f.id]);
   const pipeline: ExposureLine[] = [];
-  for (const p of pipelineRows) pipeline.push({ reference: p.facility_ref, product: p.name, kind: p.is_contingent ? 'CONTINGENT' : 'DIRECT', outstandingMinor: (await toNgn(c, p.amount_minor, p.currency)).minor, approvedMinor: p.amount_minor, source: 'Gazelle (approved, not booked)' });
+  for (const p of pipelineRows) pipeline.push({ reference: p.facility_ref, product: p.name, kind: p.is_contingent ? 'CONTINGENT' : 'DIRECT', outstandingMinor: (await toNgn(c, p.amount_minor, p.currency)).minor, approvedMinor: p.amount_minor, source: 'Credit360 (approved, not booked)' });
   const proposed = (await toNgn(c, f.amount_minor, f.currency)).minor;
   const agg = aggregateExposure({ own, group, pipeline, proposedMinor: proposed, proposedIsContingent: f.is_contingent, ccfPct: sp.contingentConversionPct, solLimitMinor: sp.singleObligorLimitMinor });
   const prof = await maybe<any>(c, 'SELECT sector_code FROM business_profile WHERE customer_id=$1', [f.customer_id]);
