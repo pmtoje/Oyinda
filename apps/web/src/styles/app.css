@@ -102,7 +102,9 @@ a:hover { color: var(--link-hover); }
 .panel-foot { padding: 12px 18px; border-top: 1px solid var(--line); background: var(--surface-muted); border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
 
 /* key-value lists */
-.kv { display: grid; grid-template-columns: minmax(140px, 38%) 1fr; gap: 8px 16px; margin: 0; font-size: var(--fs-md); }
+.kv { display: grid; grid-template-columns: minmax(min(140px, 40%), 38%) minmax(0, 1fr); gap: 8px 16px; margin: 0; font-size: var(--fs-md); }
+/* Very narrow screens: each label sits above its value so long figures never collide or overflow. */
+@media (max-width: 420px) { .kv { grid-template-columns: minmax(0, 1fr); gap: 2px; } .kv dd { margin-bottom: 8px; } }
 .kv dt { color: var(--ink-500); }
 .kv dd { margin: 0; color: var(--ink-900); overflow-wrap: anywhere; }
 
@@ -379,3 +381,13 @@ th[aria-sort='ascending'] .sort-mark, th[aria-sort='descending'] .sort-mark { co
 .id-msg { margin: 0; }
 .id-form { padding-top: 4px; border-top: 1px dashed var(--border); }
 .id-optional summary { cursor: pointer; color: var(--text-2); font-size: var(--fs-md); }
+
+/* Reflow down to 320 px (and 400% zoom): grid and flex children may shrink below their content's natural width;
+   form controls never set a minimum wider than their column. */
+.workspace > *, .panel, .panel-body, .grid > *, .field { min-width: 0; }
+.input, .select, .textarea, input[type='date'] { min-width: 0; max-width: 100%; }
+.input-affix { min-width: 0; max-width: 100%; }
+/* Long names wrap instead of being cut off: single-line text areas that grow with their content. */
+.textarea.autosize { field-sizing: content; min-height: 38px; resize: none; }
+.panel-head { flex-wrap: wrap; row-gap: 8px; }
+.panel-head > * { min-width: 0; }

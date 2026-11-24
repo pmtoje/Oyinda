@@ -26,7 +26,7 @@ The repository already holds a working, tested platform, built as "Gazelle". Per
 | I §3 Brand compliance | **Partial** | Palette, typography and radii re-tokenised (charcoal, warm gold, cream, warm neutrals). Values are **provisional** (derived from the brand description) and need reconciliation with AltBank's approved corporate codes and the logo file (decision C-01). |
 | II §4–6 Design, personality, typography | **Partial** | Plus Jakarta Sans (SIL OFL 1.1, self-hosted, no third-party requests) with a weight scale; rounded radii; gold reserved for primary actions, the active item and the "360". Customer dashboard now leads with *Welcome back* / *Your financing journey*. Further refinement in Phase 18 (design review), with the logo in hand. |
 | II §7 Light and dark | **Built** | Both themes are re-designed on the new palette (light header keeps the charcoal wordmark; dark is deep charcoal, not inverted); system preference, persistence per account, applied before first paint; print and Word documents are theme-independent. |
-| II §8 Zero overlap | **Built / extending** | Automated collision, clipping and overflow checks on every major screen at 1440/1280/1024/768 (+390 customer) in both themes. The rebrand's wider typeface exposed tables that could overflow; **all 24 data tables** now scroll within their panel. Extending to 320/375/1920 and browser zoom (Phase 2, task tracked). |
+| II §8 Zero overlap | **Built** | Automated collision, clipping, overflow and panel-escape checks on every major screen in both themes at **1920, 1440, 1280, 1024, 768, 390, 375 and 320 px**. Browser zoom is covered by width: 200% zoom at 1280 px lays out as 640 CSS px, and 400% as 320 px (WCAG 1.4.10 reflow). Data includes ₦25,000,000,000.50, ₦987bn and very long names. Fixes from extending to phones: grid and flex children may shrink, form controls are capped to their column, label/value lists stack under 420 px, long authority-level names wrap, panel headers wrap. |
 | II §9 UX principles | **Built** | "Where am I / what's next" on every request; real-completion progress; autosave; inline validation; empty states; kept unsaved entries after timeout. |
 | III §10 Five experiences | **Built** | Customer portal, RM/business review, credit & risk workspace, post-approval workspace, admin control centre — separate navigation and permissions on one platform. |
 | IV §11 Registration/login | **Built** | Customer password + OTP; staff directory or interim password + TOTP; step-up re-entry of password for sensitive customer actions; configurable session timeout. |
@@ -47,7 +47,7 @@ The repository already holds a working, tested platform, built as "Gazelle". Per
 | XIV §43 AI | **Built (mock)** | Drafts only, cites sources, human review recorded; private model deployment open (OQ-12). |
 | XV §44–45 Design system and tokens | **Partial** | Tokens centralised (three layers, no raw colours in components). Component states exist; a living component catalogue page is a Phase 2 follow-up. |
 | XVI §46–47 Performance, accessibility | **Built / ongoing** | p95 budgets in CI; axe WCAG AA in both themes; target raised to WCAG 2.2 AA (manual audit recommended). |
-| XVIII §48–50 Testing | **Partial** | Functional, scenario, visual and accessibility suites in CI. Additions planned: 320/375/1920 widths, zoom, the §8 value set, BVN/NIN cases (§48). |
+| XVIII §48–50 Testing | **Built / ongoing** | Functional, scenario (PEP, insider, SOL, cash-backed), identity (BVN/NIN states, review, gate), visual at the eight §49 widths, accessibility and performance suites in CI. Open: open-drawer and modal states in the visual suite. |
 
 ## 3. Decisions requiring Bank approval
 
@@ -77,6 +77,6 @@ The repository already holds a working, tested platform, built as "Gazelle". Per
 1. **Done this phase:** identity rename, provisional brand tokens, typography, light/dark on the new palette, document template, table overflow hardening, customer dashboard hierarchy.
 2. **Done — Phase 4: promoter BVN/NIN verification** (§13), with a sandbox provider until live contracts are in place.
 3. Phase 2 completion on receipt of the logo: SVG variants, icons, component catalogue, design review.
-4. Visual regression extension: 320 / 375 / 1920 px, 200% zoom, the §8 value set, open drawers and modals.
+4. **Done:** visual checks at all eight §49 widths (zoom covered by width). Remaining: open drawers and modals as visual states.
 5. Phase 12 / 6 polish: drag-and-drop uploads with previews; executive dashboard breakdowns (§36).
 6. Live integrations as the Bank supplies contracts and credentials (CAC, tax, BVN, NIN, bureau, statements, AD).

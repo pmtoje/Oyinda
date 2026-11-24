@@ -34,7 +34,7 @@ function UserTable() {
   const rows = useMemo(() => (users.data ?? []).filter((u) => !filter || `${u.name} ${u.username} ${u.roles.join(' ')} ${u.businessUnit}`.toLowerCase().includes(filter.toLowerCase())), [users.data, filter]);
   const sel = users.data?.find((u) => u.id === selected);
   return (
-    <Panel title={`${users.data?.length ?? ''} staff users`} actions={<><input className="input" style={{ width: 220 }} aria-label="Filter users" placeholder="Filter by name, role or unit" value={filter} onChange={(e) => setFilter(e.target.value)} /><Button size="sm" variant="primary" onClick={() => setCreating(true)}>Add user</Button></>} flush>
+    <Panel title={`${users.data?.length ?? ''} staff users`} actions={<><input className="input" style={{ width: 'min(220px, 100%)' }} aria-label="Filter users" placeholder="Filter by name, role or unit" value={filter} onChange={(e) => setFilter(e.target.value)} /><Button size="sm" variant="primary" onClick={() => setCreating(true)}>Add user</Button></>} flush>
       {users.isLoading ? <Loading rows={6} /> : users.error ? <ErrorAlert error={users.error} /> : !rows.length ? <Empty title="No users match" /> : (
         <div className="table-wrap"><table className="data">
           <thead><tr><th>Name</th><th>Roles</th><th>Business unit</th><th>Status</th><th>MFA</th><th>Last sign-in</th></tr></thead>

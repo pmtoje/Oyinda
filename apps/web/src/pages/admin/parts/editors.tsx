@@ -31,7 +31,7 @@ export function AuthorityEditor({ value, onChange }: P) {
               <div className="level-head"><span className="level-no">{i + 1}</span><span className="level-title">{l.name || l.code}</span><span className="level-summary">{summary}</span><span className="grow" /><Button size="sm" variant="ghost" onClick={() => set({ levels: del(levels, i) })}>Remove</Button></div>
               <div className="level-grid">
                 <TextInput label="Code" value={l.code} onChange={(e) => u({ code: e.target.value.toUpperCase() })} />
-                <div className="span-2"><TextInput label="Name" value={l.name} onChange={(e) => u({ name: e.target.value })} /></div>
+                <div className="span-2"><TextArea label="Name" rows={1} className="textarea autosize" value={l.name} onChange={(e) => u({ name: e.target.value })} /></div>
                 <SelectInput label="Type" value={l.kind} options={[{ value: 'INDIVIDUAL', label: 'Individual' }, { value: 'COMMITTEE', label: 'Committee' }]} onChange={(e) => u({ kind: e.target.value })} />
                 {l.kind === 'COMMITTEE'
                   ? <TextInput label="Committee key" value={l.committeeKey ?? ''} onChange={(e) => u({ committeeKey: e.target.value.toUpperCase(), role: undefined })} />

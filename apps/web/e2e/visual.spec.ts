@@ -23,14 +23,20 @@ const THEMES = ['light', 'dark'] as const;
  * --update-snapshots). Layout, overlap, clipping and accessibility checks always run.
  */
 const COMPARE_PIXELS = !process.env.CI || process.env.VISUAL_BASELINES === 'strict';
+/**
+ * Widths from the Credit360 prompt (§49). Browser zoom is covered by width: 200% zoom on a 1280 px screen lays out
+ * as 640 CSS px and 400% as 320 px (the WCAG 1.4.10 reflow case), so 320–768 also prove the zoomed layouts.
+ */
 const VIEWPORTS = [
+  { name: 'wide', width: 1920, height: 1080 },
   { name: 'desktop', width: 1440, height: 900 },
   { name: 'laptop', width: 1280, height: 800 },
   { name: 'tablet', width: 1024, height: 768 },
   { name: 'tablet-portrait', width: 768, height: 1024 },
+  { name: 'phone-390', width: 390, height: 844 },
+  { name: 'phone-375', width: 375, height: 812 },
+  { name: 'phone-320', width: 320, height: 640 },
 ];
-/** Customer-facing screens are also checked on a phone; the staff workspace is supported from tablet width up. */
-const PHONE = { name: 'phone', width: 390, height: 844 };
 const LONG_NAME = 'ABC Manufacturing, Packaging, Plastics & Allied Industrial Products Holdings Nigeria Limited (formerly ABC Rigid Containers and Bottling Supplies West Africa Company) — Lagos, Ogun, Kano & Abuja Operations';
 
 /** Runs in the page: returns layout defects. */
@@ -109,7 +115,7 @@ async function audit(page: Page, name: string, theme: string, opts: { axe?: bool
   await expect(page.locator('.skeleton')).toHaveCount(0, { timeout: 10_000 }).catch(() => { /* some pages keep a skeleton for optional panels */ });
   expect(await page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe(theme);
   const found: Record<string, string[]> = {};
-  for (const vp of opts.phone ? [...VIEWPORTS, PHONE] : VIEWPORTS) {
+  for (const vp of VIEWPORTS) {
     await page.setViewportSize({ width: vp.width, height: vp.height });
     await page.waitForTimeout(150);
     await page.screenshot({ path: `test-results/visual/${name}-${theme}-${vp.name}.png`, fullPage: true });
@@ -136,6 +142,7 @@ test.beforeAll(async () => {
   // Extreme data on the DEMO customer: very long name, a huge request and long free text.
   await sql(`UPDATE customer SET legal_name=$1 WHERE customer_ref='GZ-CUS-000001'`, [LONG_NAME]);
   await sql(`UPDATE business_profile SET registered_name=$1 WHERE customer_id=(SELECT id FROM customer WHERE customer_ref='GZ-CUS-000001')`, [LONG_NAME]);
+  await sql(`UPDATE facility_request SET amount_minor=2500000000050 WHERE facility_ref='GZ-FAC-2026-000001'`); // ₦25,000,000,000.50 (§8)
   await sql(`UPDATE facility_request SET amount_minor=98765432109876, purpose=$1 WHERE facility_ref='GZ-FAC-2026-000002'`, ['Lease of ten 15-tonne delivery trucks, two forklifts and associated telematics to expand distribution across the South-West, North-Central and North-West regions, including Ikeja, Ibadan, Ilorin, Abuja, Kaduna and Kano depots, with staged delivery over nine months. '.repeat(3)]);
 });
 
