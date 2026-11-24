@@ -52,8 +52,12 @@ test('a customer completes and submits a Murabaha; the request shows as submitte
   await expect(outstanding.first()).toBeVisible();
   for (let i = 0; (await outstanding.count()) > 0 && i < 15; i++) {
     const row = outstanding.first();
-    const title = (await row.locator('td').first().innerText()).split('\n')[0]!;
+    const title = (await row.locator('td').first().innerText()).split('\n')[0]!.replace(/\*$/, '').replace(/ \(optional\)$/, '').trim();
     await row.locator('input[type="file"]').setInputFiles({ name: `document-${i + 1}.pdf`, mimeType: 'application/pdf', buffer: pdf(`doc ${i}`) });
+    const dialog = page.getByRole('dialog', { name: `Upload ${title}` });
+    await expect(dialog.getByTitle(/^Preview of document-/)).toBeVisible(); // previewed before anything is sent
+    await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
+    await expect(dialog).toBeHidden({ timeout: 15_000 });
     await expect(page.locator('tr').filter({ hasText: title }).getByText(/Uploaded|Verified/).first()).toBeVisible({ timeout: 15_000 });
   }
   await saveAndContinue(page); // → review
@@ -69,4 +73,31 @@ test('a customer completes and submits a Murabaha; the request shows as submitte
   await expect(page.locator('.badge').filter({ hasText: /^Draft$/ })).toHaveCount(0, { timeout: 1000 });
   const [f] = await sql(`SELECT status FROM facility_request WHERE id=$1`, [facilityId]);
   expect(['SUBMITTED', 'IN_REVIEW']).toContain(f.status);
+});
+
+test('documents: drop a file on a row, wrong types and oversized files are refused before upload', async ({ page }) => {
+  await customerSignIn(page, 'treasury@abc-manufacturing.demo', '08030000001');
+  const [ij] = await sql(`SELECT id FROM facility_request WHERE facility_ref='GZ-FAC-2026-000002'`);
+  await page.goto(`/portal/facilities/${ij.id}/apply`);
+  await page.getByRole('button', { name: 'Documents' }).click();
+  const row = page.locator('tr').filter({ hasText: 'Not uploaded' }).first();
+  const title = (await row.locator('td').first().innerText()).split('\n')[0]!.replace(/\*$/, '').replace(/ \(optional\)$/, '').trim();
+  // Wrong type: refused on the spot, nothing sent
+  await row.locator('input[type="file"]').setInputFiles({ name: 'payload.exe', mimeType: 'application/octet-stream', buffer: Buffer.from('MZ') });
+  await expect(row.getByRole('alert')).toContainText('not an accepted file type');
+  // Drag and drop an image onto the row: preview, then upload
+  const dt = await page.evaluateHandle(() => {
+    const d = new DataTransfer();
+    const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='), (c) => c.charCodeAt(0));
+    d.items.add(new File([png], 'scan.png', { type: 'image/png' }));
+    return d;
+  });
+  await row.dispatchEvent('dragover', { dataTransfer: dt });
+  await expect(row.getByText(`Drop to upload ${title}`)).toBeVisible();
+  await row.dispatchEvent('drop', { dataTransfer: dt });
+  const dialog = page.getByRole('dialog', { name: `Upload ${title}` });
+  await expect(dialog.getByAltText('Preview of scan.png')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
+  await expect(dialog).toBeHidden({ timeout: 15_000 });
+  await expect(page.locator('tr').filter({ hasText: title }).getByText('scan.png')).toBeVisible();
 });

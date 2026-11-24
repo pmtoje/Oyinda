@@ -42,6 +42,39 @@ export const api = {
   },
 };
 
+/**
+ * Upload with real progress (fetch cannot report upload progress). Same session cookie and CSRF header as every other
+ * request; resolves only when the server has stored the file, so the UI never shows success early.
+ */
+export function uploadWithProgress<T = any>(url: string, file: File, onProgress: (fraction: number) => void, fields: Record<string, string> = {}): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    for (const [k, v] of Object.entries(fields)) form.append(k, v);
+    form.append('file', file);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader('Accept', 'application/json');
+    if (csrf) xhr.setRequestHeader('x-csrf-token', csrf);
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(Math.min(0.99, e.loaded / e.total)); };
+    xhr.onerror = () => reject(new ApiError(0, 'NETWORK', 'The upload was interrupted. Check your connection and try again.'));
+    xhr.onload = () => {
+      let json: any = {};
+      try { json = JSON.parse(xhr.responseText || '{}'); } catch { /* non-JSON error page */ }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress(1);
+        window.dispatchEvent(new CustomEvent('gz:activity'));
+        resolve(json.data as T);
+      } else {
+        const e = json?.error ?? {};
+        if (xhr.status === 401) window.dispatchEvent(new CustomEvent('gz:unauthorized'));
+        reject(new ApiError(xhr.status, e.code ?? 'ERROR', e.message ?? 'The upload could not be completed.', e.details, e.requestId));
+      }
+    };
+    xhr.send(form);
+  });
+}
+
 /** Open a document via a short-lived, single-use grant. */
 export async function openDocument(documentId: string, disposition: 'inline' | 'attachment' = 'inline') {
   const g = await api.post<{ url: string }>(`/api/documents/${documentId}/grant`, { disposition });
