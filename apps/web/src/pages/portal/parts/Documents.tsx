@@ -19,10 +19,11 @@ function checkFile(f: File): string | null {
 
 /** Preview of the chosen file before it leaves the device; confirm to upload, with real progress. */
 function UploadDialog({ doc, file, onClose, onDone }: { doc: Doc; file: File; onClose: () => void; onDone: (warning?: string) => void }) {
-  const [url] = useState(() => URL.createObjectURL(file));
+  // Created and revoked in the same effect, so a remount (React StrictMode, fast refresh) never leaves a revoked URL
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => { const u = URL.createObjectURL(file); setUrl(u); return () => URL.revokeObjectURL(u); }, [file]);
   const [progress, setProgress] = useState<number | null>(null);
   const [err, setErr] = useState<unknown>(null);
-  useEffect(() => () => URL.revokeObjectURL(url), [url]);
   const isImage = /^image\//.test(file.type) || /\.(png|jpe?g)$/i.test(file.name);
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
   const upload = async () => {
@@ -40,7 +41,7 @@ function UploadDialog({ doc, file, onClose, onDone }: { doc: Doc; file: File; on
       <div className="stack">
         <div className="upload-file"><strong className="upload-name">{file.name}</strong><span className="small muted">{bytes(file.size)}</span></div>
         <div className="upload-preview">
-          {isImage ? <img src={url} alt={`Preview of ${file.name}`} /> : isPdf ? <iframe src={url} title={`Preview of ${file.name}`} /> : <p className="small muted">No preview for this file type. Check the name before uploading.</p>}
+          {!url ? null : isImage ? <img src={url} alt={`Preview of ${file.name}`} /> : isPdf ? <iframe src={url} title={`Preview of ${file.name}`} /> : <p className="small muted">No preview for this file type. Check the name before uploading.</p>}
         </div>
         {busy && (
           <div className="upload-progress" role="progressbar" aria-label="Upload progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((progress ?? 0) * 100)}>

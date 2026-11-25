@@ -97,6 +97,8 @@ test('documents: drop a file on a row, wrong types and oversized files are refus
   await row.dispatchEvent('drop', { dataTransfer: dt });
   const dialog = page.getByRole('dialog', { name: `Upload ${title}` });
   await expect(dialog.getByAltText('Preview of scan.png')).toBeVisible();
+  // the preview really renders (a revoked object URL leaves a broken image with the same alt text)
+  await expect.poll(() => dialog.getByAltText('Preview of scan.png').evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
   await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
   await expect(dialog).toBeHidden({ timeout: 15_000 });
   await expect(page.locator('tr').filter({ hasText: title }).getByText('scan.png')).toBeVisible();
