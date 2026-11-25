@@ -119,14 +119,25 @@ export function AccountTab({ facilityId }: { facilityId: string }) {
   const a = q.data;
   if (!a) return <Empty title="Facility not yet active">Your facility account appears here once Credit Operations activates the facility.</Empty>;
   const { money } = { money: (m: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: a.currency }).format(m / 100) };
+  const paidCount = a.schedule.filter((s: any) => s.status === 'PAID').length;
+  const paidTotal = a.schedule.reduce((t: number, s: any) => t + s.paidMinor, 0);
+  const dueTotal = a.schedule.reduce((t: number, s: any) => t + s.totalMinor, 0);
+  const lastPaid: string | undefined = a.payments[0]?.valueDate;
   return (
     <div className="stack" style={{ ['--gap' as any]: '20px' }}>
+      {a.status === 'CLOSED' && <Alert tone="ok" title={`Fully repaid${lastPaid ? ` on ${date(lastPaid)}` : ''}`}>Every instalment has been paid and this facility is closed. Total paid: {money(paidTotal)}.</Alert>}
       <div className="grid cols-4">
         <div className="metric"><div className="label">Approved</div><div className="value">{money(a.approvedMinor)}</div></div>
-        <div className="metric"><div className="label">Utilised</div><div className="value">{money(a.utilisedMinor)}</div></div>
-        <div className="metric"><div className="label">Available</div><div className="value">{money(a.availableMinor)}</div></div>
+        <div className="metric"><div className="label">Disbursed</div><div className="value">{money(a.utilisedMinor)}</div></div>
+        <div className="metric"><div className="label">Outstanding cost</div><div className="value">{money(a.outstandingMinor)}</div><div className="sub">Available to draw: {money(a.availableMinor)}</div></div>
         <div className="metric"><div className="label">Matures</div><div className="value" style={{ fontSize: '1.1rem' }}>{date(a.maturityDate)}</div><div className="sub">{a.profitRatePct}% profit rate</div></div>
       </div>
+      {a.schedule.length > 0 && (
+        <div>
+          <div className="row between small" style={{ marginBottom: 6 }}><strong>Repayment progress</strong><span className="muted">{paidCount} of {a.schedule.length} instalments paid · {money(paidTotal)} of {money(dueTotal)}</span></div>
+          <div className="upload-progress" role="progressbar" aria-label="Repayment progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((paidTotal / Math.max(1, dueTotal)) * 100)}><span style={{ width: `${Math.min(100, (paidTotal / Math.max(1, dueTotal)) * 100)}%` }} /></div>
+        </div>
+      )}
       <section><h4>Disbursements</h4>
         {!a.disbursements.length ? <p className="small muted">No disbursements yet.</p> : <div className="table-wrap"><table className="data"><thead><tr><th>Date</th><th>Beneficiary</th><th>Narrative</th><th className="num">Amount</th><th>Status</th></tr></thead>
           <tbody>{a.disbursements.map((d: any) => <tr key={d.id}><td>{dateTime(d.postedAt ?? d.requestedAt)}</td><td>{d.beneficiary}</td><td>{d.narrative}</td><td className="num">{d.amount}</td><td><Status value={d.status} /></td></tr>)}</tbody></table></div>}

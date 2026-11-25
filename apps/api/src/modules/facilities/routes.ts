@@ -63,6 +63,7 @@ async function customerProgress(db: ReturnType<typeof getPool>, f: any) {
     FULFILMENT: ['Alternative Bank', 'Documentation and conditions precedent are being completed.'],
     READY_FOR_ACTIVATION: ['Credit Operations', 'Your facility is being set up.'],
     ACTIVE: ['—', 'Your facility is active.'],
+    CLOSED: ['—', 'Fully repaid. This facility is closed and no further payments are due.'],
     DECLINED: ['—', 'Your relationship manager will contact you to discuss the outcome.'],
   };
   const [holder, next] = map[f.status] ?? ['Alternative Bank', 'The Bank is processing your request.'];

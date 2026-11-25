@@ -13,7 +13,8 @@ const JOURNEY = [
   ['Decision', ['APPROVED', 'DECLINED']],
   ['Offer', ['OFFER_ISSUED', 'IN_NEGOTIATION', 'OFFER_ACCEPTED', 'OFFER_REJECTED']],
   ['Documentation', ['FULFILMENT', 'READY_FOR_ACTIVATION']],
-  ['Active', ['ACTIVE', 'CLOSED']],
+  ['Active', ['ACTIVE']],
+  ['Repaid', ['CLOSED']],
 ] as const;
 const ORDER = ['DRAFT', 'SUBMITTED', 'IN_REVIEW', 'RETURNED', 'APPROVED', 'DECLINED', 'OFFER_ISSUED', 'IN_NEGOTIATION', 'OFFER_REJECTED', 'OFFER_ACCEPTED', 'FULFILMENT', 'READY_FOR_ACTIVATION', 'ACTIVE', 'CLOSED'];
 
@@ -52,7 +53,7 @@ export default function FacilityDetail() {
       </div>
       {f.status !== 'DECLINED' && f.status !== 'WITHDRAWN' && (
         <ol className="stepper" aria-label="Progress">
-          {JOURNEY.map(([label], i) => <li key={label} className={i < stageIdx ? 'done' : i === stageIdx ? 'current' : ''} aria-current={i === stageIdx ? 'step' : undefined}>{label}</li>)}
+          {JOURNEY.map(([label], i) => <li key={label} className={i < stageIdx || f.status === 'CLOSED' ? 'done' : i === stageIdx ? 'current' : ''} aria-current={i === stageIdx && f.status !== 'CLOSED' ? 'step' : undefined}>{label}</li>)}
         </ol>
       )}
 

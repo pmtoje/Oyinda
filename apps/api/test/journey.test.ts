@@ -248,12 +248,31 @@ describe('Phase 77 — end-to-end Murabaha journey for ABC Manufacturing Ltd', (
     expect(after.schedule[1].status).toBe('PAID');
   });
 
+  it('Journey 13: full repayment settles the facility — account closed, balance cleared, customer sees Closed', async () => {
+    const acct = (await staff.creditops!.get(`/api/facilities/${facilityId}/account`)).body.data;
+    const remaining = acct.schedule.reduce((s: number, i: any) => s + i.totalMinor - i.paidMinor, 0);
+    const part = await staff.creditops!.post(`/api/facility-accounts/${acct.id}/payments`, { amountMinor: remaining - 1, valueDate: '2029-01-31', reference: 'DEMO-PAY-0002' });
+    expect(part.body.data.settled).toBe(false); // one kobo short: still open
+    const last = await staff.creditops!.post(`/api/facility-accounts/${acct.id}/payments`, { amountMinor: 1, valueDate: '2029-01-31', reference: 'DEMO-PAY-0003' });
+    expect(last.body.data.settled).toBe(true);
+    const after = (await abc.get(`/api/facilities/${facilityId}/account`)).body.data;
+    expect(after.status).toBe('CLOSED');
+    expect(after.outstandingMinor).toBe(0);
+    expect(after.schedule.every((i: any) => i.status === 'PAID')).toBe(true);
+    const closed = (await abc.get(`/api/facilities/${facilityId}`)).body.data;
+    expect(closed.facility.status).toBe('CLOSED');
+    expect(closed.progress.nextStep).toMatch(/Fully repaid/);
+    expect((await staff.creditops!.post(`/api/facility-accounts/${acct.id}/payments`, { amountMinor: 100, valueDate: '2029-02-28', reference: 'DEMO-PAY-0004' })).body.error.code).toBe('ACCOUNT_CLOSED');
+    const n = await q(db(), `SELECT 1 FROM notification WHERE event_code='FACILITY_SETTLED' AND facility_id=$1`, [facilityId]);
+    expect(n.length).toBeGreaterThan(0);
+  });
+
   it('audit trail covers the whole journey and the hash chain verifies', async () => {
     const actions = (await q(db(), 'SELECT DISTINCT action FROM audit_log WHERE facility_id=$1', [facilityId])).map((r: any) => r.action);
-    for (const a of ['FACILITY_CREATED', 'DOCUMENT_UPLOADED', 'FACILITY_SUBMITTED', 'WORKFLOW_RECOMMEND', 'BUREAU_REQUESTED', 'EXPOSURE_COMPUTED', 'RARORAC_COMPUTED', 'WORKFLOW_APPROVE', 'TERMS_APPROVED', 'OFFER_ISSUED', 'OFFER_ACCEPTED', 'CONDITION_SATISFIED', 'FACILITY_ACTIVATED', 'DISBURSEMENT_POSTED', 'PAYMENT_RECORDED']) expect(actions).toContain(a);
+    for (const a of ['FACILITY_CREATED', 'DOCUMENT_UPLOADED', 'FACILITY_SUBMITTED', 'WORKFLOW_RECOMMEND', 'BUREAU_REQUESTED', 'EXPOSURE_COMPUTED', 'RARORAC_COMPUTED', 'WORKFLOW_APPROVE', 'TERMS_APPROVED', 'OFFER_ISSUED', 'OFFER_ACCEPTED', 'CONDITION_SATISFIED', 'FACILITY_ACTIVATED', 'DISBURSEMENT_POSTED', 'PAYMENT_RECORDED', 'FACILITY_SETTLED']) expect(actions).toContain(a);
     expect((await verifyAuditChain(db())).ok).toBe(true);
     const timeline = (await abc.get(`/api/facilities/${facilityId}`)).body.data.timeline;
-    expect(timeline.at(-1).status).toBe('Active');
+    expect(timeline.at(-1).status).toBe('Closed');
     expect(JSON.stringify(timeline)).not.toMatch(/actor|reason/);
   });
 });

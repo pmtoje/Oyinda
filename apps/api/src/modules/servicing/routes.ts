@@ -42,6 +42,23 @@ export async function activateFacility(db: Db, actor: any, facilityId: string) {
   return acct;
 }
 
+/**
+ * Settlement: once every scheduled instalment is paid in full, the facility account closes, the outstanding balance is
+ * cleared and the request moves to Closed (visible to the customer in its timeline). Idempotent.
+ */
+export async function settleIfRepaid(db: Db, actor: any, accountId: string, valueDate: string) {
+  const a = await one<any>(db, 'SELECT * FROM facility_account WHERE id=$1 FOR UPDATE', [accountId]);
+  if (a.status === 'CLOSED') return false;
+  const s = await one<{ n: number; open: number; paid: string }>(db, `SELECT count(*)::int AS n, count(*) FILTER (WHERE status <> 'PAID')::int AS open, COALESCE(sum(paid_minor),0)::text AS paid FROM payment_schedule_item WHERE account_id=$1`, [accountId]);
+  if (!s.n || s.open > 0) return false;
+  await q(db, `UPDATE facility_account SET status='CLOSED', outstanding_minor=0 WHERE id=$1`, [accountId]);
+  await q(db, `UPDATE monitoring_item SET status='RESOLVED', resolved_at=now(), resolution_note='Facility fully repaid' WHERE account_id=$1 AND status='OPEN'`, [accountId]);
+  await setFacilityStatus(db, a.facility_id, 'CLOSED', actor, { reason: 'All scheduled instalments paid', customerNote: `Fully repaid on ${valueDate}` });
+  await audit(db, actor, { action: 'FACILITY_SETTLED', entityType: 'facility_account', entityId: accountId, facilityId: a.facility_id, metadata: { instalments: s.n, totalPaidMinor: Number(s.paid), valueDate } });
+  await emit(db, 'FACILITY_SETTLED', { facilityId: a.facility_id, vars: { amount: formatMoney(Number(s.paid), a.currency), date: valueDate } });
+  return true;
+}
+
 /** Daily monitoring sweep: overdue payments, maturity, reviews, covenants, security expiry, financials refresh. */
 export async function monitoringSweep(db: Db, today = new Date().toISOString().slice(0, 10)) {
   let created = 0;
@@ -162,6 +179,7 @@ export async function servicingRoutes(app: FastifyInstance) {
     await loadFacility(db, req, a0.facility_id);
     await tx(async (c) => {
       if (await maybe(c, 'SELECT 1 FROM facility_payment WHERE reference=$1', [b.reference])) throw conflict('DUPLICATE_PAYMENT', 'A payment with this reference has already been recorded.');
+      if ((await one<any>(c, 'SELECT status FROM facility_account WHERE id=$1 FOR UPDATE', [aid])).status === 'CLOSED') throw conflict('ACCOUNT_CLOSED', 'This facility has been repaid in full and is closed.');
       await q(c, 'INSERT INTO facility_payment(account_id, amount_minor, value_date, reference, source) VALUES ($1,$2,$3,$4,$5)', [aid, b.amountMinor, b.valueDate, b.reference, 'MANUAL_RECONCILIATION']);
       let left = b.amountMinor, principalPaid = 0;
       for (const it of await q<any>(c, `SELECT * FROM payment_schedule_item WHERE account_id=$1 AND status <> 'PAID' ORDER BY seq FOR UPDATE`, [aid])) {
@@ -177,8 +195,8 @@ export async function servicingRoutes(app: FastifyInstance) {
       await q(c, 'UPDATE facility_account SET outstanding_minor=GREATEST(0, outstanding_minor-$2) WHERE id=$1', [aid, principalPaid]);
       await q(c, `UPDATE monitoring_item SET status='RESOLVED', resolved_at=now(), resolution_note='Paid' WHERE kind='PAYMENT_OVERDUE' AND ref_id IN (SELECT id FROM payment_schedule_item WHERE account_id=$1 AND status='PAID') AND status='OPEN'`, [aid]);
       await audit(c, actorOf(req), { action: 'PAYMENT_RECORDED', entityType: 'facility_payment', entityId: b.reference, facilityId: a0.facility_id, metadata: b });
-    });
-    return ok(reply, { recorded: true }, 201);
+      return settleIfRepaid(c, actorOf(req), aid, b.valueDate);
+    }).then((settled) => ok(reply, { recorded: true, settled }, 201));
   });
 
   app.get('/api/monitoring', async (req, reply) => {

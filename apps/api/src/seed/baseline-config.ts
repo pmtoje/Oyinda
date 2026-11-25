@@ -547,6 +547,7 @@ const notifications: BaselineItem[] = [
   notif('DOCUMENTATION_PENDING', ['CUSTOMER'], 'Documents required', 'Conditions on {{facilityRef}} need documents from you.', 'ACTION'),
   notif('FACILITY_READY', ['ROLE:CREDIT_OPS', 'RM'], 'Facility ready for activation', 'All mandatory conditions on {{facilityRef}} are satisfied.', 'ACTION'),
   notif('FACILITY_ACTIVATED', ['CUSTOMER', 'RM'], 'Facility activated', 'Facility {{facilityRef}} is now active.'),
+  notif('FACILITY_SETTLED', ['CUSTOMER', 'RM'], 'Facility fully repaid', '{{facilityRef}} has been repaid in full ({{amount}}) and is now closed. Thank you for financing with the Bank.'),
   notif('DISBURSEMENT_POSTED', ['CUSTOMER', 'RM'], 'Disbursement completed', '{{amount}} has been disbursed under {{facilityRef}}.'),
   notif('MONITORING_ALERT', ['RM'], 'Monitoring alert on {{facilityRef}}', '{{detail}}', 'WARNING'),
 ];

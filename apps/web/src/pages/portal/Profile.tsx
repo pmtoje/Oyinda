@@ -21,7 +21,8 @@ export default function Profile({ customerId }: { customerId?: string }) {
   const [saved, setSaved] = useState(false);
   const [drawer, setDrawer] = useState<null | 'party' | 'bank' | 'ext' | 'cp'>(null);
   useEffect(() => { if (q.data) setForm(Object.fromEntries(FIELDS.map((f) => [f, q.data.profile[f] ?? (typeof q.data.profile[f] === 'boolean' ? false : '')]))); }, [q.data]);
-  const reload = () => qc.invalidateQueries({ queryKey: ['profile', cid] });
+  // Parties feed the identity panel (who must be verified), so both refresh together
+  const reload = () => Promise.all([qc.invalidateQueries({ queryKey: ['profile', cid] }), qc.invalidateQueries({ queryKey: ['identity', cid] })]);
   const save = useAction(async () => {
     const body: Record<string, any> = {};
     for (const f of FIELDS) {
