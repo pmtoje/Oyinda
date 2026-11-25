@@ -149,15 +149,15 @@ _Generated from the route source by `pnpm --filter @gazelle/api docs:api`; a tes
 
 | Method | Path | Access | Purpose | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/facilities` | Staff + MFA | — | `modules/facilities/routes.ts:110` |
-| POST | `/api/facilities` | Staff + MFA · `facility.initiate` | — | `modules/facilities/routes.ts:83` |
-| GET | `/api/facilities/:id` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:132` |
-| PATCH | `/api/facilities/:id` | Staff + MFA · `facility.initiate` | — | `modules/facilities/routes.ts:159` |
-| POST | `/api/facilities/:id/eligibility` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:203` |
-| POST | `/api/facilities/:id/rework/:itemId/respond` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:273` |
-| POST | `/api/facilities/:id/submit` | Staff + MFA · `facility.initiate` | — | `modules/facilities/routes.ts:215` |
-| POST | `/api/facilities/:id/withdraw` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:257` |
-| GET | `/api/products` | Staff + MFA | — | `modules/facilities/routes.ts:75` |
+| GET | `/api/facilities` | Staff + MFA | — | `modules/facilities/routes.ts:111` |
+| POST | `/api/facilities` | Staff + MFA · `facility.initiate` | — | `modules/facilities/routes.ts:84` |
+| GET | `/api/facilities/:id` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:133` |
+| PATCH | `/api/facilities/:id` | Staff + MFA · `facility.initiate` | — | `modules/facilities/routes.ts:160` |
+| POST | `/api/facilities/:id/eligibility` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:204` |
+| POST | `/api/facilities/:id/rework/:itemId/respond` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:274` |
+| POST | `/api/facilities/:id/submit` | Staff + MFA · `facility.initiate` | — | `modules/facilities/routes.ts:216` |
+| POST | `/api/facilities/:id/withdraw` | Owning customer, or staff with access to the facility | — | `modules/facilities/routes.ts:258` |
+| GET | `/api/products` | Staff + MFA | — | `modules/facilities/routes.ts:76` |
 
 ## identity
 
@@ -249,13 +249,13 @@ _Generated from the route source by `pnpm --filter @gazelle/api docs:api`; a tes
 
 | Method | Path | Access | Purpose | Source |
 | --- | --- | --- | --- | --- |
-| POST | `/api/disbursements/:did/decide` | Staff + MFA · `disbursement.check` | — | `modules/servicing/routes.ts:121` |
-| GET | `/api/facilities/:id/account` | Owning customer, or staff with access to the facility | — | `modules/servicing/routes.ts:86` |
-| POST | `/api/facilities/:id/activate` | Staff + MFA · `facility.activate` | — | `modules/servicing/routes.ts:79` |
-| POST | `/api/facilities/:id/disbursements` | Staff + MFA · `disbursement.make` | — | `modules/servicing/routes.ts:103` |
-| POST | `/api/facility-accounts/:aid/payments` | Staff + MFA · `monitoring.manage` | Record a payment (from CBA reconciliation). Duplicate references are rejected (idempotent). | `modules/servicing/routes.ts:156` |
-| GET | `/api/monitoring` | Staff + MFA | — | `modules/servicing/routes.ts:184` |
-| POST | `/api/monitoring/:mid/resolve` | Staff + MFA · `monitoring.manage` | — | `modules/servicing/routes.ts:193` |
+| POST | `/api/disbursements/:did/decide` | Staff + MFA · `disbursement.check` | — | `modules/servicing/routes.ts:138` |
+| GET | `/api/facilities/:id/account` | Owning customer, or staff with access to the facility | — | `modules/servicing/routes.ts:103` |
+| POST | `/api/facilities/:id/activate` | Staff + MFA · `facility.activate` | — | `modules/servicing/routes.ts:96` |
+| POST | `/api/facilities/:id/disbursements` | Staff + MFA · `disbursement.make` | — | `modules/servicing/routes.ts:120` |
+| POST | `/api/facility-accounts/:aid/payments` | Staff + MFA · `monitoring.manage` | Record a payment (from CBA reconciliation). Duplicate references are rejected (idempotent). | `modules/servicing/routes.ts:173` |
+| GET | `/api/monitoring` | Staff + MFA | — | `modules/servicing/routes.ts:202` |
+| POST | `/api/monitoring/:mid/resolve` | Staff + MFA · `monitoring.manage` | — | `modules/servicing/routes.ts:211` |
 
 ## threads
 
